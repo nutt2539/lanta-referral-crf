@@ -985,6 +985,297 @@ def get_css():
         }
 
         /* ==========================================================================
+           RESPONSIVE TABLE WRAPPER & MOBILE OPTIMIZATIONS
+           ========================================================================== */
+        html, body {
+            max-width: 100vw;
+            overflow-x: hidden;
+            position: relative;
+        }
+
+        .table-responsive {
+            width: 100%;
+            max-width: 100%;
+            overflow-x: auto;
+            -webkit-overflow-scrolling: touch;
+            margin-bottom: 10px;
+            border-radius: 4px;
+            box-sizing: border-box;
+            scrollbar-width: thin;
+            scrollbar-color: #cbd5e1 #f8fafc;
+        }
+        .table-responsive::-webkit-scrollbar {
+            height: 6px;
+        }
+        .table-responsive::-webkit-scrollbar-track {
+            background: #f8fafc;
+        }
+        .table-responsive::-webkit-scrollbar-thumb {
+            background-color: #cbd5e1;
+            border-radius: 3px;
+        }
+
+        .badge, .badge-calc, .badge-evaluated {
+            max-width: 100%;
+            white-space: normal;
+            word-break: break-word;
+        }
+
+        /* ==========================================================================
+           MOBILE RESPONSIVE ADAPTATIONS (max-width: 768px)
+           ========================================================================== */
+        @media screen and (max-width: 768px) {
+            body {
+                font-size: 14px;
+                padding-bottom: 60px;
+            }
+
+            body.auto-compact .crf-table th,
+            body.auto-compact .crf-table td {
+                padding: 5px 6px !important;
+            }
+
+            /* Navbar */
+            .top-navbar {
+                padding: 6px 10px;
+            }
+            .navbar-content {
+                width: 100%;
+                gap: 6px;
+            }
+            .nav-title-group h1 {
+                font-size: 15px;
+                line-height: 1.25;
+            }
+            .nav-title-group p {
+                font-size: 11px;
+                line-height: 1.25;
+                display: -webkit-box;
+                -webkit-line-clamp: 2;
+                -webkit-box-orient: vertical;
+                overflow: hidden;
+            }
+            .nav-actions {
+                width: 100%;
+                display: flex;
+                flex-wrap: wrap;
+                gap: 6px;
+                align-items: center;
+            }
+            .nav-actions select#case-selector {
+                flex: 1 1 120px;
+                min-width: 110px;
+                height: 32px;
+                font-size: 13px;
+            }
+            .nav-actions .btn {
+                flex: 0 1 auto;
+                padding: 4px 8px;
+                font-size: 12px;
+                height: 32px;
+                white-space: nowrap;
+            }
+            #save-status {
+                width: 100%;
+                font-size: 11px;
+                padding: 2px 6px;
+                justify-content: center;
+            }
+
+            /* Tabs */
+            .tab-bar-container {
+                width: 100%;
+                padding: 0 4px;
+                margin-top: 6px;
+            }
+            .tab-bar {
+                display: flex;
+                overflow-x: auto;
+                -webkit-overflow-scrolling: touch;
+                scrollbar-width: none;
+                flex-wrap: nowrap;
+                padding: 4px 4px 0 4px;
+                gap: 4px;
+            }
+            .tab-bar::-webkit-scrollbar {
+                display: none;
+            }
+            .tab-btn {
+                flex: 0 0 auto;
+                min-width: 90px;
+                padding: 6px 8px;
+                font-size: 12px;
+            }
+            .tab-badge {
+                font-size: 10.5px;
+                padding: 1px 6px;
+            }
+
+            /* Main Container & Page */
+            .main-container {
+                width: 100%;
+                max-width: 100%;
+                padding: 0 4px;
+                margin: 0 auto 15px auto;
+            }
+            .crf-page {
+                padding: 10px 8px;
+                max-width: 100%;
+                box-sizing: border-box;
+                overflow-x: hidden;
+            }
+            .doc-header-box {
+                padding: 6px 10px;
+            }
+            .doc-header-box h2 {
+                font-size: 14.5px;
+            }
+            .doc-header-box h3 {
+                font-size: 13px;
+            }
+            .doc-header-box p {
+                font-size: 11.5px;
+            }
+            .section-header {
+                font-size: 13.5px;
+                padding: 4px 8px;
+                margin: 10px 0 6px 0;
+            }
+
+            /* Tables & Cells on Mobile */
+            .crf-table th, .crf-table td {
+                padding: 5px 6px;
+                font-size: 13px;
+            }
+            /* Flex rows inside table cells wrap onto multiple lines */
+            .crf-table td div[style*="display: flex"],
+            .crf-table td div[style*="display:flex"] {
+                flex-wrap: wrap !important;
+                gap: 4px !important;
+            }
+            .crf-table input[type="text"],
+            .crf-table input[type="number"],
+            .crf-table input[type="date"],
+            .crf-table input[type="time"],
+            .crf-table select {
+                font-size: 16px !important; /* Prevents auto-zoom in iOS Safari */
+                height: 32px;
+                padding: 3px 5px;
+                max-width: 100%;
+                box-sizing: border-box;
+            }
+            .form-check {
+                min-height: 26px;
+                max-width: 100%;
+                word-break: break-word;
+                white-space: normal;
+                font-size: 13px;
+            }
+            .form-check input[type="checkbox"],
+            .form-check input[type="radio"] {
+                width: 18px;
+                height: 18px;
+                flex-shrink: 0;
+            }
+            .check-row {
+                gap: 8px 12px;
+            }
+
+            /* Bottom Nav Bar */
+            .bottom-nav-bar {
+                padding: 4px 8px;
+                height: 48px;
+            }
+            .bottom-nav-content {
+                width: 100%;
+                gap: 6px;
+            }
+            .bottom-nav-content .btn {
+                padding: 5px 8px;
+                font-size: 12px;
+                flex: 1;
+                justify-content: center;
+                white-space: nowrap;
+            }
+
+            /* Signatures */
+            .verification-box {
+                padding: 10px;
+            }
+            .signature-grid {
+                grid-template-columns: 1fr;
+                gap: 12px;
+            }
+            .sign-line {
+                width: 130px;
+                max-width: 55%;
+            }
+
+            /* Admin Modal */
+            .modal-overlay {
+                padding: 6px;
+            }
+            .modal-box {
+                max-width: 100%;
+                width: 100%;
+            }
+            .modal-box-large {
+                width: 100% !important;
+                max-width: 100% !important;
+                max-height: 95vh;
+                display: flex;
+                flex-direction: column;
+            }
+            .modal-header {
+                padding: 8px 10px;
+                flex-direction: column;
+                align-items: stretch;
+                gap: 6px;
+            }
+            .modal-header > div:last-child {
+                display: flex;
+                flex-wrap: wrap;
+                gap: 4px;
+                width: 100%;
+            }
+            .modal-header .btn {
+                flex: 1;
+                font-size: 11.5px;
+                padding: 4px 6px;
+                justify-content: center;
+            }
+            #admin-stats-summary {
+                grid-template-columns: repeat(2, 1fr) !important;
+                gap: 6px !important;
+            }
+            #admin-charts-container > div {
+                grid-template-columns: 1fr !important;
+            }
+        }
+
+        /* Extra small smartphone screens (e.g. iPhone SE, width <= 480px) */
+        @media screen and (max-width: 480px) {
+            .nav-actions {
+                display: grid;
+                grid-template-columns: 1fr 1fr;
+                gap: 4px;
+            }
+            .nav-actions select#case-selector {
+                grid-column: 1 / -1;
+                width: 100%;
+            }
+            .nav-actions .btn {
+                width: 100%;
+                justify-content: center;
+                font-size: 11.5px;
+                padding: 5px 4px;
+            }
+            .nav-actions .btn-admin {
+                grid-column: 1 / -1;
+            }
+        }
+
+        /* ==========================================================================
            PRINT & INDIVIDUAL PATIENT PDF EXPORT STYLES
            ========================================================================== */
         @media print {

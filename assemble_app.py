@@ -12,14 +12,22 @@ from build_form3 import get_form3_html
 from build_form4 import get_form4_html
 from build_js import get_js
 
+import re
+
 OUTPUT_PATH = "/Users/nuttp./Desktop/MSc CU/Thesis/CRF/Online_CRF/index.html"
+
+def wrap_tables(content):
+    pattern = re.compile(r'(<table\b[^>]*class=[\'"][^\'"]*crf-table[^\'"]*[\'"][^>]*>[\s\S]*?</table>)', re.IGNORECASE)
+    def repl(m):
+        return f'<div class="table-responsive">{m.group(1)}</div>'
+    return pattern.sub(repl, content)
 
 def assemble():
     css_content = get_css()
-    f1_html = get_form1_html()
-    f2_html = get_form2_html()
-    f3_html = get_form3_html()
-    f4_html = get_form4_html()
+    f1_html = wrap_tables(get_form1_html())
+    f2_html = wrap_tables(get_form2_html())
+    f3_html = wrap_tables(get_form3_html())
+    f4_html = wrap_tables(get_form4_html())
     js_content = get_js()
 
     html = f"""<!DOCTYPE html>
@@ -343,7 +351,7 @@ def assemble():
 
                 <!-- Patient Cases Table -->
                 <div style="background: #ffffff; border: 1px solid #cbd5e1; border-radius: 6px; overflow: hidden; box-shadow: 0 1px 3px rgba(0,0,0,0.03);">
-                    <div style="overflow-x: auto;">
+                    <div class="table-responsive" style="margin-bottom: 0;">
                         <table class="crf-table" style="margin-bottom: 0; font-size: 13px; width: 100%;">
                             <thead>
                                 <tr style="background: #f1f5f9;">
