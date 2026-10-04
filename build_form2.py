@@ -13,6 +13,18 @@ def get_form2_html():
             <p>Form 2: Amphibious Micro-Timeline, Ferry Operations & In-Transit Monitoring</p>
         </div>
 
+        <!-- Lock Alert if Excluded -->
+        <div id="f2_excluded_lock_alert" class="form-excluded-lock-banner" style="display: none; background: #fff1f2; border: 2px dashed #e11d48; border-radius: 8px; padding: 16px 20px; margin-bottom: 20px; text-align: center;">
+            <div style="font-size: 24px; margin-bottom: 4px;">⛔</div>
+            <div style="font-size: 15.5px; font-weight: 800; color: #9f1239; margin-bottom: 4px;">
+                ปิดกั้นการกรอกข้อมูล: ส่วนที่ 2 (Form 2) ถูกล็อก
+            </div>
+            <div style="font-size: 13px; color: #881337; line-height: 1.5;">
+                เคสนี้ไม่ผ่านเกณฑ์การคัดกรอง (Excluded Case) ระบบจึงปิดกั้นการบันทึกข้อมูลเส้นเวลาส่งต่อ และการบริบาลระหว่างทาง<br>
+                <span style="font-size: 12px; color: #64748b;">(หากต้องการแก้ไขความเข้าเกณฑ์ กรุณากลับไปปรับเปลี่ยนผลการตรวจสอบในส่วนที่ 1: Form 1)</span>
+            </div>
+        </div>
+
         <!-- Table 1: Identifiers -->
         <table class="crf-table">
             <tr>

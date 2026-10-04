@@ -176,18 +176,62 @@ def get_form1_html():
             </tbody>
         </table>
 
-        <div style="background: #f1f5f9; padding: 12px 16px; border: 1px solid #94a3b8; margin-bottom: 20px; border-radius: 4px; display: flex; align-items: center; justify-content: space-between;">
-            <span style="font-weight: 700; font-size: 16px;">สรุปผลการคัดกรอง:</span>
-            <div style="display: flex; gap: 20px;">
-                <label class="form-check" style="font-weight: 700; color: #166534;">
-                    <input type="radio" name="f1_eligible" id="f1_eligible_yes" value="eligible"> ผ่านเกณฑ์และนำเข้าสู่การวิจัย (Eligible Cohort)
-                </label>
-                <label class="form-check" style="font-weight: 700; color: #991b1b;">
-                    <input type="radio" name="f1_eligible" id="f1_eligible_no" value="excluded"> ไม่ผ่านเกณฑ์ (Excluded)
-                </label>
+        <!-- สรุปผลการคัดกรอง (Screening Evaluation Card) -->
+        <div id="screening_summary_card" style="padding: 16px 20px; border-radius: 10px; margin-bottom: 24px; transition: all 0.3s ease; border: 2px solid #cbd5e1; background: #f8fafc; box-shadow: 0 2px 8px rgba(0,0,0,0.04);">
+            <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px;">
+                <div style="display: flex; align-items: center; gap: 14px;">
+                    <div id="screening_icon_badge" style="font-size: 26px; line-height: 1;">⚖️</div>
+                    <div>
+                        <div style="font-weight: 800; font-size: 16.5px; color: #1e293b; display: flex; align-items: center; gap: 10px; flex-wrap: wrap;">
+                            <span>สรุปผลการคัดกรองความเข้าเกณฑ์</span>
+                            <span id="screening_status_pill" style="font-size: 13px; font-weight: 700; padding: 4px 12px; border-radius: 999px; background: #e2e8f0; color: #475569; display: inline-block;">
+                                ⏳ รอการประเมินเกณฑ์
+                            </span>
+                        </div>
+                        <div id="screening_status_desc" style="font-size: 12.5px; color: #64748b; margin-top: 3px;">
+                            ระบบจะประเมินเกณฑ์การคัดเข้า (Inclusion 4 ข้อ) และเกณฑ์การคัดออก (Exclusion 5 ข้อ) อัตโนมัติ
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Radio buttons for eligibility status -->
+                <div style="display: flex; gap: 16px; align-items: center; background: #ffffff; padding: 7px 16px; border-radius: 8px; border: 1.5px solid #cbd5e1;">
+                    <label class="form-check" style="font-weight: 700; font-size: 13.5px; color: #166534; cursor: pointer; margin: 0;">
+                        <input type="radio" name="f1_eligible" id="f1_eligible_yes" value="eligible" onchange="onManualEligibilityChange('eligible')"> 🟢 ผ่านเกณฑ์ (Eligible)
+                    </label>
+                    <label class="form-check" style="font-weight: 700; font-size: 13.5px; color: #991b1b; cursor: pointer; margin: 0;">
+                        <input type="radio" name="f1_eligible" id="f1_eligible_no" value="excluded" onchange="onManualEligibilityChange('excluded')"> 🔴 ไม่ผ่านเกณฑ์ (Excluded)
+                    </label>
+                </div>
+            </div>
+
+            <!-- Details Box: Reasons for exclusion or confirmation of eligibility -->
+            <div id="screening_details_box" style="display: none; padding: 12px 16px; border-radius: 8px; font-size: 13px; line-height: 1.5; margin-top: 12px;">
+                <!-- Populated dynamically by calcScreening() -->
+            </div>
+
+            <!-- Notice Banner when Locked -->
+            <div id="screening_lock_notice" style="display: none; margin-top: 12px; padding: 10px 16px; border-radius: 6px; background: #fee2e2; border: 1px solid #f87171; color: #991b1b; font-size: 13px; font-weight: 700; align-items: center; gap: 8px;">
+                <span>🔒</span>
+                <span><strong>ระบบปิดกั้นการกรอกข้อมูล:</strong> แบบบันทึกหมวดที่ 2–5 และ Form 2–4 ทั้งหมดถูกล็อกและปิดกั้นการบันทึกข้อมูลเรียบร้อยแล้ว เนื่องจากเคสนี้ไม่ผ่านเกณฑ์การคัดกรอง</span>
             </div>
             <span id="screening_badge" class="badge-calc" style="display:none;">Auto-evaluated</span>
         </div>
+
+        <!-- Container for post-screening sections (Locked/Disabled when Excluded) -->
+        <div id="f1_post_screening_container" style="transition: all 0.3s ease;">
+            <!-- Alert Banner inside Form 1 when Locked -->
+            <div id="f1_excluded_lock_alert" style="display: none; background: #fff1f2; border: 2px dashed #e11d48; border-radius: 8px; padding: 16px 20px; margin-bottom: 20px; text-align: center;">
+                <div style="font-size: 24px; margin-bottom: 4px;">⛔</div>
+                <div style="font-size: 16px; font-weight: 800; color: #9f1239; margin-bottom: 4px;">
+                    ปิดกั้นการกรอกข้อมูลในส่วนอื่นๆ ทั้งหมด (Data Entry Locked)
+                </div>
+                <div style="font-size: 13px; color: #881337; line-height: 1.5;">
+                    เคสนี้ไม่ผ่านเกณฑ์การคัดกรองเข้าสู่การศึกษา (Excluded Cohort)<br>
+                    ระบบจึงปิดกั้นการบันทึกข้อมูลในหมวด 2–5 (ข้อมูลประชากร, สัญญาณชีพ, DIDO) และแบบบันทึก Form 2, 3, 4 ทั้งหมด<br>
+                    <span style="font-size: 12px; color: #64748b;">(หากต้องการแก้ไขความเข้าเกณฑ์ สามารถปรับเปลี่ยนคำตอบในเกณฑ์การคัดเข้า/คัดออกในหมวดที่ 1 ด้านบนได้ทันที)</span>
+                </div>
+            </div>
 
         <!-- หมวดที่ 2 -->
         <div class="section-header">หมวดที่ 2: ข้อมูลประชากรศาสตร์และบริบทแรกรับ ณ รพ.เกาะลันตา</div>
@@ -637,6 +681,7 @@ def get_form1_html():
                 </td>
             </tr>
         </table>
+        </div> <!-- End of f1_post_screening_container -->
 
     </div>
     """

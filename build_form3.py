@@ -14,6 +14,18 @@ def get_form3_html():
             <p>Form 3: Marine Hydro-Meteorological & Environmental Data (RTN / TMD)</p>
         </div>
 
+        <!-- Lock Alert if Excluded -->
+        <div id="f3_excluded_lock_alert" class="form-excluded-lock-banner" style="display: none; background: #fff1f2; border: 2px dashed #e11d48; border-radius: 8px; padding: 16px 20px; margin-bottom: 20px; text-align: center;">
+            <div style="font-size: 24px; margin-bottom: 4px;">⛔</div>
+            <div style="font-size: 15.5px; font-weight: 800; color: #9f1239; margin-bottom: 4px;">
+                ปิดกั้นการกรอกข้อมูล: ส่วนที่ 3 (Form 3) ถูกล็อก
+            </div>
+            <div style="font-size: 13px; color: #881337; line-height: 1.5;">
+                เคสนี้ไม่ผ่านเกณฑ์การคัดกรอง (Excluded Case) ระบบจึงปิดกั้นการบันทึกข้อมูลสภาพแวดล้อมและอุทก-อุตุนิยมวิทยา<br>
+                <span style="font-size: 12px; color: #64748b;">(หากต้องการแก้ไขความเข้าเกณฑ์ กรุณากลับไปปรับเปลี่ยนผลการตรวจสอบในส่วนที่ 1: Form 1)</span>
+            </div>
+        </div>
+
         <!-- Table 1: Identifiers -->
         <table class="crf-table">
             <tr>

@@ -130,10 +130,81 @@ def get_js():
         return true;
     }
 
+    // --- Screening Exclusion & Form Locking Engine ---
+    function isCaseExcluded() {
+        const manualElig = document.querySelector('input[name="f1_eligible"]:checked')?.value;
+        if (manualElig === 'excluded') return true;
+
+        const inc1 = document.querySelector('input[name="f1_inc1"]:checked')?.value;
+        const inc2 = document.querySelector('input[name="f1_inc2"]:checked')?.value;
+        const inc3 = document.querySelector('input[name="f1_inc3"]:checked')?.value;
+        const inc4 = document.querySelector('input[name="f1_inc4"]:checked')?.value;
+
+        const exc1 = document.querySelector('input[name="f1_exc1"]:checked')?.value;
+        const exc2 = document.querySelector('input[name="f1_exc2"]:checked')?.value;
+        const exc3 = document.querySelector('input[name="f1_exc3"]:checked')?.value;
+        const exc4 = document.querySelector('input[name="f1_exc4"]:checked')?.value;
+        const exc5 = document.querySelector('input[name="f1_exc5"]:checked')?.value;
+
+        const isIncAnyNo = (inc1 === 'no' || inc2 === 'no' || inc3 === 'no' || inc4 === 'no');
+        const isExcAnyYes = (exc1 === 'yes' || exc2 === 'yes' || exc3 === 'yes' || exc4 === 'yes' || exc5 === 'yes');
+
+        return Boolean(isIncAnyNo || isExcAnyYes);
+    }
+
+    function applyScreeningLock(isExcluded) {
+        // 1. Lock all controls in Form 1 post-screening sections (Demographics, Vitals, DIDO, etc.)
+        const f1PostScreen = document.getElementById('f1_post_screening_container');
+        if (f1PostScreen) {
+            f1PostScreen.querySelectorAll('input, select, textarea, button').forEach(el => {
+                el.disabled = isExcluded;
+            });
+            f1PostScreen.style.opacity = isExcluded ? '0.45' : '1';
+            f1PostScreen.style.pointerEvents = isExcluded ? 'none' : 'auto';
+            f1PostScreen.style.userSelect = isExcluded ? 'none' : 'auto';
+        }
+        const f1LockAlert = document.getElementById('f1_excluded_lock_alert');
+        if (f1LockAlert) f1LockAlert.style.display = isExcluded ? 'block' : 'none';
+
+        // 2. Lock all controls in Form 2, Form 3, Form 4
+        ['page-form2', 'page-form3', 'page-form4'].forEach(pageId => {
+            const pageEl = document.getElementById(pageId);
+            if (pageEl) {
+                pageEl.querySelectorAll('input, select, textarea').forEach(el => {
+                    el.disabled = isExcluded;
+                });
+                pageEl.style.opacity = isExcluded ? '0.45' : '1';
+                pageEl.style.pointerEvents = isExcluded ? 'none' : 'auto';
+            }
+        });
+
+        // 3. Form 2, 3, 4 banner alerts
+        document.querySelectorAll('.form-excluded-lock-banner').forEach(el => {
+            el.style.display = isExcluded ? 'block' : 'none';
+        });
+
+        // 4. Tab bar styling for Tabs 2, 3, 4
+        [2, 3, 4].forEach(tabNum => {
+            const btn = document.getElementById('tab-btn-' + tabNum);
+            if (btn) {
+                btn.style.opacity = isExcluded ? '0.45' : '1';
+                btn.style.cursor = isExcluded ? 'not-allowed' : 'pointer';
+                btn.title = isExcluded ? 'ปิดกั้นการเข้าถึง (เคสไม่ผ่านเกณฑ์การคัดกรอง)' : '';
+            }
+        });
+
+        // 5. Update bottom nav bar
+        updateBottomNav();
+    }
+
     // --- Tab Navigation ---
     function switchTab(tabIndex) {
         tabIndex = Number(tabIndex);
         if (tabIndex > 1) {
+            if (isCaseExcluded()) {
+                alert('⛔ ไม่สามารถเปิดส่วนที่ ' + tabIndex + ' ได้\\n\\nเคสนี้ไม่ผ่านเกณฑ์การคัดกรอง (Excluded Case) ระบบจึงปิดกั้นการบันทึกข้อมูลใน Form 2–4\\n\\nหากต้องการแก้ไขผลการคัดกรอง กรุณากลับไปตรวจสอบคำตอบในเกณฑ์การคัดเข้า/คัดออกในส่วนที่ 1');
+                return;
+            }
             if (!validateInclusionDisease(true)) {
                 return;
             }
@@ -185,30 +256,56 @@ def get_js():
         const nextBtn = document.getElementById('btn-nav-next');
         if (!prevBtn || !nextBtn) return;
 
+        const isExcluded = isCaseExcluded();
+
         if (currentTab === 1) {
             prevBtn.style.visibility = 'hidden';
-            nextBtn.className = 'btn btn-theme-2';
-            nextBtn.innerHTML = '<span>ถัดไป: ส่วนที่ 2 (Form 2) ➔</span>';
+            if (isExcluded) {
+                nextBtn.disabled = true;
+                nextBtn.className = 'btn btn-outline';
+                nextBtn.style.opacity = '0.5';
+                nextBtn.style.cursor = 'not-allowed';
+                nextBtn.innerHTML = '🔒 ปิดกั้นการดำเนินการ (เคสไม่ผ่านเกณฑ์)';
+            } else {
+                nextBtn.disabled = false;
+                nextBtn.className = 'btn btn-theme-2';
+                nextBtn.style.opacity = '1';
+                nextBtn.style.cursor = 'pointer';
+                nextBtn.innerHTML = '<span>ถัดไป: ส่วนที่ 2 (Form 2) ➔</span>';
+            }
         } else if (currentTab === 2) {
             prevBtn.style.visibility = 'visible';
             prevBtn.innerHTML = '⬅ ย้อนกลับไปส่วนที่ 1 (Form 1)';
             nextBtn.className = 'btn btn-theme-3';
+            nextBtn.disabled = false;
+            nextBtn.style.opacity = '1';
+            nextBtn.style.cursor = 'pointer';
             nextBtn.innerHTML = '<span>ถัดไป: ส่วนที่ 3 (Form 3) ➔</span>';
         } else if (currentTab === 3) {
             prevBtn.style.visibility = 'visible';
             prevBtn.innerHTML = '⬅ ย้อนกลับไปส่วนที่ 2 (Form 2)';
             nextBtn.className = 'btn btn-theme-4';
+            nextBtn.disabled = false;
+            nextBtn.style.opacity = '1';
+            nextBtn.style.cursor = 'pointer';
             nextBtn.innerHTML = '<span>ถัดไป: ส่วนที่ 4 (Form 4) ➔</span>';
         } else if (currentTab === 4) {
             prevBtn.style.visibility = 'visible';
             prevBtn.innerHTML = '⬅ ย้อนกลับไปส่วนที่ 3 (Form 3)';
             nextBtn.className = 'btn btn-blue';
+            nextBtn.disabled = false;
+            nextBtn.style.opacity = '1';
+            nextBtn.style.cursor = 'pointer';
             nextBtn.innerHTML = '<span>💾 บันทึกข้อมูลเคสนี้</span>';
         }
     }
 
     function nextTab() {
         if (currentTab === 1) {
+            if (isCaseExcluded()) {
+                alert('⛔ ไม่สามารถดำเนินการต่อได้\\n\\nเคสนี้ไม่ผ่านเกณฑ์การคัดกรอง (Excluded Case) ระบบจึงปิดกั้นการบันทึกข้อมูลใน Form 2–4');
+                return;
+            }
             if (!validateInclusionDisease(true)) return;
             switchTab(2);
         }
@@ -1081,6 +1178,10 @@ def get_js():
     }
 
     // --- FORM 1 CALCULATIONS ---
+    function onManualEligibilityChange(status) {
+        calcScreening();
+    }
+
     function calcScreening() {
         const inc1 = document.querySelector('input[name="f1_inc1"]:checked')?.value;
         const inc2 = document.querySelector('input[name="f1_inc2"]:checked')?.value;
@@ -1094,31 +1195,144 @@ def get_js():
         const exc4 = document.querySelector('input[name="f1_exc4"]:checked')?.value;
         const exc5 = document.querySelector('input[name="f1_exc5"]:checked')?.value;
 
+        const reasons = [];
+        if (inc1 === 'no') reasons.push('เกณฑ์คัดเข้าข้อ 1: ระยะเวลาส่งต่อนอกช่วง 1 ม.ค. 2564 – 31 ธ.ค. 2569');
+        if (inc2 === 'no') reasons.push('เกณฑ์คัดเข้าข้อ 2: ผู้ป่วยอายุต่ำกว่า 18 ปีบริบูรณ์ (ไม่ใช่ผู้ป่วยผู้ใหญ่)');
+        if (inc3 === 'no') reasons.push('เกณฑ์คัดเข้าข้อ 3: ไม่มีเอกสารการส่งต่อ หรือไม่ได้ส่งต่อผ่านทางรถพยาบาลและแพขนานยนต์');
+        if (inc4 === 'no') reasons.push('เกณฑ์คัดเข้าข้อ 4: ไม่ได้เป็นผู้ป่วยฉุกเฉินระดับ ESI 1–2 ใน 3 กลุ่มโรคเป้าหมาย');
+
+        if (exc1 === 'yes') reasons.push('เกณฑ์คัดออกข้อ 1: โรคหลอดเลือดสมองแตกเฉียบพลัน (Acute Hemorrhagic Stroke)');
+        if (exc2 === 'yes') reasons.push('เกณฑ์คัดออกข้อ 2: เสียชีวิตก่อนนำส่งหรือก่อนเคลื่อนย้ายออกจาก รพ.เกาะลันตา (DOA)');
+        if (exc3 === 'yes') reasons.push('เกณฑ์คัดออกข้อ 3: ส่งต่อด้วยอากาศยานทางการแพทย์ (Sky doctor / HEMS)');
+        if (exc4 === 'yes') reasons.push('เกณฑ์คัดออกข้อ 4: ปฏิเสธการส่งต่อ / ขอย้ายไปเอง (Refused transfer / DAMA)');
+        if (exc5 === 'yes') reasons.push('เกณฑ์คัดออกข้อ 5: ข้อมูลระบุเวลาของผลลัพธ์ปฐมภูมิไม่ครบถ้วน');
+
         const isIncAllYes = (inc1 === 'yes' && inc2 === 'yes' && inc3 === 'yes' && inc4 === 'yes' && Boolean(disease));
-        const isExcAnyYes = (exc1 === 'yes' || exc2 === 'yes' || exc3 === 'yes' || exc4 === 'yes' || exc5 === 'yes');
+        const isExcAllNo = (exc1 === 'no' && exc2 === 'no' && exc3 === 'no' && exc4 === 'no' && exc5 === 'no');
 
+        const manualElig = document.querySelector('input[name="f1_eligible"]:checked')?.value;
+        let isExcluded = (reasons.length > 0 || manualElig === 'excluded');
+        let isEligible = (!isExcluded && isIncAllYes && isExcAllNo);
+
+        // Elements
+        const card = document.getElementById('screening_summary_card');
+        const iconBadge = document.getElementById('screening_icon_badge');
+        const pill = document.getElementById('screening_status_pill');
+        const desc = document.getElementById('screening_status_desc');
+        const detailsBox = document.getElementById('screening_details_box');
+        const lockNotice = document.getElementById('screening_lock_notice');
         const badge = document.getElementById('screening_badge');
-        if (badge) badge.style.display = 'inline-block';
+        const eligYesRadio = document.getElementById('f1_eligible_yes');
+        const eligNoRadio = document.getElementById('f1_eligible_no');
 
-        if (isIncAllYes && !isExcAnyYes && exc1 && exc2 && exc3 && exc4 && exc5) {
-            document.getElementById('f1_eligible_yes').checked = true;
-            if (badge) {
-                badge.className = 'badge-calc badge-ontime';
-                badge.textContent = '✓ ผ่านเกณฑ์การวิจัย';
+        if (badge) badge.style.display = 'none';
+
+        if (isExcluded) {
+            if (eligNoRadio) eligNoRadio.checked = true;
+            if (eligYesRadio) eligYesRadio.checked = false;
+
+            if (card) {
+                card.style.background = '#fef2f2';
+                card.style.border = '2.5px solid #dc2626';
+                card.style.boxShadow = '0 4px 16px rgba(220, 38, 38, 0.18)';
             }
-        } else if (inc1 === 'no' || inc2 === 'no' || inc3 === 'no' || inc4 === 'no' || isExcAnyYes) {
-            document.getElementById('f1_eligible_no').checked = true;
-            if (badge) {
-                badge.className = 'badge-calc badge-delay';
-                badge.textContent = '✗ ไม่ผ่านเกณฑ์ (คัดออก)';
+            if (iconBadge) {
+                iconBadge.innerHTML = '<span style="display:inline-flex; align-items:center; justify-content:center; width:34px; height:34px; border-radius:50%; background:#dc2626; color:#ffffff; font-weight:800; font-size:18px;">✕</span>';
             }
-        } else if (!disease && inc1 === 'yes' && inc2 === 'yes' && inc3 === 'yes') {
-            const eligYes = document.getElementById('f1_eligible_yes');
-            if (eligYes) eligYes.checked = false;
-            if (badge) {
-                badge.className = 'badge-calc badge-delay';
-                badge.textContent = '⚠️ ข้อ 4: บังคับเลือก 1 ใน 3 กลุ่มโรค';
+            if (pill) {
+                pill.style.background = '#dc2626';
+                pill.style.color = '#ffffff';
+                pill.textContent = '✕ ไม่ผ่านเกณฑ์ (EXCLUDED COHORT)';
             }
+            if (desc) {
+                desc.innerHTML = '<span style="color:#991b1b; font-weight:700;">ผู้ป่วยไม่ผ่านเกณฑ์การคัดกรอง: ถูกคัดออกจากประชากรศึกษา (Ineligible Case)</span>';
+            }
+            if (detailsBox) {
+                detailsBox.style.display = 'block';
+                detailsBox.style.background = '#ffffff';
+                detailsBox.style.border = '1.5px solid #fca5a5';
+                let html = '<div style="font-weight:700; color:#991b1b; margin-bottom:6px;">⚠️ เหตุผลที่ไม่ผ่านเกณฑ์การศึกษา (Ineligibility Determinants):</div>';
+                if (reasons.length > 0) {
+                    html += '<ul style="margin:0; padding-left:20px; color:#b91c1c; font-size:12.5px;">';
+                    reasons.forEach(r => { html += '<li style="margin-bottom:3px;">' + r + '</li>'; });
+                    html += '</ul>';
+                } else {
+                    html += '<div style="color:#b91c1c; font-size:12.5px;">ผู้บันทึกระบุสถานะไม่ผ่านเกณฑ์การวิจัย (Excluded) ด้วยตนเอง</div>';
+                }
+                detailsBox.innerHTML = html;
+            }
+            if (lockNotice) lockNotice.style.display = 'flex';
+
+            applyScreeningLock(true);
+        } else if (isEligible) {
+            if (eligYesRadio) eligYesRadio.checked = true;
+            if (eligNoRadio) eligNoRadio.checked = false;
+
+            if (card) {
+                card.style.background = '#ecfdf5';
+                card.style.border = '2.5px solid #10b981';
+                card.style.boxShadow = '0 4px 16px rgba(16, 185, 129, 0.18)';
+            }
+            if (iconBadge) {
+                iconBadge.innerHTML = '<span style="display:inline-flex; align-items:center; justify-content:center; width:34px; height:34px; border-radius:50%; background:#10b981; color:#ffffff; font-weight:800; font-size:18px;">✓</span>';
+            }
+            if (pill) {
+                pill.style.background = '#059669';
+                pill.style.color = '#ffffff';
+                pill.textContent = '✓ ผ่านเกณฑ์การวิจัย (ELIGIBLE COHORT)';
+            }
+            let diseaseName = 'ยังไม่ระบุ';
+            if (disease === 'stemi') diseaseName = 'STEMI / Acute Coronary Syndrome';
+            else if (disease === 'ais') diseaseName = 'Acute Ischemic Stroke (AIS)';
+            else if (disease === 'trauma') diseaseName = 'Severe Trauma (บาดเจ็บรุนแรง)';
+
+            if (desc) {
+                desc.innerHTML = '<span style="color:#065f46; font-weight:700;">ผ่านเกณฑ์ครบถ้วน: นำเข้าสู่ Cohort ประชากรศึกษาเรียบร้อยแล้ว</span>';
+            }
+            if (detailsBox) {
+                detailsBox.style.display = 'block';
+                detailsBox.style.background = '#ffffff';
+                detailsBox.style.border = '1.5px solid #a7f3d0';
+                detailsBox.innerHTML = `
+                    <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px;">
+                        <div>
+                            <span style="font-weight:700; color:#065f46;">กลุ่มโรคเป้าหมาย:</span>
+                            <span style="font-weight:700; color:#1e40af; margin-left:4px;">${diseaseName}</span>
+                        </div>
+                        <div style="font-size:12.5px; color:#047857; font-weight:600;">
+                            🔓 ปลดล็อกระบบ: แบบบันทึกหมวด 2–5 และ Form 2–4 เปิดให้บันทึกข้อมูลได้ตามปกติ
+                        </div>
+                    </div>
+                `;
+            }
+            if (lockNotice) lockNotice.style.display = 'none';
+
+            applyScreeningLock(false);
+        } else {
+            // Pending state
+            if (manualElig !== 'eligible' && manualElig !== 'excluded') {
+                if (eligYesRadio) eligYesRadio.checked = false;
+                if (eligNoRadio) eligNoRadio.checked = false;
+            }
+
+            if (card) {
+                card.style.background = '#f8fafc';
+                card.style.border = '2px dashed #94a3b8';
+                card.style.boxShadow = 'none';
+            }
+            if (iconBadge) iconBadge.innerHTML = '⚖️';
+            if (pill) {
+                pill.style.background = '#e2e8f0';
+                pill.style.color = '#475569';
+                pill.textContent = '⏳ รอการประเมินเกณฑ์คัดกรอง';
+            }
+            if (desc) {
+                desc.innerHTML = 'กรุณาตรวจสอบและตอบเกณฑ์การคัดเข้า (Inclusion 4 ข้อ) และเกณฑ์การคัดออก (Exclusion 5 ข้อ) ด้านบนให้ครบถ้วน';
+            }
+            if (detailsBox) detailsBox.style.display = 'none';
+            if (lockNotice) lockNotice.style.display = 'none';
+
+            applyScreeningLock(false);
         }
         scheduleAutoSave();
     }
@@ -2093,6 +2307,24 @@ def get_js():
         const timelineDelaysEl = document.getElementById('timeline_delays_container');
 
         if (!cohortBadge || !cohortFactorsEl || !timelineDelaysEl) return;
+
+        if (isCaseExcluded()) {
+            cohortBadge.innerHTML = '<span style="background: #fee2e2; color: #991b1b; padding: 4px 14px; border-radius: 999px; font-weight: 800; font-size: 13.5px; border: 1.5px solid #dc2626; display: inline-flex; align-items: center; gap: 6px;">⛔ EXCLUDED CASE (ไม่นำเข้า Cohort การศึกษา)</span>';
+            cohortFactorsEl.innerHTML = `
+                <div style="background: #fff1f2; border: 1px solid #fecdd3; border-radius: 6px; padding: 12px; color: #9f1239; font-size: 13px;">
+                    ⚠️ ผู้ป่วยรายนี้ถูกคัดออกจากการศึกษา (Ineligible / Excluded) เนื่องจากไม่ผ่านเกณฑ์การคัดเข้าหรือตรงกับเกณฑ์การคัดออกในส่วนที่ 1 จึงไม่ถูกนำเข้า Cohort การศึกษา
+                </div>
+            `;
+            if (timelineSummary) {
+                timelineSummary.innerHTML = '<span style="background: #f1f5f9; color: #64748b; padding: 3px 10px; border-radius: 999px; font-weight: 600; font-size: 12px;">ไม่ได้ประเมิน (Excluded)</span>';
+            }
+            if (delayBadge) {
+                delayBadge.innerHTML = '0 จุด';
+                delayBadge.className = 'badge-calc';
+            }
+            timelineDelaysEl.innerHTML = '<div style="color: #64748b; font-size: 12.5px; padding: 8px 0;">ไม่มีการประเมินความล่าช้าสำหรับเคสที่ถูกคัดออกจากการศึกษา</div>';
+            return;
+        }
 
         // --- 1. COHORT EXPOSURE CLASSIFICATION ---
         const exposedFactors = [];
@@ -3533,9 +3765,14 @@ def get_js():
                 if (mortStatus === '0') outcomeHtml = '<span class="badge-evaluated badge-ontime" style="background:#dcfce7; color:#15803d; font-size:11px;">✓ รอดชีวิต</span>';
                 else if (mortStatus === '1') outcomeHtml = '<span class="badge-evaluated badge-delay" style="background:#fee2e2; color:#b91c1c; font-size:11px;">✕ เสียชีวิต</span>';
 
+                const ineligBadge = (data.f1_eligible === 'excluded') ? '<div style="font-size: 10px; color: #dc2626; font-weight: 700; background: #fee2e2; border-radius: 4px; padding: 1px 4px; margin-top: 3px; display: inline-block;">⛔ Excluded</div>' : '';
+
                 rowsHtml += `
                     <tr class="admin-case-row" data-id="${c.studyId}">
-                        <td style="text-align: center; font-weight: 700; color: #1e40af;">${c.displayId}</td>
+                        <td style="text-align: center; font-weight: 700; color: #1e40af;">
+                            <div>${c.displayId}</div>
+                            ${ineligBadge}
+                        </td>
                         <td>
                             <div><b>HN:</b> ${c.hn}</div>
                             <div style="font-size: 11.5px; color: #64748b;"><b>Ref:</b> ${c.referId}</div>
