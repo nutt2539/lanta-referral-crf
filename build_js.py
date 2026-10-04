@@ -872,8 +872,10 @@ def get_js():
         const t = document.getElementById('f2_t4_time')?.value;
         const f4_d = document.getElementById('f4_t4_date');
         const f4_t = document.getElementById('f4_t4_time');
-        if (f4_d) f4_d.value = d;
-        if (f4_t) f4_t.value = t;
+        if (f4_d) f4_d.value = d || '';
+        if (f4_t) f4_t.value = t || '';
+        if (typeof calcForm2Timelines === 'function') calcForm2Timelines();
+        if (typeof calcForm4Timelines === 'function') calcForm4Timelines();
     }
 
     function syncT4_fromF4() {
@@ -881,26 +883,137 @@ def get_js():
         const t = document.getElementById('f4_t4_time')?.value;
         const f2_d = document.getElementById('f2_t4_date');
         const f2_t = document.getElementById('f2_t4_time');
-        if (f2_d) f2_d.value = d;
-        if (f2_t) f2_t.value = t;
+        if (f2_d) f2_d.value = d || '';
+        if (f2_t) f2_t.value = t || '';
+        if (typeof calcForm2Timelines === 'function') calcForm2Timelines();
+        if (typeof calcForm4Timelines === 'function') calcForm4Timelines();
     }
 
+    let isSyncingT5 = false;
+
     function syncT5() {
-        const d = document.getElementById('f2_t5_date')?.value;
-        const t = document.getElementById('f2_t5_time')?.value;
-        const f4_d = document.getElementById('f4_t5_date');
-        const f4_t = document.getElementById('f4_t5_time');
-        if (f4_d) f4_d.value = d;
-        if (f4_t) f4_t.value = t;
+        if (isSyncingT5) return;
+        isSyncingT5 = true;
+        try {
+            let d = document.getElementById('f2_t5_date')?.value;
+            const t = document.getElementById('f2_t5_time')?.value;
+            const f4_d = document.getElementById('f4_t5_date');
+            const f4_t = document.getElementById('f4_t5_time');
+
+            // Fallback date if user only entered time
+            if (!d && t) {
+                d = document.getElementById('f4_t5_date')?.value ||
+                    document.getElementById('f2_t4_date')?.value ||
+                    document.getElementById('f4_t4_date')?.value ||
+                    document.getElementById('f1_t0_date')?.value || '';
+                const f2_d = document.getElementById('f2_t5_date');
+                if (f2_d && d) f2_d.value = d;
+            }
+
+            if (f4_d) f4_d.value = d || '';
+            if (f4_t) f4_t.value = t || '';
+
+            // Auto-fill disease specific intervention in Form 4 if empty
+            const isStemi = document.getElementById('f1_inc4_stemi')?.checked;
+            const isStroke = document.getElementById('f1_inc4_ais')?.checked;
+            if (isStemi && t) {
+                const pciWire = document.getElementById('f4_pci_wire_time');
+                if (pciWire && !pciWire.value) pciWire.value = t;
+            } else if (isStroke && t) {
+                const rtpa = document.getElementById('f4_rtpa_time');
+                if (rtpa && !rtpa.value) rtpa.value = t;
+            }
+
+            if (typeof calcForm2Timelines === 'function') calcForm2Timelines();
+            if (typeof calcForm4Timelines === 'function') calcForm4Timelines();
+        } finally {
+            isSyncingT5 = false;
+        }
     }
 
     function syncT5_fromF4() {
-        const d = document.getElementById('f4_t5_date')?.value;
-        const t = document.getElementById('f4_t5_time')?.value;
-        const f2_d = document.getElementById('f2_t5_date');
-        const f2_t = document.getElementById('f2_t5_time');
-        if (f2_d) f2_d.value = d;
-        if (f2_t) f2_t.value = t;
+        if (isSyncingT5) return;
+        isSyncingT5 = true;
+        try {
+            let d = document.getElementById('f4_t5_date')?.value;
+            const t = document.getElementById('f4_t5_time')?.value;
+            const f2_d = document.getElementById('f2_t5_date');
+            const f2_t = document.getElementById('f2_t5_time');
+
+            // Fallback date if user only entered time
+            if (!d && t) {
+                d = document.getElementById('f2_t5_date')?.value ||
+                    document.getElementById('f4_t4_date')?.value ||
+                    document.getElementById('f2_t4_date')?.value ||
+                    document.getElementById('f1_t0_date')?.value || '';
+                const f4_d = document.getElementById('f4_t5_date');
+                if (f4_d && d) f4_d.value = d;
+            }
+
+            if (f2_d) f2_d.value = d || '';
+            if (f2_t) f2_t.value = t || '';
+
+            // Auto-fill disease specific intervention in Form 4 if empty
+            const isStemi = document.getElementById('f1_inc4_stemi')?.checked;
+            const isStroke = document.getElementById('f1_inc4_ais')?.checked;
+            if (isStemi && t) {
+                const pciWire = document.getElementById('f4_pci_wire_time');
+                if (pciWire && !pciWire.value) pciWire.value = t;
+            } else if (isStroke && t) {
+                const rtpa = document.getElementById('f4_rtpa_time');
+                if (rtpa && !rtpa.value) rtpa.value = t;
+            }
+
+            if (typeof calcForm2Timelines === 'function') calcForm2Timelines();
+            if (typeof calcForm4Timelines === 'function') calcForm4Timelines();
+        } finally {
+            isSyncingT5 = false;
+        }
+    }
+
+    function syncT5_fromIntervention(type) {
+        let t = '';
+        if (type === 'stemi') {
+            t = document.getElementById('f4_pci_wire_time')?.value;
+        } else if (type === 'ais') {
+            t = document.getElementById('f4_rtpa_time')?.value;
+        } else if (type === 'trauma_or') {
+            t = document.getElementById('f4_or_time')?.value;
+        } else if (type === 'trauma_ct') {
+            const orTime = document.getElementById('f4_or_time')?.value;
+            const currentT5 = document.getElementById('f4_t5_time')?.value;
+            if (!orTime && !currentT5) {
+                t = document.getElementById('f4_trauma_ct_time')?.value;
+            } else {
+                return;
+            }
+        }
+        if (t !== undefined) {
+            const f4_t = document.getElementById('f4_t5_time');
+            if (f4_t) f4_t.value = t;
+            syncT5_fromF4();
+        }
+    }
+
+    function syncT5_bidirectional() {
+        const f2_d = document.getElementById('f2_t5_date')?.value;
+        const f2_t = document.getElementById('f2_t5_time')?.value;
+        const f4_d = document.getElementById('f4_t5_date')?.value;
+        const f4_t = document.getElementById('f4_t5_time')?.value;
+
+        if (f2_t && !f4_t) {
+            syncT5();
+        } else if (f4_t && !f2_t) {
+            syncT5_fromF4();
+        } else if (f2_t && f4_t) {
+            if (f2_d && !f4_d) {
+                const el = document.getElementById('f4_t5_date');
+                if (el) el.value = f2_d;
+            } else if (f4_d && !f2_d) {
+                const el = document.getElementById('f2_t5_date');
+                if (el) el.value = f4_d;
+            }
+        }
     }
 
     // --- Date/Time Parsing & Diff (in Minutes) ---
@@ -1269,8 +1382,16 @@ def get_js():
         const t3DisembarkTime = document.getElementById('f2_t3_disembark_time')?.value;
         const t4Date = document.getElementById('f2_t4_date')?.value;
         const t4Time = document.getElementById('f2_t4_time')?.value;
-        const t5Date = document.getElementById('f2_t5_date')?.value;
-        const t5Time = document.getElementById('f2_t5_time')?.value;
+        let t5Date = document.getElementById('f2_t5_date')?.value || document.getElementById('f4_t5_date')?.value;
+        let t5Time = document.getElementById('f2_t5_time')?.value || document.getElementById('f4_t5_time')?.value;
+        if (!document.getElementById('f2_t5_date')?.value && t5Date) {
+            const el = document.getElementById('f2_t5_date');
+            if (el) el.value = t5Date;
+        }
+        if (!document.getElementById('f2_t5_time')?.value && t5Time) {
+            const el = document.getElementById('f2_t5_time');
+            if (el) el.value = t5Time;
+        }
 
         // Auto sync T3 to Form 3
         if (t3EmbarkDate && document.getElementById('f3_t3_date')) {
@@ -1804,6 +1925,12 @@ def get_js():
         if (f4_t5_d && !f4_t5_d.value && t5Date) f4_t5_d.value = t5Date;
         if (f4_t5_t && !f4_t5_t.value && t5Time) f4_t5_t.value = t5Time;
 
+        // Auto sync to Form 2 inputs if empty
+        const f2_t5_d = document.getElementById('f2_t5_date');
+        const f2_t5_t = document.getElementById('f2_t5_time');
+        if (f2_t5_d && !f2_t5_d.value && t5Date) f2_t5_d.value = t5Date;
+        if (f2_t5_t && !f2_t5_t.value && t5Time) f2_t5_t.value = t5Time;
+
         const outEl = document.getElementById('f4_t4_5_min');
         if (outEl) {
             if (t4Time && t5Time) {
@@ -1837,6 +1964,13 @@ def get_js():
             } else {
                 setTimelineResult('f4_pci_d2b_min', 'f4_pci_achieved', 'f4_pci_missed', null, 180);
             }
+            if (wireTime && !document.getElementById('f4_t5_time')?.value) {
+                const f4_t5_t = document.getElementById('f4_t5_time');
+                if (f4_t5_t) {
+                    f4_t5_t.value = wireTime;
+                    syncT5_fromF4();
+                }
+            }
         } else {
             setTimelineResult('f4_pci_d2b_min', 'f4_pci_achieved', 'f4_pci_missed', null, 180);
         }
@@ -1850,6 +1984,13 @@ def get_js():
                 setTimelineResult('f4_stroke_o2n_min', 'f4_stroke_achieved', 'f4_stroke_missed', o2n, 270);
             } else {
                 setTimelineResult('f4_stroke_o2n_min', 'f4_stroke_achieved', 'f4_stroke_missed', null, 270);
+            }
+            if (rtpaTime && !document.getElementById('f4_t5_time')?.value) {
+                const f4_t5_t = document.getElementById('f4_t5_time');
+                if (f4_t5_t) {
+                    f4_t5_t.value = rtpaTime;
+                    syncT5_fromF4();
+                }
             }
         } else {
             setTimelineResult('f4_stroke_o2n_min', 'f4_stroke_achieved', 'f4_stroke_missed', null, 270);
@@ -2391,6 +2532,7 @@ def get_js():
 
     function calcAll() {
         pullT0T1FromForm1();
+        syncT5_bidirectional();
         calcScreening();
         calcCCI();
         calcVitals();

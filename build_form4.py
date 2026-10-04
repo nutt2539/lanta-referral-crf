@@ -365,11 +365,14 @@ def get_form4_html():
         <div class="section-header">หมวดที่ 3: การรักษาและกรอบเวลา ณ รพ.กระบี่</div>
         <table class="crf-table">
             <tr>
-                <td style="width: 32%; font-weight: 700; background: #f8fafc;">วันและเวลาเริ่มทำหัตถการรักษาจำเพาะ (T5)</td>
+                <td style="width: 32%; font-weight: 700; background: #f8fafc;">
+                    <div>วันและเวลาเริ่มทำหัตถการรักษาจำเพาะ (T5)</div>
+                    <div style="font-size: 11px; color: #2563eb; font-weight: normal;">(🔗 ลิ้งค์ข้อมูลอัตโนมัติกับ Form 2: T5 Definitive Management)</div>
+                </td>
                 <td style="width: 68%;">
                     <div style="display: flex; gap: 10px; align-items: center;">
-                        <span>วันที่:</span><input type="date" id="f4_t5_date" onchange="syncT5_fromF4(); calcForm4Timelines();" style="width: 125px;">
-                        <span>เวลา:</span><input type="time" id="f4_t5_time" onchange="syncT5_fromF4(); calcForm4Timelines();" oninput="syncT5_fromF4(); calcForm4Timelines();"><span>น.</span>
+                        <span>วันที่:</span><input type="date" id="f4_t5_date" onchange="syncT5_fromF4();" oninput="syncT5_fromF4();" style="width: 125px;">
+                        <span>เวลา:</span><input type="time" id="f4_t5_time" onchange="syncT5_fromF4();" oninput="syncT5_fromF4();"><span>น.</span>
                     </div>
                 </td>
             </tr>
@@ -389,7 +392,7 @@ def get_form4_html():
                     <div class="check-group">
                         <div style="display: flex; align-items: center; gap: 6px;">
                             <span>• เวลาสายลวดผ่านรอยโรคใน Cath Lab (Primary PCI Wire Crossing):</span>
-                            <input type="time" id="f4_pci_wire_time" onchange="calcGoldenWindows();"><span>น.</span>
+                            <input type="time" id="f4_pci_wire_time" onchange="syncT5_fromIntervention('stemi'); calcGoldenWindows();" oninput="syncT5_fromIntervention('stemi'); calcGoldenWindows();"><span>น.</span>
                         </div>
                         <div style="display: flex; align-items: center; gap: 6px; margin-top: 3px;">
                             <span>• เวลารวม Door-to-Balloon นับจาก First Medical Contact เกาะลันตา:</span>
@@ -416,7 +419,7 @@ def get_form4_html():
                     <div class="check-group">
                         <div style="display: flex; align-items: center; gap: 6px;">
                             <span>• เวลาเริ่มฉีดยาละลายลิ่มเลือด (IV rtPA Bolus):</span>
-                            <input type="time" id="f4_rtpa_time" onchange="calcGoldenWindows();"><span>น.</span>
+                            <input type="time" id="f4_rtpa_time" onchange="syncT5_fromIntervention('ais'); calcGoldenWindows();" oninput="syncT5_fromIntervention('ais'); calcGoldenWindows();"><span>น.</span>
                         </div>
                         <div style="display: flex; align-items: center; gap: 6px; margin-top: 3px;">
                             <span>• เวลาทำ CT Brain เสร็จสิ้น (CT Brain Completion):</span>
@@ -449,7 +452,7 @@ def get_form4_html():
                         <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 6px; padding: 8px 12px;">
                             <div style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
                                 <span style="font-weight: 600; color: #1e293b;">• เวลาทำ CT Scan เสร็จสิ้น (CT Completion Time):</span>
-                                <input type="time" id="f4_trauma_ct_time" onchange="calcGoldenWindows();" oninput="calcGoldenWindows();">
+                                <input type="time" id="f4_trauma_ct_time" onchange="syncT5_fromIntervention('trauma_ct'); calcGoldenWindows();" oninput="syncT5_fromIntervention('trauma_ct'); calcGoldenWindows();">
                                 <span>น.</span>
                             </div>
                             <div style="display: flex; align-items: center; gap: 8px; margin-top: 5px; font-size: 13px; color: #475569;">
@@ -464,7 +467,7 @@ def get_form4_html():
                         <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 6px; padding: 8px 12px;">
                             <div style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
                                 <span style="font-weight: 600; color: #1e293b;">• เวลาลงมีดผ่าตัดฉุกเฉินระงับการเสียเลือด (Damage Control OR Incision):</span>
-                                <input type="time" id="f4_or_time" onchange="calcGoldenWindows();" oninput="calcGoldenWindows();">
+                                <input type="time" id="f4_or_time" onchange="syncT5_fromIntervention('trauma_or'); calcGoldenWindows();" oninput="syncT5_fromIntervention('trauma_or'); calcGoldenWindows();">
                                 <span>น.</span>
                             </div>
                             <div style="display: flex; align-items: center; gap: 8px; margin-top: 5px; font-size: 13px; color: #475569;">

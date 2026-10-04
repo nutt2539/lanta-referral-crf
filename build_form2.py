@@ -152,11 +152,14 @@ def get_form2_html():
                 </tr>
                 <tr>
                     <td class="td-center" style="font-weight: 700; background: #eff6ff;">T5</td>
-                    <td>ผู้ป่วยได้รับ Definitive Management (หัตถการ/การให้ยา/CT Scan)</td>
+                    <td>
+                        <div>ผู้ป่วยได้รับ Definitive Management (หัตถการ/การให้ยา/CT Scan)</div>
+                        <div style="font-size: 11px; color: #2563eb; font-weight: 500;">(🔗 ลิ้งค์ข้อมูลอัตโนมัติกับ Form 4 หมวด 3: T5 การรักษาจำเพาะ)</div>
+                    </td>
                     <td>
                         <div style="display: flex; gap: 6px; align-items: center;">
-                            <span>วันที่:</span><input type="date" id="f2_t5_date" onchange="syncT5(); calcForm2Timelines(); calcForm4Timelines();" style="width: 125px;">
-                            <span>เวลา:</span><input type="time" id="f2_t5_time" onchange="syncT5(); calcForm2Timelines(); calcForm4Timelines();" oninput="syncT5(); calcForm2Timelines(); calcForm4Timelines();"><span>น.</span>
+                            <span>วันที่:</span><input type="date" id="f2_t5_date" onchange="syncT5();" oninput="syncT5();" style="width: 125px;">
+                            <span>เวลา:</span><input type="time" id="f2_t5_time" onchange="syncT5();" oninput="syncT5();"><span>น.</span>
                         </div>
                     </td>
                     <td>EMR รพ.กระบี่</td>
