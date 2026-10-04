@@ -171,6 +171,9 @@ def get_js():
             autoDetectFerryOperate();
         } else if (currentTab === 3) {
             autoDetectFerryOperate();
+        } else if (currentTab === 4) {
+            calcForm4Timelines();
+            updateEpidemiologicalAssessment();
         }
 
         updateBottomNav();
@@ -1336,6 +1339,7 @@ def get_js():
 
         calcForm3();
         autoDetectFerryOperate();
+        if (typeof updateEpidemiologicalAssessment === 'function') updateEpidemiologicalAssessment();
         scheduleAutoSave();
     }
 
@@ -1413,6 +1417,7 @@ def get_js():
 
         calcTide();
         calcRain();
+        if (typeof updateEpidemiologicalAssessment === 'function') updateEpidemiologicalAssessment();
         scheduleAutoSave();
     }
 
@@ -1818,6 +1823,454 @@ def get_js():
             if (achEl) achEl.checked = false;
             if (misEl) misEl.checked = false;
         }
+        if (typeof updateEpidemiologicalAssessment === 'function') updateEpidemiologicalAssessment();
+    }
+
+    // --- EPIDEMIOLOGICAL COHORT & MICRO-TIMELINE DELAY ASSESSMENT ENGINE ---
+    function updateEpidemiologicalAssessment() {
+        const cohortBadge = document.getElementById('cohort_badge_container');
+        const cohortFactorsEl = document.getElementById('cohort_factors_container');
+        const delayBadge = document.getElementById('delay_count_badge');
+        const timelineSummary = document.getElementById('timeline_summary_badge');
+        const timelineDelaysEl = document.getElementById('timeline_delays_container');
+
+        if (!cohortBadge || !cohortFactorsEl || !timelineDelaysEl) return;
+
+        // --- 1. COHORT EXPOSURE CLASSIFICATION ---
+        const exposedFactors = [];
+
+        // Determinant 1: Off-hour ferry (22:00-06:00)
+        const ferryF2 = document.querySelector('input[name="f2_ferry_operate"]:checked')?.value;
+        const ferryF3 = document.querySelector('input[name="f3_ferry_shift"]:checked')?.value;
+        const t2Time = document.getElementById('f2_t2_time')?.value;
+        const t3EmbarkTime = document.getElementById('f2_t3_embark_time')?.value;
+        let isOffHour = (ferryF2 === '1' || ferryF3 === '1');
+        if (!isOffHour && (t3EmbarkTime || t2Time)) {
+            const ferryTime = t3EmbarkTime || t2Time;
+            const parts = ferryTime.split(':');
+            if (parts.length >= 2) {
+                const h = parseInt(parts[0], 10);
+                if (!isNaN(h) && (h >= 22 || h < 6)) isOffHour = true;
+            }
+        }
+        if (isOffHour) {
+            exposedFactors.push({
+                name: 'การเดินแพนอกเวลาปกติ (Off-Hour Ferry: 22:00–06:00 น.)',
+                desc: 'แพปิดบริการรอบปกติ ต้องโทรเรียกคนขับแพฉุกเฉิน (Emergency On-Call)',
+                icon: '⛴️'
+            });
+        }
+
+        // Determinant 2: Monsoon season (May-Oct)
+        const season = document.querySelector('input[name="f3_season"]:checked')?.value;
+        if (season === '0') {
+            exposedFactors.push({
+                name: 'ฤดูมรสุมตะวันตกเฉียงใต้ (Southwest Monsoon Season: พ.ค.–ต.ค.)',
+                desc: 'สภาพอากาศ คลื่นลม และร่องน้ำทะเลอันดามันมีความแปรปรวนสูง',
+                icon: '🌊'
+            });
+        }
+
+        // Determinant 3: Low tide / Sandbar hazard
+        const tideLow = document.querySelector('input[name="f3_tide_extreme"]:checked')?.value;
+        const sandbar = document.querySelector('input[name="f3_sandbar_risk"]:checked')?.value;
+        const tideH = parseFloat(document.getElementById('f3_tide_height')?.value);
+        if (tideLow === '1' || sandbar === '1' || (!isNaN(tideH) && tideH < 1.0)) {
+            exposedFactors.push({
+                name: 'ภาวะน้ำลงต่ำสุดวิกฤต / สันดอนทรายตื้นเขิน (Extreme Low Tide / Sandbar)',
+                desc: 'ระดับน้ำ < 1.0 ม. LAT หรือเสี่ยงติดสันทราย แพต้องเดินเรืออ้อมแนวร่องน้ำ',
+                icon: '⚓'
+            });
+        }
+
+        // Determinant 4: Rough sea state (> 2.0m / Beaufort >= 5)
+        const seaState = document.querySelector('input[name="f3_sea_state"]:checked')?.value;
+        const waveH = parseFloat(document.getElementById('f3_wave_height')?.value);
+        const windSpd = parseFloat(document.getElementById('f3_wind_speed')?.value);
+        if (seaState === '2' || (!isNaN(waveH) && waveH > 2.0) || (!isNaN(windSpd) && windSpd >= 20.0)) {
+            exposedFactors.push({
+                name: 'คลื่นลมแรงในร่องน้ำทะเลอันดามัน (Rough Sea / High Waves > 2.0m)',
+                desc: 'ความสูงคลื่น > 2.0 เมตร หรือลมแรงจัด เพิ่มความโคลงเคลงและเวลาข้ามฟาก',
+                icon: '💨'
+            });
+        }
+
+        // Determinant 5: Torrential rain / Storm (>= 10.0 mm/hr)
+        const rainPrecip = document.querySelector('input[name="f3_precipitation"]:checked')?.value;
+        const rainHeavy = document.querySelector('input[name="f3_torrential_rain"]:checked')?.value;
+        const rainMm = parseFloat(document.getElementById('f3_rainfall_mm')?.value);
+        if (rainPrecip === '1' || rainHeavy === '1' || (!isNaN(rainMm) && rainMm >= 10.0)) {
+            exposedFactors.push({
+                name: 'พายุฝนตกหนักวิกฤต (Torrential Rain ≥ 10.0 มม./ชม.)',
+                desc: 'ทัศนวิสัยบกพร่อง ถนนลื่น และการเดินเรือชะลอตัวจากฝนตกหนักสะสม',
+                icon: '🌧️'
+            });
+        }
+
+        // Determinant 6: Pier queue congestion
+        const pierCongest = document.querySelector('input[name="f2_pier_congestion"]:checked')?.value;
+        if (pierCongest === '1') {
+            exposedFactors.push({
+                name: 'คิวรถติดสะสมหน้าท่าเรือข้ามฟาก (Pier Queue Congestion)',
+                desc: 'มีรถติดสะสมหน้าท่าเรือคลองหมาก ไม่สามารถนำรถพยาบาลขึ้นแพได้ทันที',
+                icon: '🚗'
+            });
+        }
+
+        // Determinant 7: Public long holiday >= 3 days
+        const holiday = document.querySelector('input[name="f3_holiday"]:checked')?.value;
+        if (holiday === '1') {
+            exposedFactors.push({
+                name: 'วันหยุดยาวราชการ / เทศกาลท่องเที่ยว (Public Long Holiday ≥ 3 วัน)',
+                desc: 'ปริมาณยานพาหนะและนักท่องเที่ยวหนาแน่น ก่อให้เกิดความล่าช้าในการสัญจร',
+                icon: '🏖️'
+            });
+        }
+
+        // Determinant 8: Night ED Shift (00:00-08:00)
+        const f1Shift = document.querySelector('input[name="f1_shift"]:checked')?.value;
+        const f3Shift = document.querySelector('input[name="f3_ed_shift"]:checked')?.value;
+        if (f1Shift === 'night' || f3Shift === 'night') {
+            exposedFactors.push({
+                name: 'เวรดึกห้องฉุกเฉินเกาะลันตา (Night ED Shift: 00:00–08:00 น.)',
+                desc: 'การระดมทรัพยากร บุคลากร และทีมประสานส่งต่อนอกเวลาปฏิบัติการหลัก',
+                icon: '🌙'
+            });
+        }
+
+        // Determinant 9: System Total Referral Delay (T_Total > Benchmark)
+        const isTrauma = Boolean(document.getElementById('f1_inc4_trauma')?.checked);
+        const totalMin = parseInt(document.getElementById('f2_t_total_min')?.value, 10);
+        const totalLimit = isTrauma ? 156 : 141;
+        const isTotalDelay = document.getElementById('f2_total_delay')?.checked || (!isNaN(totalMin) && totalMin > totalLimit);
+        if (isTotalDelay) {
+            exposedFactors.push({
+                name: 'ระบบส่งต่อรวมล่าช้าเกินเกณฑ์มาตรฐาน (Total System Delay: T_Total > เกณฑ์)',
+                desc: `เวลารวมทั้งระบบ ${!isNaN(totalMin) ? totalMin + ' นาที ' : ''}เกินเกณฑ์มาตรฐาน (เกณฑ์: ${totalLimit} นาที)`,
+                icon: '⏱️'
+            });
+        }
+
+        const hasLogisticsData = (ferryF2 !== undefined || ferryF3 !== undefined || season !== undefined ||
+                                  tideLow !== undefined || seaState !== undefined || rainPrecip !== undefined ||
+                                  pierCongest !== undefined || holiday !== undefined || f1Shift !== undefined ||
+                                  f3Shift !== undefined || isOffHour || !isNaN(totalMin));
+
+        const isExposed = exposedFactors.length > 0;
+
+        if (isExposed) {
+            cohortBadge.innerHTML = `
+                <div style="display: inline-flex; align-items: center; gap: 8px; background: #fef2f2; border: 1.5px solid #ef4444; color: #991b1b; padding: 6px 12px; border-radius: 6px; font-weight: 800; font-size: 13.5px; box-shadow: 0 1px 3px rgba(239,68,68,0.12);">
+                    <span style="font-size: 16px;">⚠️</span>
+                    <span>EXPOSED GROUP (กลุ่มสัมผัสปัจจัยคุกคาม)</span>
+                </div>
+            `;
+            let factorsHtml = '<div style="display: flex; flex-direction: column; gap: 6px; margin-top: 6px;">';
+            exposedFactors.forEach(f => {
+                factorsHtml += `
+                    <div style="background: #ffffff; border: 1px solid #fee2e2; border-left: 3.5px solid #ef4444; border-radius: 5px; padding: 6px 10px;">
+                        <div style="font-weight: 700; color: #991b1b; font-size: 12.5px;">${f.icon} ${f.name}</div>
+                        <div style="color: #64748b; font-size: 11px; margin-top: 1px;">${f.desc}</div>
+                    </div>
+                `;
+            });
+            factorsHtml += `
+                <div style="font-size: 11.5px; color: #b91c1c; font-weight: 700; margin-top: 4px; display: flex; align-items: center; gap: 4px;">
+                    <span>📌 ตรวจพบปัจจัยคุกคามสะสมรวม:</span> <span style="background: #fee2e2; padding: 1px 6px; border-radius: 10px;">${exposedFactors.length} ปัจจัย</span>
+                </div>
+            </div>`;
+            cohortFactorsEl.innerHTML = factorsHtml;
+        } else if (hasLogisticsData) {
+            cohortBadge.innerHTML = `
+                <div style="display: inline-flex; align-items: center; gap: 8px; background: #f0fdf4; border: 1.5px solid #22c55e; color: #166534; padding: 6px 12px; border-radius: 6px; font-weight: 800; font-size: 13.5px; box-shadow: 0 1px 3px rgba(34,197,94,0.12);">
+                    <span style="font-size: 16px;">✅</span>
+                    <span>CONTROL GROUP (กลุ่มควบคุม / ปลอดปัจจัยคุกคาม)</span>
+                </div>
+            `;
+            cohortFactorsEl.innerHTML = `
+                <div style="background: #ffffff; border: 1px solid #bbf7d0; border-left: 3.5px solid #22c55e; border-radius: 5px; padding: 8px 10px; margin-top: 6px; color: #166534; font-size: 12px; line-height: 1.5;">
+                    <div style="font-weight: 700; margin-bottom: 2px;">✓ ไม่พบปัจจัยคุกคามจากการขนส่งและสิ่งแวดล้อม</div>
+                    <div style="color: #475569; font-size: 11.5px;">เคสนี้ส่งต่อในสภาวะปกติ (ช่วงกลางวัน 06:00–22:00 น., ทะเลสงบ, น้ำทะเลปกติ, ไม่มีพายุฝน, ท่าเรือไม่ติดขัด, เวรปกติ และส่งต่อตรงเวลา)</div>
+                </div>
+            `;
+        } else {
+            cohortBadge.innerHTML = `
+                <div style="display: inline-flex; align-items: center; gap: 6px; background: #f8fafc; border: 1px solid #cbd5e1; color: #64748b; padding: 4px 10px; border-radius: 6px; font-weight: 700; font-size: 12.5px;">
+                    <span>ℹ️ รอข้อมูลปัจจัยแวดล้อม (Form 2 & Form 3)</span>
+                </div>
+            `;
+            cohortFactorsEl.innerHTML = `
+                <div style="color: #94a3b8; font-size: 12px; font-style: italic; margin-top: 6px;">
+                    ยังไม่มีข้อมูลปัจจัยด้านสิ่งแวดล้อมหรือกะเวลาเดินแพ ระบบจะประเมินผลอัตโนมัติเมื่อกรอก Form 2 และ Form 3
+                </div>
+            `;
+        }
+
+        // --- 2. MICRO-TIMELINE DELAYS ASSESSMENT ---
+        const isStemi = Boolean(document.getElementById('f1_inc4_stemi')?.checked);
+        const isStroke = Boolean(document.getElementById('f1_inc4_ais')?.checked);
+
+        const timelineList = [];
+
+        // 1. T0-1 Island DIDO
+        const didoMin = parseInt(document.getElementById('f2_t0_1_min')?.value || document.getElementById('f1_dido_min')?.value, 10);
+        const didoLimit = isTrauma ? 60 : 45;
+        const hasDido = !isNaN(didoMin) && didoMin >= 0;
+        const didoDelayed = hasDido ? (didoMin > didoLimit) : Boolean(document.getElementById('f2_dido_delay')?.checked || document.getElementById('f1_dido_delay')?.checked);
+        timelineList.push({
+            id: 'T0-1',
+            name: 'T0-1 Island DIDO (รพ.เกาะลันตา)',
+            desc: 'ประเมิน คืนชีพ วินิจฉัย และเตรียมส่งต่อในห้องฉุกเฉิน',
+            benchmark: didoLimit,
+            benchmarkStr: `≤ ${didoLimit} นาที (${isTrauma ? 'Trauma' : 'Stroke/STEMI'})`,
+            actual: hasDido ? didoMin : null,
+            delayed: didoDelayed,
+            hasData: hasDido || document.getElementById('f2_dido_ontime')?.checked || document.getElementById('f2_dido_delay')?.checked
+        });
+
+        // 2. T2 Island Road
+        const t2Min = parseInt(document.getElementById('f2_t2_min')?.value, 10);
+        const hasT2 = !isNaN(t2Min) && t2Min >= 0;
+        const t2Delayed = hasT2 ? (t2Min > 12) : Boolean(document.getElementById('f2_road_delay')?.checked);
+        timelineList.push({
+            id: 'T2',
+            name: 'T2 Island Road (ถนนบนเกาะ)',
+            desc: 'วิ่งจาก รพ.เกาะลันตา ไปยังท่าเรือคลองหมาก (7.0 กม.)',
+            benchmark: 12,
+            benchmarkStr: '≤ 12 นาที',
+            actual: hasT2 ? t2Min : null,
+            delayed: t2Delayed,
+            hasData: hasT2 || document.getElementById('f2_road_ontime')?.checked || document.getElementById('f2_road_delay')?.checked
+        });
+
+        // 3. T_wait Pier Queue Waiting
+        const waitMin = parseInt(document.getElementById('f2_t_wait_min')?.value, 10);
+        const hasWait = !isNaN(waitMin) && waitMin >= 0;
+        const waitDelayed = hasWait ? (waitMin > 5) : Boolean(document.getElementById('f2_wait_delay')?.checked);
+        timelineList.push({
+            id: 'T_wait',
+            name: 'T_wait Pier Waiting (รอขึ้นแพ)',
+            desc: 'เวลารอคิว / รอเรียกแพขนานยนต์ ณ ท่าเรือคลองหมาก',
+            benchmark: 5,
+            benchmarkStr: '≤ 5 นาที',
+            actual: hasWait ? waitMin : null,
+            delayed: waitDelayed,
+            hasData: hasWait || document.getElementById('f2_wait_ontime')?.checked || document.getElementById('f2_wait_delay')?.checked
+        });
+
+        // 4. T3 Ferry Crossing
+        const t3Min = parseInt(document.getElementById('f2_t3_min')?.value, 10);
+        const hasT3 = !isNaN(t3Min) && t3Min >= 0;
+        const t3Delayed = hasT3 ? (t3Min > 24) : Boolean(document.getElementById('f2_water_delay')?.checked);
+        timelineList.push({
+            id: 'T3',
+            name: 'T3 Ferry Crossing (ข้ามร่องน้ำ)',
+            desc: 'แพขนานยนต์ข้ามร่องน้ำเกาะลันตา (1.53 กม.)',
+            benchmark: 24,
+            benchmarkStr: '≤ 24 นาที',
+            actual: hasT3 ? t3Min : null,
+            delayed: t3Delayed,
+            hasData: hasT3 || document.getElementById('f2_water_ontime')?.checked || document.getElementById('f2_water_delay')?.checked
+        });
+
+        // 5. T4 Mainland Highway
+        const t4Min = parseInt(document.getElementById('f2_t4_min')?.value, 10);
+        const hasT4 = !isNaN(t4Min) && t4Min >= 0;
+        const t4Delayed = hasT4 ? (t4Min > 60) : Boolean(document.getElementById('f2_hwy_delay')?.checked);
+        timelineList.push({
+            id: 'T4',
+            name: 'T4 Mainland Highway (ทางหลวง)',
+            desc: 'วิ่งจากท่าบ้านหัวหิน ถึง ER รพ.กระบี่ (71.0 กม.)',
+            benchmark: 60,
+            benchmarkStr: '≤ 60 นาที',
+            actual: hasT4 ? t4Min : null,
+            delayed: t4Delayed,
+            hasData: hasT4 || document.getElementById('f2_hwy_ontime')?.checked || document.getElementById('f2_hwy_delay')?.checked
+        });
+
+        // 6. T_Total System Transfer Time
+        const hasTotal = !isNaN(totalMin) && totalMin >= 0;
+        const totalDelayed = hasTotal ? (totalMin > totalLimit) : Boolean(document.getElementById('f2_total_delay')?.checked);
+        timelineList.push({
+            id: 'T_Total',
+            name: 'T_Total Referral System (เวลารวมระบบ)',
+            desc: 'รวมเวลาตั้งแต่ ER ลันตา ถึง ER รพ.กระบี่ (T0-1+T2+T3+T4)',
+            benchmark: totalLimit,
+            benchmarkStr: `≤ ${totalLimit} นาที (${isTrauma ? 'Trauma' : 'Stroke/STEMI'})`,
+            actual: hasTotal ? totalMin : null,
+            delayed: totalDelayed,
+            hasData: hasTotal || document.getElementById('f2_total_ontime')?.checked || document.getElementById('f2_total_delay')?.checked
+        });
+
+        // 7. T4-5 Door-to-Intervention (Mainland ED)
+        const t45Min = parseInt(document.getElementById('f4_t4_5_min')?.value, 10);
+        const hasT45 = !isNaN(t45Min) && t45Min >= 0;
+        const t45Delayed = hasT45 ? (t45Min > 30) : false;
+        timelineList.push({
+            id: 'T4-5',
+            name: 'T4-5 Door-to-Intervention (รพ.กระบี่)',
+            desc: 'เวลาตั้งแต่ถึง ER รพ.กระบี่ จนถึงส่งต่อหัตถการกู้ชีพ/หอผู้ป่วย',
+            benchmark: 30,
+            benchmarkStr: '≤ 30 นาที',
+            actual: hasT45 ? t45Min : null,
+            delayed: t45Delayed,
+            hasData: hasT45
+        });
+
+        // 8. Disease-specific Golden Window
+        if (isStemi) {
+            const d2b = parseInt(document.getElementById('f4_pci_d2b_min')?.value, 10);
+            const hasD2b = !isNaN(d2b) && d2b >= 0;
+            const d2bDelayed = hasD2b ? (d2b > 180) : Boolean(document.getElementById('f4_pci_missed')?.checked);
+            timelineList.push({
+                id: 'Golden-STEMI',
+                name: 'STEMI Door-to-Balloon (PCI Golden Window)',
+                desc: 'เวลาเข้า ER ลันตา ถึงบอลลูนเปิดหลอดเลือดหัวใจ (ESC Remote Island)',
+                benchmark: 180,
+                benchmarkStr: '≤ 180 นาที',
+                actual: hasD2b ? d2b : null,
+                delayed: d2bDelayed,
+                hasData: hasD2b || document.getElementById('f4_pci_achieved')?.checked || document.getElementById('f4_pci_missed')?.checked
+            });
+        } else if (isStroke) {
+            const o2n = parseInt(document.getElementById('f4_stroke_o2n_min')?.value, 10);
+            const hasO2n = !isNaN(o2n) && o2n >= 0;
+            const o2nDelayed = hasO2n ? (o2n > 270) : Boolean(document.getElementById('f4_stroke_missed')?.checked);
+            timelineList.push({
+                id: 'Golden-Stroke',
+                name: 'Stroke Onset-to-Needle (rtPA Golden Window)',
+                desc: 'เวลาเริ่มมีอาการ ถึงเริ่มฉีดยาละลายลิ่มเลือด (IV rtPA ≤ 4.5 ชม.)',
+                benchmark: 270,
+                benchmarkStr: '≤ 270 นาที (4.5 ชม.)',
+                actual: hasO2n ? o2n : null,
+                delayed: o2nDelayed,
+                hasData: hasO2n || document.getElementById('f4_stroke_achieved')?.checked || document.getElementById('f4_stroke_missed')?.checked
+            });
+        } else if (isTrauma) {
+            const traumaMissed = Boolean(document.getElementById('f4_trauma_missed')?.checked);
+            const traumaAchieved = Boolean(document.getElementById('f4_trauma_achieved')?.checked);
+            const ctMin = parseInt(document.getElementById('f4_trauma_d2ct_min')?.value, 10);
+            const orMin = parseInt(document.getElementById('f4_trauma_d2or_min')?.value, 10);
+            const hasTrauma = traumaMissed || traumaAchieved || (!isNaN(ctMin) && ctMin >= 0) || (!isNaN(orMin) && orMin >= 0);
+            let traumaActualStr = '';
+            if (!isNaN(ctMin) && ctMin >= 0) traumaActualStr += `CT: ${ctMin}m `;
+            if (!isNaN(orMin) && orMin >= 0) traumaActualStr += `OR: ${orMin}m`;
+            timelineList.push({
+                id: 'Golden-Trauma',
+                name: 'Trauma Resuscitation Window (CT / OR)',
+                desc: 'เกณฑ์เวลาทำ CT (≤ 150 นาที) หรือเข้าห้องผ่าตัดฉุกเฉิน (OR ≤ 180 นาที)',
+                benchmarkStr: 'CT ≤ 150m / OR ≤ 180m',
+                actual: traumaActualStr.trim() || null,
+                delayed: traumaMissed,
+                hasData: hasTrauma
+            });
+        }
+
+        const evaluatedTimelines = timelineList.filter(t => t.hasData);
+        const delayedTimelines = evaluatedTimelines.filter(t => t.delayed);
+
+        // Update delay count badge
+        if (delayBadge) {
+            if (evaluatedTimelines.length === 0) {
+                delayBadge.style.background = '#f1f5f9';
+                delayBadge.style.color = '#64748b';
+                delayBadge.innerText = 'รอข้อมูลเวลา';
+            } else if (delayedTimelines.length > 0) {
+                delayBadge.style.background = '#fee2e2';
+                delayBadge.style.color = '#991b1b';
+                delayBadge.innerText = `⚠️ ล่าช้า ${delayedTimelines.length} / ${evaluatedTimelines.length} ช่วง`;
+            } else {
+                delayBadge.style.background = '#dcfce7';
+                delayBadge.style.color = '#166534';
+                delayBadge.innerText = `✓ ตรงเวลาทุกช่วง (${evaluatedTimelines.length}/${evaluatedTimelines.length})`;
+            }
+        }
+
+        // Update summary badge
+        if (timelineSummary) {
+            if (evaluatedTimelines.length === 0) {
+                timelineSummary.innerHTML = `
+                    <div style="display: inline-flex; align-items: center; gap: 6px; background: #f8fafc; border: 1px solid #cbd5e1; color: #64748b; padding: 4px 10px; border-radius: 6px; font-weight: 700; font-size: 12.5px;">
+                        <span>ℹ️ ยังไม่มีการบันทึกข้อมูลเวลาส่งต่อ (Form 2 & Form 4)</span>
+                    </div>
+                `;
+            } else if (delayedTimelines.length > 0) {
+                timelineSummary.innerHTML = `
+                    <div style="display: inline-flex; align-items: center; gap: 8px; background: #fef2f2; border: 1.5px solid #ef4444; color: #991b1b; padding: 6px 12px; border-radius: 6px; font-weight: 800; font-size: 13.5px; box-shadow: 0 1px 3px rgba(239,68,68,0.12);">
+                        <span style="font-size: 16px;">⏱️</span>
+                        <span>พบจุดคอขวดเวลาล่าช้า (Delayed Referral Process)</span>
+                    </div>
+                `;
+            } else {
+                timelineSummary.innerHTML = `
+                    <div style="display: inline-flex; align-items: center; gap: 8px; background: #f0fdf4; border: 1.5px solid #22c55e; color: #166534; padding: 6px 12px; border-radius: 6px; font-weight: 800; font-size: 13.5px; box-shadow: 0 1px 3px rgba(34,197,94,0.12);">
+                        <span style="font-size: 16px;">⚡</span>
+                        <span>ระบบส่งต่อตรงเวลาตามเกณฑ์มาตรฐานทุกช่วง (Optimal Timelines)</span>
+                    </div>
+                `;
+            }
+        }
+
+        // Render intervals breakdown list
+        let delaysHtml = '<div style="display: flex; flex-direction: column; gap: 6px; margin-top: 6px;">';
+        timelineList.forEach(t => {
+            const hasData = t.hasData;
+            const isDelayed = t.delayed;
+            let statusBadge = '';
+
+            if (!hasData) {
+                statusBadge = '<span style="color: #94a3b8; font-size: 11px; font-style: italic; background: #f8fafc; padding: 2px 6px; border-radius: 4px; border: 1px dashed #cbd5e1;">รอข้อมูลเวลา</span>';
+            } else if (isDelayed) {
+                let diffText = '';
+                if (typeof t.actual === 'number' && typeof t.benchmark === 'number') {
+                    const diff = t.actual - t.benchmark;
+                    diffText = ` (+${diff} นาที)`;
+                }
+                statusBadge = `<span style="background: #fee2e2; color: #991b1b; border: 1px solid #f87171; padding: 2px 7px; border-radius: 4px; font-weight: 800; font-size: 11.5px;">⚠️ ล่าช้า${diffText}</span>`;
+            } else {
+                let diffText = '';
+                if (typeof t.actual === 'number' && typeof t.benchmark === 'number') {
+                    const diff = t.benchmark - t.actual;
+                    diffText = diff > 0 ? ` (เร็วว่า ${diff} นาที)` : ' (ทันเกณฑ์)';
+                }
+                statusBadge = `<span style="background: #dcfce7; color: #166534; border: 1px solid #86efac; padding: 2px 7px; border-radius: 4px; font-weight: 800; font-size: 11.5px;">✓ ตรงเวลา${diffText}</span>`;
+            }
+
+            const borderColor = !hasData ? '#e2e8f0' : (isDelayed ? '#fca5a5' : '#bbf7d0');
+            const borderLeftColor = !hasData ? '#94a3b8' : (isDelayed ? '#ef4444' : '#22c55e');
+            const bgColor = !hasData ? '#ffffff' : (isDelayed ? '#fffbfb' : '#fafffc');
+
+            delaysHtml += `
+                <div style="background: ${bgColor}; border: 1px solid ${borderColor}; border-left: 3.5px solid ${borderLeftColor}; border-radius: 5px; padding: 6px 10px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 6px;">
+                    <div style="flex: 1; min-width: 180px;">
+                        <div style="font-weight: 700; font-size: 12.5px; color: ${isDelayed ? '#991b1b' : '#1e293b'};">
+                            ${t.name}
+                        </div>
+                        <div style="font-size: 11px; color: #64748b; margin-top: 1px;">
+                            ${t.desc} • <span style="color: #475569; font-weight: 600;">เกณฑ์: ${t.benchmarkStr}</span>
+                            ${hasData && t.actual !== null ? ` • <b style="color: ${isDelayed ? '#dc2626' : '#15803d'};">เวลาจริง: ${t.actual} นาที</b>` : ''}
+                        </div>
+                    </div>
+                    <div>
+                        ${statusBadge}
+                    </div>
+                </div>
+            `;
+        });
+
+        // Add summary note of delayed intervals if any
+        if (delayedTimelines.length > 0) {
+            delaysHtml += `
+                <div style="background: #fef2f2; border: 1px solid #fecaca; border-radius: 5px; padding: 6px 10px; margin-top: 4px; font-size: 11.5px; color: #991b1b;">
+                    <b>🚨 สรุปช่วงเวลาที่นับเป็นล่าช้า (${delayedTimelines.length} ช่วง):</b>
+                    <ul style="margin: 3px 0 0 16px; padding: 0;">
+                        ${delayedTimelines.map(t => `<li><b>${t.name}</b>: ${t.actual !== null ? `ใช้เวลา ${t.actual} นาที (เกณฑ์ ${t.benchmarkStr})` : 'เกินเกณฑ์มาตรฐาน'}</li>`).join('')}
+                    </ul>
+                </div>
+            `;
+        }
+        delaysHtml += '</div>';
+        timelineDelaysEl.innerHTML = delaysHtml;
     }
 
     function calcAll() {
@@ -1842,6 +2295,7 @@ def get_js():
         toggleCprDetails();
         toggleMortalityDetails();
         autoDetectFerryOperate();
+        if (typeof updateEpidemiologicalAssessment === 'function') updateEpidemiologicalAssessment();
     }
 
     // --- CASE MANAGEMENT & LOCAL STORAGE ---
@@ -1856,8 +2310,14 @@ def get_js():
 
     function initAutoSave() {
         document.querySelectorAll('input, select').forEach(el => {
-            el.addEventListener('change', scheduleAutoSave);
-            el.addEventListener('input', scheduleAutoSave);
+            el.addEventListener('change', () => {
+                if (typeof updateEpidemiologicalAssessment === 'function') updateEpidemiologicalAssessment();
+                scheduleAutoSave();
+            });
+            el.addEventListener('input', () => {
+                if (typeof updateEpidemiologicalAssessment === 'function') updateEpidemiologicalAssessment();
+                scheduleAutoSave();
+            });
         });
     }
 
@@ -1875,6 +2335,30 @@ def get_js():
                 data[el.id || el.name] = el.value;
             }
         });
+
+        // Epidemiological Evaluation Summary
+        const cohortStatusBadge = document.getElementById('cohort_badge_container')?.innerText || '';
+        const isExposed = cohortStatusBadge.includes('EXPOSED');
+        const isControl = cohortStatusBadge.includes('CONTROL');
+        data['cohort_classification'] = isExposed ? 'Exposed' : (isControl ? 'Control' : 'Pending');
+
+        // Extract list of active exposure determinants
+        const factorEls = document.querySelectorAll('#cohort_factors_container [style*="font-weight: 700"]');
+        const factors = [];
+        factorEls.forEach(el => {
+            const txt = el.innerText.trim();
+            if (txt && !txt.startsWith('✓') && !txt.startsWith('📌')) factors.push(txt);
+        });
+        data['cohort_factors'] = factors.join('; ');
+
+        // Extract delayed intervals
+        const delayedSummaryLi = document.querySelectorAll('#timeline_delays_container ul li');
+        const delayedList = [];
+        delayedSummaryLi.forEach(li => delayedList.push(li.innerText.trim()));
+        data['timeline_delayed_intervals'] = delayedList.join('; ');
+        data['timeline_delay_count'] = delayedList.length;
+        data['timeline_overall_status'] = delayedList.length > 0 ? 'Delayed' : (document.getElementById('delay_count_badge')?.innerText.includes('ตรงเวลา') ? 'On-time' : 'Pending');
+
         return data;
     }
 
@@ -2162,7 +2646,12 @@ def get_js():
                 Trauma_GoldenWindow: c.f4_eval_trauma || '',
                 Mortality_ER: c.f4_mort_er || '',
                 Mortality_24h: c.f4_mort_24h || '',
-                Primary_Death_Cause: c.f4_mort_cause || ''
+                Primary_Death_Cause: c.f4_mort_cause || '',
+                Cohort_Classification: c.cohort_classification || '',
+                Cohort_Exposures: c.cohort_factors || '',
+                MicroTimeline_Delay_Count: c.timeline_delay_count !== undefined ? c.timeline_delay_count : '',
+                MicroTimeline_Delayed_List: c.timeline_delayed_intervals || '',
+                Overall_Referral_Timeliness: c.timeline_overall_status || ''
             });
 
             // Form 1 specific
@@ -2325,7 +2814,12 @@ def get_js():
                 Mortality_ER_Immediate: c.f4_mort_er || '',
                 Mortality_24h_Post: c.f4_mort_24h || '',
                 Primary_Cause_of_Death: c.f4_mort_cause || '',
-                ICD10_Cause: c.f4_mort_cause_icd || ''
+                ICD10_Cause: c.f4_mort_cause_icd || '',
+                Cohort_Classification: c.cohort_classification || '',
+                Cohort_Exposures: c.cohort_factors || '',
+                MicroTimeline_Delay_Count: c.timeline_delay_count !== undefined ? c.timeline_delay_count : '',
+                MicroTimeline_Delayed_List: c.timeline_delayed_intervals || '',
+                Overall_Referral_Timeliness: c.timeline_overall_status || ''
             });
         });
 

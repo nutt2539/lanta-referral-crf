@@ -548,6 +548,49 @@ def get_form4_html():
             </tr>
         </table>
 
+        <!-- หมวดประเมินสรุปทางระบาดวิทยาและคอขวดเวลา -->
+        <div class="section-header" style="background: linear-gradient(90deg, #eff6ff 0%, #ffffff 100%); border-left: 5px solid #1e40af; color: #1e3a8a; margin-top: 24px;">
+            🔬 การประเมินสรุปทางระบาดวิทยาและคอขวดเวลา (Epidemiological Cohort & Micro-Timeline Delay Assessment)
+        </div>
+        <div style="background: #ffffff; border: 1.5px solid #cbd5e1; border-radius: 8px; padding: 16px; margin-bottom: 20px; box-shadow: 0 2px 8px rgba(0,0,0,0.04);">
+            <div style="font-size: 13px; color: #64748b; margin-bottom: 12px; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 8px;">
+                <span>การประเมินสถานะของเคสผู้ป่วยตามแบบจำลอง <b>Retrospective Cohort Study</b> และการตรวจจับจุดคอขวดเวลา (Bottlenecks)</span>
+                <span style="font-size: 11px; background: #e0f2fe; color: #0369a1; padding: 2px 8px; border-radius: 12px; font-weight: 700;">⚡ Real-time Auto Evaluation</span>
+            </div>
+
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 16px;">
+                <!-- Card 1: Cohort Exposure Classification -->
+                <div style="background: #f8fafc; border: 1.5px solid #cbd5e1; border-radius: 8px; padding: 14px; display: flex; flex-direction: column;">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; border-bottom: 1px solid #e2e8f0; padding-bottom: 6px;">
+                        <span style="font-weight: 700; font-size: 14px; color: #1e3a8a;">
+                            1. การจำแนกกลุ่มศึกษา (Cohort Classification)
+                        </span>
+                        <span style="font-size: 11px; background: #e2e8f0; color: #475569; padding: 2px 6px; border-radius: 4px; font-weight: 600;">Kelsey et al. 1996</span>
+                    </div>
+                    <div id="cohort_badge_container" style="margin-bottom: 10px;"></div>
+                    <div style="font-size: 12.5px; font-weight: 700; color: #334155; margin-bottom: 4px;">
+                        ปัจจัยสัมผัสคุกคามที่ตรวจพบ (Identified Exposure Determinants):
+                    </div>
+                    <div id="cohort_factors_container" style="flex: 1; font-size: 13px;"></div>
+                </div>
+
+                <!-- Card 2: Micro-Timeline Delay Assessment -->
+                <div style="background: #f8fafc; border: 1.5px solid #cbd5e1; border-radius: 8px; padding: 14px; display: flex; flex-direction: column;">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; border-bottom: 1px solid #e2e8f0; padding-bottom: 6px;">
+                        <span style="font-weight: 700; font-size: 14px; color: #1e3a8a;">
+                            2. การประเมินคอขวดเวลา (Micro-Timeline Delay Assessment)
+                        </span>
+                        <span id="delay_count_badge" style="font-size: 11px; padding: 2px 6px; border-radius: 4px; font-weight: 700;"></span>
+                    </div>
+                    <div id="timeline_summary_badge" style="margin-bottom: 10px;"></div>
+                    <div style="font-size: 12.5px; font-weight: 700; color: #334155; margin-bottom: 4px;">
+                        สถานะแต่ละช่วงเวลาส่งต่อ (Interval Benchmarks vs Actual):
+                    </div>
+                    <div id="timeline_delays_container" style="flex: 1; font-size: 12.5px;"></div>
+                </div>
+            </div>
+        </div>
+
         <!-- Form 4 Completion Action Box -->
         <div style="margin-top: 25px; margin-bottom: 15px; padding: 20px; background: #ffffff; border: 1.5px solid #bae6fd; border-radius: 8px; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05); text-align: center;">
             <div style="font-size: 15px; font-weight: 700; color: #0369a1; margin-bottom: 6px;">
