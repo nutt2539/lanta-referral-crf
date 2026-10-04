@@ -1218,9 +1218,8 @@ def get_js():
         const card = document.getElementById('screening_summary_card');
         const iconBadge = document.getElementById('screening_icon_badge');
         const pill = document.getElementById('screening_status_pill');
+        const lockIndicator = document.getElementById('screening_lock_indicator');
         const desc = document.getElementById('screening_status_desc');
-        const detailsBox = document.getElementById('screening_details_box');
-        const lockNotice = document.getElementById('screening_lock_notice');
         const badge = document.getElementById('screening_badge');
         const eligYesRadio = document.getElementById('f1_eligible_yes');
         const eligNoRadio = document.getElementById('f1_eligible_no');
@@ -1233,35 +1232,22 @@ def get_js():
 
             if (card) {
                 card.style.background = '#fef2f2';
-                card.style.border = '2.5px solid #dc2626';
-                card.style.boxShadow = '0 4px 16px rgba(220, 38, 38, 0.18)';
+                card.style.border = '2px solid #dc2626';
+                card.style.boxShadow = '0 1px 6px rgba(220, 38, 38, 0.12)';
             }
-            if (iconBadge) {
-                iconBadge.innerHTML = '<span style="display:inline-flex; align-items:center; justify-content:center; width:34px; height:34px; border-radius:50%; background:#dc2626; color:#ffffff; font-weight:800; font-size:18px;">✕</span>';
-            }
+            if (iconBadge) iconBadge.innerHTML = '🔴';
             if (pill) {
                 pill.style.background = '#dc2626';
                 pill.style.color = '#ffffff';
-                pill.textContent = '✕ ไม่ผ่านเกณฑ์ (EXCLUDED COHORT)';
+                pill.innerHTML = '✕ ไม่ผ่านเกณฑ์ (Excluded)';
+            }
+            if (lockIndicator) {
+                lockIndicator.innerHTML = '<span style="color: #dc2626; background: #fee2e2; padding: 2px 8px; border-radius: 4px; font-weight: 700; font-size: 11.5px;">🔒 ปิดกั้นการกรอกข้อมูล</span>';
             }
             if (desc) {
-                desc.innerHTML = '<span style="color:#991b1b; font-weight:700;">ผู้ป่วยไม่ผ่านเกณฑ์การคัดกรอง: ถูกคัดออกจากประชากรศึกษา (Ineligible Case)</span>';
+                const reasonStr = reasons.length > 0 ? reasons.join('; ') : 'ผู้ป่วยไม่เข้าเกณฑ์การคัดกรอง';
+                desc.innerHTML = '<span style="color: #991b1b; font-weight: 600;">⛔ ไม่ผ่านเกณฑ์การศึกษา (' + reasonStr + ') — แบบบันทึกส่วนอื่นๆ ถูกล็อกทั้งหมด</span>';
             }
-            if (detailsBox) {
-                detailsBox.style.display = 'block';
-                detailsBox.style.background = '#ffffff';
-                detailsBox.style.border = '1.5px solid #fca5a5';
-                let html = '<div style="font-weight:700; color:#991b1b; margin-bottom:6px;">⚠️ เหตุผลที่ไม่ผ่านเกณฑ์การศึกษา (Ineligibility Determinants):</div>';
-                if (reasons.length > 0) {
-                    html += '<ul style="margin:0; padding-left:20px; color:#b91c1c; font-size:12.5px;">';
-                    reasons.forEach(r => { html += '<li style="margin-bottom:3px;">' + r + '</li>'; });
-                    html += '</ul>';
-                } else {
-                    html += '<div style="color:#b91c1c; font-size:12.5px;">ผู้บันทึกระบุสถานะไม่ผ่านเกณฑ์การวิจัย (Excluded) ด้วยตนเอง</div>';
-                }
-                detailsBox.innerHTML = html;
-            }
-            if (lockNotice) lockNotice.style.display = 'flex';
 
             applyScreeningLock(true);
         } else if (isEligible) {
@@ -1270,67 +1256,50 @@ def get_js():
 
             if (card) {
                 card.style.background = '#ecfdf5';
-                card.style.border = '2.5px solid #10b981';
-                card.style.boxShadow = '0 4px 16px rgba(16, 185, 129, 0.18)';
+                card.style.border = '2px solid #10b981';
+                card.style.boxShadow = '0 1px 6px rgba(16, 185, 129, 0.12)';
             }
-            if (iconBadge) {
-                iconBadge.innerHTML = '<span style="display:inline-flex; align-items:center; justify-content:center; width:34px; height:34px; border-radius:50%; background:#10b981; color:#ffffff; font-weight:800; font-size:18px;">✓</span>';
-            }
+            if (iconBadge) iconBadge.innerHTML = '🟢';
             if (pill) {
                 pill.style.background = '#059669';
                 pill.style.color = '#ffffff';
-                pill.textContent = '✓ ผ่านเกณฑ์การวิจัย (ELIGIBLE COHORT)';
+                pill.innerHTML = '✓ ผ่านเกณฑ์การวิจัย (Eligible Cohort)';
+            }
+            if (lockIndicator) {
+                lockIndicator.innerHTML = '<span style="color: #047857; background: #dcfce7; padding: 2px 8px; border-radius: 4px; font-weight: 700; font-size: 11.5px;">🔓 ปลดล็อกระบบพร้อมบันทึก</span>';
             }
             let diseaseName = 'ยังไม่ระบุ';
-            if (disease === 'stemi') diseaseName = 'STEMI / Acute Coronary Syndrome';
+            if (disease === 'stemi') diseaseName = 'STEMI / ACS';
             else if (disease === 'ais') diseaseName = 'Acute Ischemic Stroke (AIS)';
-            else if (disease === 'trauma') diseaseName = 'Severe Trauma (บาดเจ็บรุนแรง)';
+            else if (disease === 'trauma') diseaseName = 'Severe Trauma';
 
             if (desc) {
-                desc.innerHTML = '<span style="color:#065f46; font-weight:700;">ผ่านเกณฑ์ครบถ้วน: นำเข้าสู่ Cohort ประชากรศึกษาเรียบร้อยแล้ว</span>';
+                desc.innerHTML = '<span style="color: #065f46;">✓ ผู้ป่วยผ่านเกณฑ์คัดเข้าครบถ้วน (กลุ่มโรค: <strong>' + diseaseName + '</strong>) และไม่เข้าเกณฑ์คัดออก — บันทึกข้อมูลส่วนอื่นๆ ได้ตามปกติ</span>';
             }
-            if (detailsBox) {
-                detailsBox.style.display = 'block';
-                detailsBox.style.background = '#ffffff';
-                detailsBox.style.border = '1.5px solid #a7f3d0';
-                detailsBox.innerHTML = `
-                    <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px;">
-                        <div>
-                            <span style="font-weight:700; color:#065f46;">กลุ่มโรคเป้าหมาย:</span>
-                            <span style="font-weight:700; color:#1e40af; margin-left:4px;">${diseaseName}</span>
-                        </div>
-                        <div style="font-size:12.5px; color:#047857; font-weight:600;">
-                            🔓 ปลดล็อกระบบ: แบบบันทึกหมวด 2–5 และ Form 2–4 เปิดให้บันทึกข้อมูลได้ตามปกติ
-                        </div>
-                    </div>
-                `;
-            }
-            if (lockNotice) lockNotice.style.display = 'none';
 
             applyScreeningLock(false);
         } else {
             // Pending state
-            if (manualElig !== 'eligible' && manualElig !== 'excluded') {
-                if (eligYesRadio) eligYesRadio.checked = false;
-                if (eligNoRadio) eligNoRadio.checked = false;
-            }
+            if (eligYesRadio) eligYesRadio.checked = false;
+            if (eligNoRadio) eligNoRadio.checked = false;
 
             if (card) {
                 card.style.background = '#f8fafc';
-                card.style.border = '2px dashed #94a3b8';
+                card.style.border = '1.5px dashed #94a3b8';
                 card.style.boxShadow = 'none';
             }
             if (iconBadge) iconBadge.innerHTML = '⚖️';
             if (pill) {
                 pill.style.background = '#e2e8f0';
                 pill.style.color = '#475569';
-                pill.textContent = '⏳ รอการประเมินเกณฑ์คัดกรอง';
+                pill.innerHTML = '⏳ รอการประเมินเกณฑ์';
+            }
+            if (lockIndicator) {
+                lockIndicator.innerHTML = '<span style="color: #64748b; font-size: 11.5px;">รอประเมินเกณฑ์</span>';
             }
             if (desc) {
-                desc.innerHTML = 'กรุณาตรวจสอบและตอบเกณฑ์การคัดเข้า (Inclusion 4 ข้อ) และเกณฑ์การคัดออก (Exclusion 5 ข้อ) ด้านบนให้ครบถ้วน';
+                desc.innerHTML = '<span style="color: #64748b;">กรุณาตอบเกณฑ์การคัดเข้า (Inclusion 4 ข้อ) และเกณฑ์การคัดออก (Exclusion 5 ข้อ) ด้านบนให้ครบถ้วนเพื่อประเมินอัตโนมัติ</span>';
             }
-            if (detailsBox) detailsBox.style.display = 'none';
-            if (lockNotice) lockNotice.style.display = 'none';
 
             applyScreeningLock(false);
         }
