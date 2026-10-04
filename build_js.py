@@ -132,9 +132,6 @@ def get_js():
 
     // --- Screening Exclusion & Form Locking Engine ---
     function isCaseExcluded() {
-        const manualElig = document.querySelector('input[name="f1_eligible"]:checked')?.value;
-        if (manualElig === 'excluded') return true;
-
         const inc1 = document.querySelector('input[name="f1_inc1"]:checked')?.value;
         const inc2 = document.querySelector('input[name="f1_inc2"]:checked')?.value;
         const inc3 = document.querySelector('input[name="f1_inc3"]:checked')?.value;
@@ -1178,10 +1175,6 @@ def get_js():
     }
 
     // --- FORM 1 CALCULATIONS ---
-    function onManualEligibilityChange(status) {
-        calcScreening();
-    }
-
     function calcScreening() {
         const inc1 = document.querySelector('input[name="f1_inc1"]:checked')?.value;
         const inc2 = document.querySelector('input[name="f1_inc2"]:checked')?.value;
@@ -1210,9 +1203,8 @@ def get_js():
         const isIncAllYes = (inc1 === 'yes' && inc2 === 'yes' && inc3 === 'yes' && inc4 === 'yes' && Boolean(disease));
         const isExcAllNo = (exc1 === 'no' && exc2 === 'no' && exc3 === 'no' && exc4 === 'no' && exc5 === 'no');
 
-        const manualElig = document.querySelector('input[name="f1_eligible"]:checked')?.value;
-        let isExcluded = (reasons.length > 0 || manualElig === 'excluded');
-        let isEligible = (!isExcluded && isIncAllYes && isExcAllNo);
+        const isExcluded = (reasons.length > 0);
+        const isEligible = (!isExcluded && isIncAllYes && isExcAllNo);
 
         // Elements
         const card = document.getElementById('screening_summary_card');
