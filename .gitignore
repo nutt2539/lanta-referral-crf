@@ -4,3 +4,8 @@ __pycache__/
 *.pyo
 *.pyd
 .venv/
+mock_cases_50.json
+mock_cases_300.json
+preview_mock_dashboard.html
+generate_mock_50.py
+generate_mock_cases.py

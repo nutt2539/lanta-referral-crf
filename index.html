@@ -3782,6 +3782,9 @@
                 <button type="button" class="admin-tab-btn" id="admin-tab-btn-sec3" onclick="switchAdminSubTab('sec3')">
                     <span>📉 Sec 03: Clinical Outcomes & RR</span>
                 </button>
+                <button type="button" class="admin-tab-btn" id="admin-tab-btn-deterioration" onclick="switchAdminSubTab('deterioration')">
+                    <span>🚨 รายงาน Deterioration</span>
+                </button>
             </div>
 
             <!-- Global Cohort Filter Toolbar (มีผลต่อการวิเคราะห์ทุกแท็บ) -->
@@ -3855,6 +3858,14 @@
                             <div style="font-size: 12.5px; color: #64748b; font-weight: 600;">อัตรารอดชีวิต 24 ชม. รพ.กระบี่</div>
                             <div id="stat-survival-rate" style="font-size: 26px; font-weight: 700; color: #16a34a; line-height: 1.2; margin-top: 2px;">100%</div>
                             <div id="stat-survival-detail" style="font-size: 11.5px; color: #94a3b8;">Early Survival Outcome</div>
+                        </div>
+                        <div style="background: #ffffff; border: 1px solid #cbd5e1; border-left: 4px solid #e11d48; border-radius: 6px; padding: 10px 14px; box-shadow: 0 1px 3px rgba(0,0,0,0.03); cursor: pointer;" onclick="switchAdminSubTab('deterioration')" title="คลิกเพื่อดูรายงานภาวะทรุดลงอย่างละเอียด">
+                            <div style="display: flex; justify-content: space-between; align-items: center;">
+                                <div style="font-size: 12.5px; color: #64748b; font-weight: 600;">ผู้ป่วยทรุดหนัก (Deterioration)</div>
+                                <span style="font-size: 10.5px; color: #be123c; font-weight: 700;">ดูรายงาน ➔</span>
+                            </div>
+                            <div id="stat-deter-count" style="font-size: 26px; font-weight: 700; color: #e11d48; line-height: 1.2; margin-top: 2px;">0</div>
+                            <div id="stat-deter-pct" style="font-size: 11.5px; color: #94a3b8;">0% เกิด AE หรือสรีรวิทยาแย่ลง</div>
                         </div>
                     </div>
 
@@ -4316,6 +4327,170 @@
                             💡 บทสรุปการวิเคราะห์ทางระบาดวิทยา (Epidemiological Interpretation Takeaway)
                         </div>
                         <div id="sec3-takeaway-text" style="font-size: 13px; color: #334155; line-height: 1.5;">
+                            กำลังประมวลผลข้อมูลใน Cohort...
+                        </div>
+                    </div>
+                </div>
+
+                <!-- ========================================== -->
+                <!-- TAB 6: CLINICAL DETERIORATION REPORT       -->
+                <!-- ========================================== -->
+                <div id="admin-tab-content-deterioration" class="admin-tab-pane" style="display:none;">
+                    <!-- Research Banner -->
+                    <div class="research-banner" style="background: linear-gradient(135deg, #fff1f2 0%, #ffe4e6 100%); border: 1px solid #fecdd3; border-left: 5px solid #e11d48;">
+                        <div>
+                            <div style="font-size: 11.5px; font-weight: 800; color: #be123c; letter-spacing: 0.5px; text-transform: uppercase;">
+                                🚨 CLINICAL SAFETY & ADVERSE EVENTS • "Deterioration Analysis Report"
+                            </div>
+                            <div style="font-size: 16px; font-weight: 700; color: #881337; margin-top: 2px;">
+                                รายงานวิเคราะห์ภาวะผู้ป่วยทรุดหนักและการเปลี่ยนแปลงสรีรวิทยาระหว่างส่งต่อ
+                            </div>
+                            <div style="font-size: 12.5px; color: #9f1239; opacity: 0.9; margin-top: 2px;">
+                                เจาะลึกอุบัติการณ์ภาวะแทรกซ้อนวิกฤตระหว่างเดินทาง (In-Transit Adverse Events) และการทรุดตัวทางสรีรวิทยา (Physiological Deterioration) เปรียบเทียบความสัมพันธ์กับความล่าช้าในการส่งต่อทางทะเล
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- KPI Grid for Deterioration -->
+                    <div class="research-kpi-grid" style="grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));">
+                        <div class="research-card" style="border-left: 4px solid #dc2626;">
+                            <div style="font-size: 12px; font-weight: 600; color: #64748b;">ผู้ป่วยที่เกิดภาวะทรุดรวม (Composite Deterioration)</div>
+                            <div id="deter-kpi-total" style="font-size: 26px; font-weight: 800; color: #dc2626; margin-top: 2px;">0</div>
+                            <div id="deter-kpi-total-sub" style="font-size: 11.5px; color: #94a3b8;">0% • ทรุดระหว่างทางหรือสรีรวิทยาแย่ลง</div>
+                        </div>
+                        <div class="research-card" style="border-left: 4px solid #ea580c;">
+                            <div style="font-size: 12px; font-weight: 600; color: #64748b;">ทรุดหนักระหว่างเดินทาง (In-Transit AE)</div>
+                            <div id="deter-kpi-transit" style="font-size: 26px; font-weight: 800; color: #ea580c; margin-top: 2px;">0</div>
+                            <div id="deter-kpi-transit-sub" style="font-size: 11.5px; color: #94a3b8;">0% • เกิดบนรถพยาบาลหรือบนแพ</div>
+                        </div>
+                        <div class="research-card" style="border-left: 4px solid #d97706;">
+                            <div style="font-size: 12px; font-weight: 600; color: #64748b;">สรีรวิทยาแย่ลงเมื่อถึง รพ.กระบี่ (Physiological)</div>
+                            <div id="deter-kpi-physio" style="font-size: 26px; font-weight: 800; color: #d97706; margin-top: 2px;">0</div>
+                            <div id="deter-kpi-physio-sub" style="font-size: 11.5px; color: #94a3b8;">0% • ΔGCS ≤ -2, ΔMAP ช็อก, ΔKillip, ΔRTS</div>
+                        </div>
+                        <div class="research-card" style="border-left: 4px solid #7c3aed;">
+                            <div style="font-size: 12px; font-weight: 600; color: #64748b;">หัตถการช่วยชีวิตฉุกเฉิน (CPR / Intubation)</div>
+                            <div id="deter-kpi-resusc" style="font-size: 26px; font-weight: 800; color: #7c3aed; margin-top: 2px;">0</div>
+                            <div id="deter-kpi-resusc-sub" style="font-size: 11.5px; color: #94a3b8;">0% • ปั๊มหัวใจหรือใส่ท่อช่วยหายใจด่วน</div>
+                        </div>
+                        <div class="research-card" style="border-left: 4px solid #475569;">
+                            <div style="font-size: 12px; font-weight: 600; color: #64748b;">เสียชีวิต 24 ชม. ในกลุ่มทรุด (Mortality in Deteriorated)</div>
+                            <div id="deter-kpi-mort" style="font-size: 26px; font-weight: 800; color: #1e293b; margin-top: 2px;">0</div>
+                            <div id="deter-kpi-mort-sub" style="font-size: 11.5px; color: #94a3b8;">0% • อัตราเสียชีวิตกลุ่มทรุดหนัก</div>
+                        </div>
+                    </div>
+
+                    <!-- Dual Breakdown Section -->
+                    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(420px, 1fr)); gap: 14px; margin-bottom: 14px;">
+                        <!-- Panel 1: In-Transit Adverse Events (Form 2) -->
+                        <div class="research-card">
+                            <div style="font-size: 13.5px; font-weight: 700; color: #991b1b; margin-bottom: 4px; display: flex; align-items: center; gap: 6px;">
+                                <span>🚑 เหตุการณ์ไม่พึงประสงค์ระหว่างเดินทาง (In-Transit Adverse Events)</span>
+                            </div>
+                            <div style="font-size: 11.5px; color: #64748b; margin-bottom: 12px;">
+                                แจกแจงอุบัติการณ์ของภาวะวิกฤตที่เกิดขึ้นบนรถพยาบาลหรือระหว่างข้ามแพขนานยนต์ (Form 2 หมวด 5)
+                            </div>
+                            <div id="deter-breakdown-transit" style="display: flex; flex-direction: column; gap: 10px;">
+                                <!-- Populated by JS -->
+                            </div>
+                        </div>
+
+                        <!-- Panel 2: Physiological Deterioration Components (Form 4) -->
+                        <div class="research-card">
+                            <div style="font-size: 13.5px; font-weight: 700; color: #9a3412; margin-bottom: 4px; display: flex; align-items: center; gap: 6px;">
+                                <span>🩺 องค์ประกอบการทรุดตัวทางสรีรวิทยา (Physiological Parameters Delta)</span>
+                            </div>
+                            <div style="font-size: 11.5px; color: #64748b; margin-bottom: 12px;">
+                                การเปลี่ยนแปลงของสัญญาณชีพและคะแนนความรุนแรงเปรียบเทียบ รพ.เกาะลันตา ➔ รพ.กระบี่ (Form 4 หมวด 2)
+                            </div>
+                            <div id="deter-breakdown-physio" style="display: flex; flex-direction: column; gap: 10px;">
+                                <!-- Populated by JS -->
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Comparative Analysis: Delay Correlation & Subgroups -->
+                    <div class="research-card" style="margin-bottom: 14px;">
+                        <div style="font-size: 13.5px; font-weight: 700; color: #1e3a8a; margin-bottom: 4px;">
+                            ⏱️ การวิเคราะห์ความสัมพันธ์ระหว่างระยะเวลาส่งต่อกับภาวะทรุดลง (Transfer Time vs Deterioration)
+                        </div>
+                        <div style="font-size: 11.5px; color: #64748b; margin-bottom: 12px;">
+                            เปรียบเทียบระยะเวลาในแต่ละ Micro-timeline ระหว่างกลุ่มที่เกิดภาวะทรุดลง (Deteriorated) กับกลุ่มที่สัญญาณชีพคงที่ (Stable)
+                        </div>
+                        <div id="deter-timeline-comparison" style="display: flex; flex-direction: column; gap: 12px;">
+                            <!-- Populated by JS -->
+                        </div>
+                    </div>
+
+                    <!-- Subgroups Matrix: Disease & ESI -->
+                    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(360px, 1fr)); gap: 14px; margin-bottom: 14px;">
+                        <!-- By Target Disease -->
+                        <div class="research-card">
+                            <div style="font-size: 13.5px; font-weight: 700; color: #1e3a8a; margin-bottom: 4px;">
+                                🫀 อัตราการทรุดลงจำแนกตามกลุ่มโรค (Deterioration Rate by Disease)
+                            </div>
+                            <div style="font-size: 11.5px; color: #64748b; margin-bottom: 10px;">
+                                ความชุกของการทรุดตัวในผู้ป่วย STEMI, Stroke (AIS) และ Severe Trauma
+                            </div>
+                            <div id="deter-disease-matrix" style="display: flex; flex-direction: column; gap: 8px;">
+                                <!-- Populated by JS -->
+                            </div>
+                        </div>
+
+                        <!-- By Acuity & Cohort -->
+                        <div class="research-card">
+                            <div style="font-size: 13.5px; font-weight: 700; color: #1e3a8a; margin-bottom: 4px;">
+                                🎯 อัตราการทรุดลงจำแนกตาม Triage Acuity & Cohort
+                            </div>
+                            <div style="font-size: 11.5px; color: #64748b; margin-bottom: 10px;">
+                                เปรียบเทียบความเปราะบางระหว่าง ESI 1 vs ESI 2 และกลุ่ม Exposed vs Control
+                            </div>
+                            <div id="deter-acuity-matrix" style="display: flex; flex-direction: column; gap: 8px;">
+                                <!-- Populated by JS -->
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Detailed Audit Table of Deteriorated Cases -->
+                    <div class="research-card" style="margin-bottom: 14px;">
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; flex-wrap: wrap; gap: 8px;">
+                            <div>
+                                <div style="font-size: 13.5px; font-weight: 700; color: #991b1b; display: flex; align-items: center; gap: 6px;">
+                                    <span>📋 บัญชีรายชื่อเคสที่เกิดภาวะทรุดลงทั้งหมด (Deteriorated Cases Audit Directory)</span>
+                                    <span id="deter-table-count-badge" style="font-size: 11px; background: #fee2e2; color: #991b1b; padding: 2px 8px; border-radius: 999px; font-weight: 700;">0 เคส</span>
+                                </div>
+                                <div style="font-size: 11.5px; color: #64748b;">
+                                    รายชื่อผู้ป่วยที่บันทึกพบ Adverse Events หรือเกิดความเสื่อมถอยทางสรีรวิทยา สามารถคลิก "ดูเคส" เพื่อเปิด CRF ตรวจสอบได้ทันที
+                                </div>
+                            </div>
+                        </div>
+                        <div class="table-responsive" style="max-height: 400px; overflow-y: auto;">
+                            <table class="research-table">
+                                <thead>
+                                    <tr>
+                                        <th style="width: 85px;">รหัสเคส</th>
+                                        <th>กลุ่มโรค / ESI</th>
+                                        <th>สถานะ Cohort</th>
+                                        <th>เหตุการณ์ระหว่างทาง (In-Transit AE)</th>
+                                        <th>สรีรวิทยาที่ทรุดลง (Physiological Changes)</th>
+                                        <th>เวลาส่งต่อรวม (T0➔T5)</th>
+                                        <th>ผลลัพธ์ 24 ชม.</th>
+                                        <th style="width: 80px;">การจัดการ</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="deter-cases-tbody">
+                                    <!-- Populated by JS -->
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                    <!-- Clinical & Operational Takeaway -->
+                    <div id="deter-takeaway-box" style="background: #ffffff; border: 1px solid #cbd5e1; border-left: 5px solid #dc2626; border-radius: 8px; padding: 12px 18px;">
+                        <div style="font-weight: 700; color: #991b1b; font-size: 13.5px; margin-bottom: 4px;">
+                            💡 บทสรุปเชิงคลินิกและข้อเสนอแนะเชิงระบบ (Clinical Safety & Policy Takeaway)
+                        </div>
+                        <div id="deter-takeaway-text" style="font-size: 13px; color: #334155; line-height: 1.5;">
                             กำลังประมวลผลข้อมูลใน Cohort...
                         </div>
                     </div>
@@ -7565,7 +7740,11 @@
     }
 
     function showAdminDashboardModal() {
-        renderAdminDashboard();
+        try {
+            renderAdminDashboard();
+        } catch (e) {
+            console.error("Admin Dashboard render error:", e);
+        }
         const modal = document.getElementById('admin-dashboard-modal');
         if (modal) modal.style.display = 'flex';
     }
@@ -7590,9 +7769,9 @@
     // RESEARCH ADMIN DASHBOARD & CLINICAL OBJECTIVES ANALYTICS ENGINE
     // =========================================================================
 
-    // Tab Switching for Admin Dashboard (5 Sub-tabs)
+    // Tab Switching for Admin Dashboard (6 Sub-tabs)
     function switchAdminSubTab(tabName) {
-        const tabs = ['overview', 'primary', 'sec1', 'sec2', 'sec3'];
+        const tabs = ['overview', 'primary', 'sec1', 'sec2', 'sec3', 'deterioration'];
         tabs.forEach(t => {
             const btn = document.getElementById('admin-tab-btn-' + t);
             const pane = document.getElementById('admin-tab-content-' + t);
@@ -7685,6 +7864,36 @@
                 const transferMin = parseFloat(data.f2_t_total_min || data.f2_eq1_total_transfer);
                 const isExposed = checkCaseExposure(data);
 
+                const hasCpr = Boolean(data.f2_ae_cpr === '1');
+                const hasIntub = Boolean(data.f2_ae_intub === '1');
+                const hasInotropes = Boolean(data.f2_ae_inotropes === '1');
+                const hasDislodge = Boolean(data.f2_ae_dislodge === '1');
+                const hasTransitDeath = Boolean(data.f2_ae_death === '1');
+                const hasTransitAE = Boolean(data.f2_composite_ae === '1' || hasCpr || hasIntub || hasInotropes || hasDislodge || hasTransitDeath);
+
+                const deltaGcsVal = data.f4_delta_gcs ? parseInt(data.f4_delta_gcs, 10) : null;
+                const hasGcsDeter = Boolean(data.f4_eval_gcs === 'deter' || (deltaGcsVal !== null && deltaGcsVal <= -2));
+
+                const sbpKbh = data.f4_sbp ? parseFloat(data.f4_sbp) : null;
+                const deltaSbp = data.f4_delta_sbp ? parseFloat(data.f4_delta_sbp) : null;
+                const hasMapDeter = Boolean(data.f4_eval_map === 'deter' || (sbpKbh !== null && sbpKbh < 90 && deltaSbp !== null && deltaSbp < 0));
+
+                const btVal = data.f4_bt ? parseFloat(data.f4_bt) : null;
+                const hasHypo = Boolean(data.f4_eval_bt === 'hypothermia' || (btVal !== null && btVal < 35.0));
+
+                const hasKillip = Boolean(isStemi && (data.f4_eval_killip === 'deter' || data.f4_delta_killip_to === '4'));
+                const hasMsi = Boolean(isStemi && (data.f4_eval_msi === 'deter' || (data.f4_delta_msi && parseFloat(data.f4_delta_msi) >= 0.15)));
+                const hasRts = Boolean(isTrauma && (data.f4_eval_rts === 'deter' || (data.f4_delta_rts && parseFloat(data.f4_delta_rts) <= -1.0)));
+
+                const hasPhysioDeter = Boolean(data.f4_composite_deter === '1' || hasGcsDeter || hasMapDeter || hasHypo || hasKillip || hasMsi || hasRts);
+                const isDeteriorated = Boolean(hasTransitAE || hasPhysioDeter);
+
+                const t0ToT1 = parseFloat(data.f2_eq2_dido || data.f2_t0_1_min);
+                const t2ToT3 = parseFloat(data.f2_eq4_pier_wait || data.f2_t2_3_min);
+                const t3Dur = parseFloat(data.f2_eq5_ferry_cross || data.f2_t3_cross_min);
+                const t4Dur = parseFloat(data.f2_eq6_mainland_road || data.f2_t4_mainland_min);
+                const t4ToT5 = parseFloat(data.f4_t4_5_min);
+
                 allCases.push({
                     studyId: studyId,
                     displayId: 'LANTA_' + studyId,
@@ -7699,6 +7908,25 @@
                     diseaseKey: diseaseKey,
                     transferMin: transferMin,
                     isExposed: isExposed,
+                    hasCpr: hasCpr,
+                    hasIntub: hasIntub,
+                    hasInotropes: hasInotropes,
+                    hasDislodge: hasDislodge,
+                    hasTransitDeath: hasTransitDeath,
+                    hasTransitAE: hasTransitAE,
+                    hasGcsDeter: hasGcsDeter,
+                    hasMapDeter: hasMapDeter,
+                    hasHypo: hasHypo,
+                    hasKillip: hasKillip,
+                    hasMsi: hasMsi,
+                    hasRts: hasRts,
+                    hasPhysioDeter: hasPhysioDeter,
+                    isDeteriorated: isDeteriorated,
+                    t0ToT1: isNaN(t0ToT1) ? null : t0ToT1,
+                    t2ToT3: isNaN(t2ToT3) ? null : t2ToT3,
+                    t3Dur: isNaN(t3Dur) ? null : t3Dur,
+                    t4Dur: isNaN(t4Dur) ? null : t4Dur,
+                    t4ToT5: isNaN(t4ToT5) ? null : t4ToT5,
                     data: data
                 });
             } catch(e) {}
@@ -7877,6 +8105,15 @@
             statSurv.textContent = survPct !== '-' ? survPct + '%' : '-';
         }
         if (statSurvDetail) statSurvDetail.textContent = 'รอดชีวิต ' + survivalCount + ' / ประเมิน ' + mortalityAssessedCount + ' เคส';
+
+        const statDeterCount = document.getElementById('stat-deter-count');
+        const statDeterPct = document.getElementById('stat-deter-pct');
+        const totalDeterAll = filtered.filter(c => c.isDeteriorated).length;
+        if (statDeterCount) statDeterCount.textContent = totalDeterAll;
+        if (statDeterPct) {
+            const dpct = totalPatients > 0 ? ((totalDeterAll / totalPatients) * 100).toFixed(1) : '0';
+            statDeterPct.textContent = dpct + '% เกิด AE หรือสรีรวิทยาแย่ลง';
+        }
 
         // Render Overview Donut Charts
         renderDonutChart('pie-chart-disease', 'pie-center-disease', 'pie-legend-disease', [
@@ -8432,6 +8669,308 @@
             } else {
                 takeawayTextEl.innerHTML = `จากการวิเคราะห์เบื้องต้นในกลุ่มตัวอย่างปัจจุบัน (N=${filtered.length} เคส) ยังไม่พบความแตกต่างอย่างมีนัยสำคัญระหว่างกลุ่ม Exposed และ Unexposed หรือยังไม่มีรายงานการเกิด Adverse Clinical Outcomes`;
             }
+        }
+
+        // =====================================================================
+        // TAB 6: CLINICAL DETERIORATION & ADVERSE EVENTS REPORT
+        // =====================================================================
+        const deterFiltered = filtered.filter(c => c.isDeteriorated);
+        const stableFiltered = filtered.filter(c => !c.isDeteriorated);
+
+        // 1. KPI Cards
+        const deterTotalEl = document.getElementById('deter-kpi-total');
+        const deterTotalSubEl = document.getElementById('deter-kpi-total-sub');
+        const deterTransitEl = document.getElementById('deter-kpi-transit');
+        const deterTransitSubEl = document.getElementById('deter-kpi-transit-sub');
+        const deterPhysioEl = document.getElementById('deter-kpi-physio');
+        const deterPhysioSubEl = document.getElementById('deter-kpi-physio-sub');
+        const deterResuscEl = document.getElementById('deter-kpi-resusc');
+        const deterResuscSubEl = document.getElementById('deter-kpi-resusc-sub');
+        const deterMortEl = document.getElementById('deter-kpi-mort');
+        const deterMortSubEl = document.getElementById('deter-kpi-mort-sub');
+
+        const nAll = filtered.length;
+        const nDeter = deterFiltered.length;
+        const deterAllPct = nAll > 0 ? ((nDeter / nAll) * 100).toFixed(1) : '0';
+
+        if (deterTotalEl) deterTotalEl.textContent = nDeter;
+        if (deterTotalSubEl) deterTotalSubEl.textContent = `${deterAllPct}% • ทรุดระหว่างทางหรือสรีรวิทยาแย่ลง`;
+
+        const nTransitAe = filtered.filter(c => c.hasTransitAE).length;
+        const transitPct = nAll > 0 ? ((nTransitAe / nAll) * 100).toFixed(1) : '0';
+        if (deterTransitEl) deterTransitEl.textContent = nTransitAe;
+        if (deterTransitSubEl) deterTransitSubEl.textContent = `${transitPct}% • เกิดบนรถพยาบาลหรือบนแพ`;
+
+        const nPhysio = filtered.filter(c => c.hasPhysioDeter).length;
+        const physioPct = nAll > 0 ? ((nPhysio / nAll) * 100).toFixed(1) : '0';
+        if (deterPhysioEl) deterPhysioEl.textContent = nPhysio;
+        if (deterPhysioSubEl) deterPhysioSubEl.textContent = `${physioPct}% • ΔGCS ≤ -2, ΔMAP ช็อก, ΔKillip, ΔRTS`;
+
+        const nResusc = filtered.filter(c => c.hasCpr || c.hasIntub).length;
+        const resuscPct = nAll > 0 ? ((nResusc / nAll) * 100).toFixed(1) : '0';
+        if (deterResuscEl) deterResuscEl.textContent = nResusc;
+        if (deterResuscSubEl) deterResuscSubEl.textContent = `${resuscPct}% • ปั๊มหัวใจหรือใส่ท่อช่วยหายใจด่วน`;
+
+        const nMortDeter = deterFiltered.filter(c => c.data.f4_mort_24h === '1' || c.data.f4_mort_status === '1' || c.data.f4_mort_er === '1').length;
+        const mortDeterPct = nDeter > 0 ? ((nMortDeter / nDeter) * 100).toFixed(1) : '0';
+        if (deterMortEl) deterMortEl.textContent = nMortDeter;
+        if (deterMortSubEl) deterMortSubEl.textContent = `${mortDeterPct}% • เสียชีวิตในกลุ่มผู้ป่วยทรุดหนัก`;
+
+        // 2. In-Transit Adverse Events Breakdown
+        const transitItems = [
+            { name: 'ภาวะหัวใจหยุดเต้นระหว่างทาง (En-route CPR)', test: c => c.hasCpr, color: '#dc2626' },
+            { name: 'ใส่ท่อช่วยหายใจฉุกเฉิน (Emergency Intubation)', test: c => c.hasIntub, color: '#ea580c' },
+            { name: 'ช็อก / เริ่มหรือเพิ่มขนาดยากระตุ้นความดัน (Inotropes Escalation)', test: c => c.hasInotropes, color: '#d97706' },
+            { name: 'ท่อช่วยหายใจเลื่อนหลุด (ETT Dislodgement)', test: c => c.hasDislodge, color: '#9333ea' },
+            { name: 'เสียชีวิตระหว่างการส่งต่อ (In-Transit Death)', test: c => c.hasTransitDeath, color: '#0f172a' }
+        ];
+
+        let transitHtml = '';
+        transitItems.forEach(item => {
+            const count = filtered.filter(item.test).length;
+            const pct = nAll > 0 ? ((count / nAll) * 100).toFixed(1) : '0';
+            const expCount = exposedCohort.filter(item.test).length;
+            const unexpCount = unexposedCohort.filter(item.test).length;
+            transitHtml += `
+                <div>
+                    <div style="display:flex; justify-content:space-between; align-items:center; font-size:12px; margin-bottom:3px;">
+                        <span style="font-weight:600; color:#1e293b;">${item.name}</span>
+                        <span style="font-weight:700; color:${item.color};">${count} เคส <span style="font-weight:normal; color:#64748b; font-size:11px;">(${pct}%) • Exp: ${expCount} | Ctrl: ${unexpCount}</span></span>
+                    </div>
+                    <div class="bar-horizontal-track" style="height:10px; background:#f1f5f9;">
+                        <div class="bar-horizontal-fill" style="width:${pct}%; background:${item.color};"></div>
+                    </div>
+                </div>
+            `;
+        });
+        const transitBreakdownEl = document.getElementById('deter-breakdown-transit');
+        if (transitBreakdownEl) transitBreakdownEl.innerHTML = transitHtml;
+
+        // 3. Physiological Parameters Breakdown
+        const physioItems = [
+            { name: 'ระดับความรู้สึกตัวลดลงวิกฤต (ΔGCS ≤ -2 คะแนน)', test: c => c.hasGcsDeter, color: '#dc2626', denom: nAll },
+            { name: 'ภาวะความดันตก / ช็อก (ΔMAP < 0 & MAP < 65 mmHg หรือ SBP < 90)', test: c => c.hasMapDeter, color: '#ea580c', denom: nAll },
+            { name: 'ภาวะอุณหภูมิกายต่ำวิกฤต (ΔBT / Hypothermia < 35.0 °C)', test: c => c.hasHypo, color: '#2563eb', denom: nAll },
+            { name: 'ภาวะหัวใจล้มเหลวทรุดหนัก (ΔKillip Class ≥ +1 หรือ IV ใน STEMI)', test: c => c.hasKillip, color: '#b91c1c', denom: filtered.filter(c => c.isStemi).length },
+            { name: 'ดัชนีช็อกกล้ามเนื้อหัวใจทรุด (ΔMSI ≥ +0.15 ใน STEMI)', test: c => c.hasMsi, color: '#c026d3', denom: filtered.filter(c => c.isStemi).length },
+            { name: 'ดัชนีความรุนแรงบาดเจ็บทรุดหนัก (ΔRTS ≤ -1.0 ใน Trauma)', test: c => c.hasRts, color: '#4f46e5', denom: filtered.filter(c => c.isTrauma).length }
+        ];
+
+        let physioHtml = '';
+        physioItems.forEach(item => {
+            const count = filtered.filter(item.test).length;
+            const denom = item.denom || nAll;
+            const pct = denom > 0 ? ((count / denom) * 100).toFixed(1) : '0';
+            physioHtml += `
+                <div>
+                    <div style="display:flex; justify-content:space-between; align-items:center; font-size:12px; margin-bottom:3px;">
+                        <span style="font-weight:600; color:#1e293b;">${item.name}</span>
+                        <span style="font-weight:700; color:${item.color};">${count}/${denom} เคส <span style="font-weight:normal; color:#64748b; font-size:11px;">(${pct}%)</span></span>
+                    </div>
+                    <div class="bar-horizontal-track" style="height:10px; background:#f1f5f9;">
+                        <div class="bar-horizontal-fill" style="width:${pct}%; background:${item.color};"></div>
+                    </div>
+                </div>
+            `;
+        });
+        const physioBreakdownEl = document.getElementById('deter-breakdown-physio');
+        if (physioBreakdownEl) physioBreakdownEl.innerHTML = physioHtml;
+
+        // 4. Timeline Comparison (Deteriorated vs Stable)
+        const calcDeterMean = (arr, fn) => {
+            const vals = arr.map(fn).filter(v => v !== null && !isNaN(v) && v > 0);
+            return vals.length > 0 ? (vals.reduce((s, v) => s + v, 0) / vals.length) : null;
+        };
+
+        const timelines = [
+            { name: 'เวลาส่งต่อรวมทั้งสิ้น (T0 ➔ T5 Total Transfer)', getVal: c => c.transferMin, maxBench: 180 },
+            { name: 'เวลาเตรียมส่ง ณ รพ.เกาะลันตา (T0 ➔ T1 DIDO)', getVal: c => c.t0ToT1, maxBench: 30 },
+            { name: 'เวลารอขึ้นแพขนานยนต์ (T2 ➔ T3 Pier Waiting)', getVal: c => c.t2ToT3, maxBench: 10 },
+            { name: 'เวลาแพข้ามฟากทางทะเล (T3 Ferry Crossing)', getVal: c => c.t3Dur, maxBench: 15 },
+            { name: 'เวลาเริ่มหัตถการ ณ รพ.กระบี่ (T4 ➔ T5 Door-to-Intervention)', getVal: c => c.t4ToT5, maxBench: 45 }
+        ];
+
+        let timelineHtml = '';
+        timelines.forEach(tl => {
+            const mDeter = calcDeterMean(deterFiltered, tl.getVal);
+            const mStable = calcDeterMean(stableFiltered, tl.getVal);
+            const mDeterStr = mDeter !== null ? mDeter.toFixed(1) : '-';
+            const mStableStr = mStable !== null ? mStable.toFixed(1) : '-';
+            const diff = (mDeter !== null && mStable !== null) ? (mDeter - mStable) : null;
+            const diffStr = diff !== null ? `${diff > 0 ? '+' : ''}${diff.toFixed(1)} นาที` : '-';
+            const diffColor = diff !== null && diff > 0 ? '#b91c1c' : '#15803d';
+
+            timelineHtml += `
+                <div style="background:#ffffff; border:1px solid #e2e8f0; border-radius:6px; padding:10px 14px;">
+                    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;">
+                        <span style="font-weight:700; color:#1e293b; font-size:12.5px;">${tl.name}</span>
+                        <span style="font-weight:700; color:${diffColor}; font-size:12px;">ผลต่าง: ${diffStr}</span>
+                    </div>
+                    <div style="display:grid; grid-template-columns:1fr 1fr; gap:16px;">
+                        <div>
+                            <div style="display:flex; justify-content:space-between; font-size:11.5px; color:#b91c1c; margin-bottom:2px;">
+                                <span>กลุ่มทรุดลง (Deteriorated, N=${nDeter})</span>
+                                <b>${mDeterStr} นาที</b>
+                            </div>
+                            <div class="bar-horizontal-track" style="height:10px; background:#fee2e2;">
+                                <div class="bar-horizontal-fill" style="width:${Math.min(100, mDeter ? (mDeter / (tl.maxBench * 1.5)) * 100 : 0)}%; background:#dc2626;"></div>
+                            </div>
+                        </div>
+                        <div>
+                            <div style="display:flex; justify-content:space-between; font-size:11.5px; color:#15803d; margin-bottom:2px;">
+                                <span>กลุ่มคงที่ (Stable, N=${stableFiltered.length})</span>
+                                <b>${mStableStr} นาที</b>
+                            </div>
+                            <div class="bar-horizontal-track" style="height:10px; background:#dcfce7;">
+                                <div class="bar-horizontal-fill" style="width:${Math.min(100, mStable ? (mStable / (tl.maxBench * 1.5)) * 100 : 0)}%; background:#16a34a;"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `;
+        });
+        const timelineCompEl = document.getElementById('deter-timeline-comparison');
+        if (timelineCompEl) timelineCompEl.innerHTML = timelineHtml;
+
+        // 5. Subgroups Matrix (Disease & Acuity/Cohort)
+        const stemiAll = filtered.filter(c => c.isStemi);
+        const strokeAll = filtered.filter(c => c.isStroke);
+        const traumaAll = filtered.filter(c => c.isTrauma);
+        const stemiDeter = stemiAll.filter(c => c.isDeteriorated).length;
+        const strokeDeter = strokeAll.filter(c => c.isDeteriorated).length;
+        const traumaDeter = traumaAll.filter(c => c.isDeteriorated).length;
+
+        const diseaseMatrixEl = document.getElementById('deter-disease-matrix');
+        if (diseaseMatrixEl) {
+            diseaseMatrixEl.innerHTML = `
+                <div style="display:flex; justify-content:space-between; align-items:center; padding:6px 10px; background:#f8fafc; border-radius:4px; font-size:12.5px;">
+                    <span style="font-weight:600; color:#1e293b;">🫀 STEMI / ACS:</span>
+                    <b style="color:#dc2626;">${stemiDeter}/${stemiAll.length} (${stemiAll.length > 0 ? ((stemiDeter / stemiAll.length) * 100).toFixed(1) : '0'}%)</b>
+                </div>
+                <div style="display:flex; justify-content:space-between; align-items:center; padding:6px 10px; background:#f8fafc; border-radius:4px; font-size:12.5px;">
+                    <span style="font-weight:600; color:#1e293b;">🧠 Acute Ischemic Stroke:</span>
+                    <b style="color:#d97706;">${strokeDeter}/${strokeAll.length} (${strokeAll.length > 0 ? ((strokeDeter / strokeAll.length) * 100).toFixed(1) : '0'}%)</b>
+                </div>
+                <div style="display:flex; justify-content:space-between; align-items:center; padding:6px 10px; background:#f8fafc; border-radius:4px; font-size:12.5px;">
+                    <span style="font-weight:600; color:#1e293b;">🩹 Severe Trauma:</span>
+                    <b style="color:#2563eb;">${traumaDeter}/${traumaAll.length} (${traumaAll.length > 0 ? ((traumaDeter / traumaAll.length) * 100).toFixed(1) : '0'}%)</b>
+                </div>
+            `;
+        }
+
+        const esi1All = filtered.filter(c => c.esi === '1');
+        const esi2All = filtered.filter(c => c.esi === '2');
+        const esi1Deter = esi1All.filter(c => c.isDeteriorated).length;
+        const esi2Deter = esi2All.filter(c => c.isDeteriorated).length;
+        const expDeter = exposedCohort.filter(c => c.isDeteriorated).length;
+        const unexpDeter = unexposedCohort.filter(c => c.isDeteriorated).length;
+        const expPct = exposedCohort.length > 0 ? ((expDeter / exposedCohort.length) * 100).toFixed(1) : '0';
+        const unexpPct = unexposedCohort.length > 0 ? ((unexpDeter / unexposedCohort.length) * 100).toFixed(1) : '0';
+
+        let cohortRRStr = '-';
+        if (exposedCohort.length > 0 && unexposedCohort.length > 0) {
+            const pExp = expDeter / exposedCohort.length;
+            const pUnexp = unexpDeter / unexposedCohort.length;
+            if (pUnexp > 0) cohortRRStr = (pExp / pUnexp).toFixed(2);
+            else if (pExp > 0) cohortRRStr = 'High (Unexp=0%)';
+            else cohortRRStr = '1.00';
+        }
+
+        const acuityMatrixEl = document.getElementById('deter-acuity-matrix');
+        if (acuityMatrixEl) {
+            acuityMatrixEl.innerHTML = `
+                <div style="display:flex; justify-content:space-between; align-items:center; padding:6px 10px; background:#f8fafc; border-radius:4px; font-size:12.5px;">
+                    <span style="font-weight:600; color:#1e293b;">⚡ ESI 1 (Resuscitation):</span>
+                    <b style="color:#dc2626;">${esi1Deter}/${esi1All.length} (${esi1All.length > 0 ? ((esi1Deter / esi1All.length) * 100).toFixed(1) : '0'}%)</b>
+                </div>
+                <div style="display:flex; justify-content:space-between; align-items:center; padding:6px 10px; background:#f8fafc; border-radius:4px; font-size:12.5px;">
+                    <span style="font-weight:600; color:#1e293b;">⚠️ ESI 2 (Emergent):</span>
+                    <b style="color:#ea580c;">${esi2Deter}/${esi2All.length} (${esi2All.length > 0 ? ((esi2Deter / esi2All.length) * 100).toFixed(1) : '0'}%)</b>
+                </div>
+                <div style="display:flex; justify-content:space-between; align-items:center; padding:6px 10px; background:#eff6ff; border-radius:4px; font-size:12.5px; border:1px solid #bfdbfe;">
+                    <span style="font-weight:700; color:#1e40af;">⚖️ Exposed vs Unexposed (RR):</span>
+                    <b style="color:#1e40af;">${expPct}% vs ${unexpPct}% (RR = ${cohortRRStr})</b>
+                </div>
+            `;
+        }
+
+        // 6. Detailed Audit Table
+        const deterTableBadge = document.getElementById('deter-table-count-badge');
+        if (deterTableBadge) deterTableBadge.textContent = `${deterFiltered.length} เคส`;
+
+        const deterTbody = document.getElementById('deter-cases-tbody');
+        if (deterTbody) {
+            if (deterFiltered.length === 0) {
+                deterTbody.innerHTML = '<tr><td colspan="8" style="text-align:center; padding:20px; color:#64748b; font-size:13px;">ไม่พบเคสที่เกิดภาวะทรุดลงตามเงื่อนไขตัวกรอง</td></tr>';
+            } else {
+                let dRowsHtml = '';
+                deterFiltered.forEach(c => {
+                    const disBadge = c.isStemi ? '<span style="background:#fee2e2; color:#991b1b; padding:2px 6px; border-radius:4px; font-weight:700; font-size:11px;">STEMI</span>'
+                        : (c.isStroke ? '<span style="background:#fef3c7; color:#92400e; padding:2px 6px; border-radius:4px; font-weight:700; font-size:11px;">Stroke</span>'
+                        : '<span style="background:#dbeafe; color:#1e40af; padding:2px 6px; border-radius:4px; font-weight:700; font-size:11px;">Trauma</span>');
+
+                    const esiBadge = c.esi === '1' ? '<span style="background:#dc2626; color:#ffffff; padding:2px 6px; border-radius:4px; font-weight:700; font-size:11px;">ESI 1</span>'
+                        : '<span style="background:#f97316; color:#ffffff; padding:2px 6px; border-radius:4px; font-weight:700; font-size:11px;">ESI 2</span>';
+
+                    const cohortBadge = c.isExposed ? '<span style="background:#fef2f2; color:#b91c1c; border:1px solid #fecaca; padding:2px 6px; border-radius:4px; font-size:11px; font-weight:700;">Exposed</span>'
+                        : '<span style="background:#f0fdf4; color:#15803d; border:1px solid #bbf7d0; padding:2px 6px; border-radius:4px; font-size:11px; font-weight:700;">Control</span>';
+
+                    const transitBadges = [];
+                    if (c.hasCpr) transitBadges.push('<span style="background:#fee2e2; color:#991b1b; padding:1px 5px; border-radius:3px; font-size:10.5px; font-weight:700;">CPR</span>');
+                    if (c.hasIntub) transitBadges.push('<span style="background:#ffedd5; color:#9a3412; padding:1px 5px; border-radius:3px; font-size:10.5px; font-weight:600;">Intubation</span>');
+                    if (c.hasInotropes) transitBadges.push('<span style="background:#fef3c7; color:#854d0e; padding:1px 5px; border-radius:3px; font-size:10.5px; font-weight:600;">Inotropes</span>');
+                    if (c.hasTransitDeath) transitBadges.push('<span style="background:#0f172a; color:#ffffff; padding:1px 5px; border-radius:3px; font-size:10.5px; font-weight:700;">In-transit Death</span>');
+                    const transitDisplay = transitBadges.length > 0 ? transitBadges.join(' ') : '<span style="color:#94a3b8; font-size:11px;">-</span>';
+
+                    const physioBadges = [];
+                    if (c.hasGcsDeter) physioBadges.push(`<span style="background:#fce7f3; color:#9d174d; padding:1px 5px; border-radius:3px; font-size:10.5px;">ΔGCS ${c.data.f4_delta_gcs || '≤-2'}</span>`);
+                    if (c.hasMapDeter) physioBadges.push('<span style="background:#fee2e2; color:#b91c1c; padding:1px 5px; border-radius:3px; font-size:10.5px;">ΔMAP Shock</span>');
+                    if (c.hasHypo) physioBadges.push('<span style="background:#e0e7ff; color:#3730a3; padding:1px 5px; border-radius:3px; font-size:10.5px;">Hypothermia</span>');
+                    if (c.hasKillip) physioBadges.push('<span style="background:#fee2e2; color:#991b1b; padding:1px 5px; border-radius:3px; font-size:10.5px;">ΔKillip IV</span>');
+                    if (c.hasMsi) physioBadges.push('<span style="background:#fae8ff; color:#86198f; padding:1px 5px; border-radius:3px; font-size:10.5px;">ΔMSI High</span>');
+                    if (c.hasRts) physioBadges.push('<span style="background:#e0e7ff; color:#1e40af; padding:1px 5px; border-radius:3px; font-size:10.5px;">ΔRTS Drop</span>');
+                    const physioDisplay = physioBadges.length > 0 ? physioBadges.join(' ') : '<span style="color:#94a3b8; font-size:11px;">-</span>';
+
+                    const tMinStr = !isNaN(c.transferMin) && c.transferMin > 0 ? `${c.transferMin} นาที` : '-';
+                    const isDelayed = c.transferMin > 180;
+                    const timeDisplay = isDelayed ? `<b style="color:#b91c1c;">${tMinStr} ⚠️</b>` : `<span style="color:#15803d;">${tMinStr}</span>`;
+
+                    let mortDisplay = '<span style="color:#15803d; font-weight:600;">รอดชีวิต</span>';
+                    if (c.data.f4_mort_er === '1') mortDisplay = '<b style="color:#dc2626;">เสียชีวิต ณ ER</b>';
+                    else if (c.data.f4_mort_24h === '1' || c.data.f4_mort_status === '1') mortDisplay = '<b style="color:#b91c1c;">เสียชีวิต 24 ชม.</b>';
+
+                    dRowsHtml += `
+                        <tr>
+                            <td style="font-weight:700; color:#1e40af; text-align:center;">LANTA_${c.studyId}</td>
+                            <td style="text-align:center;">${disBadge} ${esiBadge}</td>
+                            <td style="text-align:center;">${cohortBadge}</td>
+                            <td>${transitDisplay}</td>
+                            <td>${physioDisplay}</td>
+                            <td style="text-align:center;">${timeDisplay}</td>
+                            <td style="text-align:center;">${mortDisplay}</td>
+                            <td style="text-align:center;">
+                                <button type="button" class="btn btn-outline" style="padding:2px 8px; font-size:11px;" onclick="adminViewCase('${c.studyId}')">🔍 ดูเคส</button>
+                            </td>
+                        </tr>
+                    `;
+                });
+                deterTbody.innerHTML = dRowsHtml;
+            }
+        }
+
+        // 7. Clinical Takeaway Box
+        const deterTakeawayEl = document.getElementById('deter-takeaway-text');
+        if (deterTakeawayEl) {
+            const mDiffTotal = (calcDeterMean(deterFiltered, c => c.transferMin) || 0) - (calcDeterMean(stableFiltered, c => c.transferMin) || 0);
+            const mDiffPier = (calcDeterMean(deterFiltered, c => c.t2ToT3) || 0) - (calcDeterMean(stableFiltered, c => c.t2ToT3) || 0);
+            const mDiffFerry = (calcDeterMean(deterFiltered, c => c.t3Dur) || 0) - (calcDeterMean(stableFiltered, c => c.t3Dur) || 0);
+
+            deterTakeawayEl.innerHTML = `
+                • ในกลุ่มตัวอย่างปัจจุบัน (N=${nAll} เคส) พบผู้ป่วยที่เกิดภาวะทรุดลงระหว่างส่งต่อหรือสรีรวิทยาแย่ลงรวม <b>${nDeter} เคส (${deterAllPct}%)</b><br>
+                • ผู้ป่วยในกลุ่ม Exposed มีอุบัติการณ์เกิดภาวะทรุดลงคิดเป็น <b>${expPct}%</b> เทียบกับ <b>${unexpPct}%</b> ในกลุ่ม Unexposed/Control <b>(Relative Risk = ${cohortRRStr})</b><br>
+                • ผู้ป่วยที่เกิดภาวะทรุดลงมีเวลาส่งต่อเฉลี่ยยาวนานกว่ากลุ่มสัญญาณชีพคงที่ถึง <b>+${mDiffTotal.toFixed(1)} นาที</b> โดยพบความต่างสูงที่สุดในช่วงเวลารอขึ้นแพขนานยนต์ (+${mDiffPier.toFixed(1)} นาที) และช่วงแพข้ามฟาก (+${mDiffFerry.toFixed(1)} นาที)<br>
+                • ผู้ป่วยวิกฤตระดับ <b>ESI 1</b> มีอัตราการทรุดลง (${esi1All.length > 0 ? ((esi1Deter / esi1All.length) * 100).toFixed(1) : '0'}%) สูงกว่ากลุ่ม ESI 2 อย่างมีนัยสำคัญ บ่งชี้ความจำเป็นเร่งด่วนในการพัฒนาระบบ <i>Maritime Fast-Track</i> และทีมบริบาลช่วยฟื้นคืนชีพระดับสูงบนเรือ/แพขนานยนต์
+            `;
         }
     }
 

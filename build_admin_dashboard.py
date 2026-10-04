@@ -156,6 +156,9 @@ def get_admin_dashboard_html():
                 <button type="button" class="admin-tab-btn" id="admin-tab-btn-sec3" onclick="switchAdminSubTab('sec3')">
                     <span>📉 Sec 03: Clinical Outcomes & RR</span>
                 </button>
+                <button type="button" class="admin-tab-btn" id="admin-tab-btn-deterioration" onclick="switchAdminSubTab('deterioration')">
+                    <span>🚨 รายงาน Deterioration</span>
+                </button>
             </div>
 
             <!-- Global Cohort Filter Toolbar (มีผลต่อการวิเคราะห์ทุกแท็บ) -->
@@ -229,6 +232,14 @@ def get_admin_dashboard_html():
                             <div style="font-size: 12.5px; color: #64748b; font-weight: 600;">อัตรารอดชีวิต 24 ชม. รพ.กระบี่</div>
                             <div id="stat-survival-rate" style="font-size: 26px; font-weight: 700; color: #16a34a; line-height: 1.2; margin-top: 2px;">100%</div>
                             <div id="stat-survival-detail" style="font-size: 11.5px; color: #94a3b8;">Early Survival Outcome</div>
+                        </div>
+                        <div style="background: #ffffff; border: 1px solid #cbd5e1; border-left: 4px solid #e11d48; border-radius: 6px; padding: 10px 14px; box-shadow: 0 1px 3px rgba(0,0,0,0.03); cursor: pointer;" onclick="switchAdminSubTab('deterioration')" title="คลิกเพื่อดูรายงานภาวะทรุดลงอย่างละเอียด">
+                            <div style="display: flex; justify-content: space-between; align-items: center;">
+                                <div style="font-size: 12.5px; color: #64748b; font-weight: 600;">ผู้ป่วยทรุดหนัก (Deterioration)</div>
+                                <span style="font-size: 10.5px; color: #be123c; font-weight: 700;">ดูรายงาน ➔</span>
+                            </div>
+                            <div id="stat-deter-count" style="font-size: 26px; font-weight: 700; color: #e11d48; line-height: 1.2; margin-top: 2px;">0</div>
+                            <div id="stat-deter-pct" style="font-size: 11.5px; color: #94a3b8;">0% เกิด AE หรือสรีรวิทยาแย่ลง</div>
                         </div>
                     </div>
 
@@ -690,6 +701,170 @@ def get_admin_dashboard_html():
                             💡 บทสรุปการวิเคราะห์ทางระบาดวิทยา (Epidemiological Interpretation Takeaway)
                         </div>
                         <div id="sec3-takeaway-text" style="font-size: 13px; color: #334155; line-height: 1.5;">
+                            กำลังประมวลผลข้อมูลใน Cohort...
+                        </div>
+                    </div>
+                </div>
+
+                <!-- ========================================== -->
+                <!-- TAB 6: CLINICAL DETERIORATION REPORT       -->
+                <!-- ========================================== -->
+                <div id="admin-tab-content-deterioration" class="admin-tab-pane" style="display:none;">
+                    <!-- Research Banner -->
+                    <div class="research-banner" style="background: linear-gradient(135deg, #fff1f2 0%, #ffe4e6 100%); border: 1px solid #fecdd3; border-left: 5px solid #e11d48;">
+                        <div>
+                            <div style="font-size: 11.5px; font-weight: 800; color: #be123c; letter-spacing: 0.5px; text-transform: uppercase;">
+                                🚨 CLINICAL SAFETY & ADVERSE EVENTS • "Deterioration Analysis Report"
+                            </div>
+                            <div style="font-size: 16px; font-weight: 700; color: #881337; margin-top: 2px;">
+                                รายงานวิเคราะห์ภาวะผู้ป่วยทรุดหนักและการเปลี่ยนแปลงสรีรวิทยาระหว่างส่งต่อ
+                            </div>
+                            <div style="font-size: 12.5px; color: #9f1239; opacity: 0.9; margin-top: 2px;">
+                                เจาะลึกอุบัติการณ์ภาวะแทรกซ้อนวิกฤตระหว่างเดินทาง (In-Transit Adverse Events) และการทรุดตัวทางสรีรวิทยา (Physiological Deterioration) เปรียบเทียบความสัมพันธ์กับความล่าช้าในการส่งต่อทางทะเล
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- KPI Grid for Deterioration -->
+                    <div class="research-kpi-grid" style="grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));">
+                        <div class="research-card" style="border-left: 4px solid #dc2626;">
+                            <div style="font-size: 12px; font-weight: 600; color: #64748b;">ผู้ป่วยที่เกิดภาวะทรุดรวม (Composite Deterioration)</div>
+                            <div id="deter-kpi-total" style="font-size: 26px; font-weight: 800; color: #dc2626; margin-top: 2px;">0</div>
+                            <div id="deter-kpi-total-sub" style="font-size: 11.5px; color: #94a3b8;">0% • ทรุดระหว่างทางหรือสรีรวิทยาแย่ลง</div>
+                        </div>
+                        <div class="research-card" style="border-left: 4px solid #ea580c;">
+                            <div style="font-size: 12px; font-weight: 600; color: #64748b;">ทรุดหนักระหว่างเดินทาง (In-Transit AE)</div>
+                            <div id="deter-kpi-transit" style="font-size: 26px; font-weight: 800; color: #ea580c; margin-top: 2px;">0</div>
+                            <div id="deter-kpi-transit-sub" style="font-size: 11.5px; color: #94a3b8;">0% • เกิดบนรถพยาบาลหรือบนแพ</div>
+                        </div>
+                        <div class="research-card" style="border-left: 4px solid #d97706;">
+                            <div style="font-size: 12px; font-weight: 600; color: #64748b;">สรีรวิทยาแย่ลงเมื่อถึง รพ.กระบี่ (Physiological)</div>
+                            <div id="deter-kpi-physio" style="font-size: 26px; font-weight: 800; color: #d97706; margin-top: 2px;">0</div>
+                            <div id="deter-kpi-physio-sub" style="font-size: 11.5px; color: #94a3b8;">0% • ΔGCS ≤ -2, ΔMAP ช็อก, ΔKillip, ΔRTS</div>
+                        </div>
+                        <div class="research-card" style="border-left: 4px solid #7c3aed;">
+                            <div style="font-size: 12px; font-weight: 600; color: #64748b;">หัตถการช่วยชีวิตฉุกเฉิน (CPR / Intubation)</div>
+                            <div id="deter-kpi-resusc" style="font-size: 26px; font-weight: 800; color: #7c3aed; margin-top: 2px;">0</div>
+                            <div id="deter-kpi-resusc-sub" style="font-size: 11.5px; color: #94a3b8;">0% • ปั๊มหัวใจหรือใส่ท่อช่วยหายใจด่วน</div>
+                        </div>
+                        <div class="research-card" style="border-left: 4px solid #475569;">
+                            <div style="font-size: 12px; font-weight: 600; color: #64748b;">เสียชีวิต 24 ชม. ในกลุ่มทรุด (Mortality in Deteriorated)</div>
+                            <div id="deter-kpi-mort" style="font-size: 26px; font-weight: 800; color: #1e293b; margin-top: 2px;">0</div>
+                            <div id="deter-kpi-mort-sub" style="font-size: 11.5px; color: #94a3b8;">0% • อัตราเสียชีวิตกลุ่มทรุดหนัก</div>
+                        </div>
+                    </div>
+
+                    <!-- Dual Breakdown Section -->
+                    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(420px, 1fr)); gap: 14px; margin-bottom: 14px;">
+                        <!-- Panel 1: In-Transit Adverse Events (Form 2) -->
+                        <div class="research-card">
+                            <div style="font-size: 13.5px; font-weight: 700; color: #991b1b; margin-bottom: 4px; display: flex; align-items: center; gap: 6px;">
+                                <span>🚑 เหตุการณ์ไม่พึงประสงค์ระหว่างเดินทาง (In-Transit Adverse Events)</span>
+                            </div>
+                            <div style="font-size: 11.5px; color: #64748b; margin-bottom: 12px;">
+                                แจกแจงอุบัติการณ์ของภาวะวิกฤตที่เกิดขึ้นบนรถพยาบาลหรือระหว่างข้ามแพขนานยนต์ (Form 2 หมวด 5)
+                            </div>
+                            <div id="deter-breakdown-transit" style="display: flex; flex-direction: column; gap: 10px;">
+                                <!-- Populated by JS -->
+                            </div>
+                        </div>
+
+                        <!-- Panel 2: Physiological Deterioration Components (Form 4) -->
+                        <div class="research-card">
+                            <div style="font-size: 13.5px; font-weight: 700; color: #9a3412; margin-bottom: 4px; display: flex; align-items: center; gap: 6px;">
+                                <span>🩺 องค์ประกอบการทรุดตัวทางสรีรวิทยา (Physiological Parameters Delta)</span>
+                            </div>
+                            <div style="font-size: 11.5px; color: #64748b; margin-bottom: 12px;">
+                                การเปลี่ยนแปลงของสัญญาณชีพและคะแนนความรุนแรงเปรียบเทียบ รพ.เกาะลันตา ➔ รพ.กระบี่ (Form 4 หมวด 2)
+                            </div>
+                            <div id="deter-breakdown-physio" style="display: flex; flex-direction: column; gap: 10px;">
+                                <!-- Populated by JS -->
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Comparative Analysis: Delay Correlation & Subgroups -->
+                    <div class="research-card" style="margin-bottom: 14px;">
+                        <div style="font-size: 13.5px; font-weight: 700; color: #1e3a8a; margin-bottom: 4px;">
+                            ⏱️ การวิเคราะห์ความสัมพันธ์ระหว่างระยะเวลาส่งต่อกับภาวะทรุดลง (Transfer Time vs Deterioration)
+                        </div>
+                        <div style="font-size: 11.5px; color: #64748b; margin-bottom: 12px;">
+                            เปรียบเทียบระยะเวลาในแต่ละ Micro-timeline ระหว่างกลุ่มที่เกิดภาวะทรุดลง (Deteriorated) กับกลุ่มที่สัญญาณชีพคงที่ (Stable)
+                        </div>
+                        <div id="deter-timeline-comparison" style="display: flex; flex-direction: column; gap: 12px;">
+                            <!-- Populated by JS -->
+                        </div>
+                    </div>
+
+                    <!-- Subgroups Matrix: Disease & ESI -->
+                    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(360px, 1fr)); gap: 14px; margin-bottom: 14px;">
+                        <!-- By Target Disease -->
+                        <div class="research-card">
+                            <div style="font-size: 13.5px; font-weight: 700; color: #1e3a8a; margin-bottom: 4px;">
+                                🫀 อัตราการทรุดลงจำแนกตามกลุ่มโรค (Deterioration Rate by Disease)
+                            </div>
+                            <div style="font-size: 11.5px; color: #64748b; margin-bottom: 10px;">
+                                ความชุกของการทรุดตัวในผู้ป่วย STEMI, Stroke (AIS) และ Severe Trauma
+                            </div>
+                            <div id="deter-disease-matrix" style="display: flex; flex-direction: column; gap: 8px;">
+                                <!-- Populated by JS -->
+                            </div>
+                        </div>
+
+                        <!-- By Acuity & Cohort -->
+                        <div class="research-card">
+                            <div style="font-size: 13.5px; font-weight: 700; color: #1e3a8a; margin-bottom: 4px;">
+                                🎯 อัตราการทรุดลงจำแนกตาม Triage Acuity & Cohort
+                            </div>
+                            <div style="font-size: 11.5px; color: #64748b; margin-bottom: 10px;">
+                                เปรียบเทียบความเปราะบางระหว่าง ESI 1 vs ESI 2 และกลุ่ม Exposed vs Control
+                            </div>
+                            <div id="deter-acuity-matrix" style="display: flex; flex-direction: column; gap: 8px;">
+                                <!-- Populated by JS -->
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Detailed Audit Table of Deteriorated Cases -->
+                    <div class="research-card" style="margin-bottom: 14px;">
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; flex-wrap: wrap; gap: 8px;">
+                            <div>
+                                <div style="font-size: 13.5px; font-weight: 700; color: #991b1b; display: flex; align-items: center; gap: 6px;">
+                                    <span>📋 บัญชีรายชื่อเคสที่เกิดภาวะทรุดลงทั้งหมด (Deteriorated Cases Audit Directory)</span>
+                                    <span id="deter-table-count-badge" style="font-size: 11px; background: #fee2e2; color: #991b1b; padding: 2px 8px; border-radius: 999px; font-weight: 700;">0 เคส</span>
+                                </div>
+                                <div style="font-size: 11.5px; color: #64748b;">
+                                    รายชื่อผู้ป่วยที่บันทึกพบ Adverse Events หรือเกิดความเสื่อมถอยทางสรีรวิทยา สามารถคลิก "ดูเคส" เพื่อเปิด CRF ตรวจสอบได้ทันที
+                                </div>
+                            </div>
+                        </div>
+                        <div class="table-responsive" style="max-height: 400px; overflow-y: auto;">
+                            <table class="research-table">
+                                <thead>
+                                    <tr>
+                                        <th style="width: 85px;">รหัสเคส</th>
+                                        <th>กลุ่มโรค / ESI</th>
+                                        <th>สถานะ Cohort</th>
+                                        <th>เหตุการณ์ระหว่างทาง (In-Transit AE)</th>
+                                        <th>สรีรวิทยาที่ทรุดลง (Physiological Changes)</th>
+                                        <th>เวลาส่งต่อรวม (T0➔T5)</th>
+                                        <th>ผลลัพธ์ 24 ชม.</th>
+                                        <th style="width: 80px;">การจัดการ</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="deter-cases-tbody">
+                                    <!-- Populated by JS -->
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                    <!-- Clinical & Operational Takeaway -->
+                    <div id="deter-takeaway-box" style="background: #ffffff; border: 1px solid #cbd5e1; border-left: 5px solid #dc2626; border-radius: 8px; padding: 12px 18px;">
+                        <div style="font-weight: 700; color: #991b1b; font-size: 13.5px; margin-bottom: 4px;">
+                            💡 บทสรุปเชิงคลินิกและข้อเสนอแนะเชิงระบบ (Clinical Safety & Policy Takeaway)
+                        </div>
+                        <div id="deter-takeaway-text" style="font-size: 13px; color: #334155; line-height: 1.5;">
                             กำลังประมวลผลข้อมูลใน Cohort...
                         </div>
                     </div>
