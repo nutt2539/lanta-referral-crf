@@ -3100,19 +3100,161 @@ def get_js():
         }
     }
 
+    // =========================================================================
+    // RESEARCH ADMIN DASHBOARD & CLINICAL OBJECTIVES ANALYTICS ENGINE
+    // =========================================================================
+
+    // Tab Switching for Admin Dashboard (5 Sub-tabs)
+    function switchAdminSubTab(tabName) {
+        const tabs = ['overview', 'primary', 'sec1', 'sec2', 'sec3'];
+        tabs.forEach(t => {
+            const btn = document.getElementById('admin-tab-btn-' + t);
+            const pane = document.getElementById('admin-tab-content-' + t);
+            if (btn) {
+                if (t === tabName) btn.classList.add('active');
+                else btn.classList.remove('active');
+            }
+            if (pane) {
+                pane.style.display = (t === tabName) ? 'block' : 'none';
+            }
+        });
+    }
+
+    // Reset Cohort Filters
+    function resetAdminFilters() {
+        const dis = document.getElementById('admin-filter-disease');
+        if (dis) dis.value = '';
+        const esi = document.getElementById('admin-filter-esi');
+        if (esi) esi.value = '';
+        const coh = document.getElementById('admin-filter-cohort');
+        if (coh) coh.value = '';
+        const search = document.getElementById('admin-search-box');
+        if (search) search.value = '';
+        renderAdminDashboard();
+    }
+
+    // Statistical Helpers
+    function calcMean(arr) {
+        if (!arr || arr.length === 0) return 0;
+        return arr.reduce((a, b) => a + b, 0) / arr.length;
+    }
+
+    function calcSD(arr) {
+        if (!arr || arr.length <= 1) return 0;
+        const m = calcMean(arr);
+        const sumSq = arr.reduce((acc, v) => acc + Math.pow(v - m, 2), 0);
+        return Math.sqrt(sumSq / (arr.length - 1));
+    }
+
+    function calcMedian(arr) {
+        if (!arr || arr.length === 0) return 0;
+        const sorted = [...arr].sort((a, b) => a - b);
+        const mid = Math.floor(sorted.length / 2);
+        return sorted.length % 2 !== 0 ? sorted[mid] : (sorted[mid - 1] + sorted[mid]) / 2;
+    }
+
+    function calcIQRStr(arr) {
+        if (!arr || arr.length === 0) return '-';
+        const sorted = [...arr].sort((a, b) => a - b);
+        const q1 = sorted[Math.floor(sorted.length * 0.25)];
+        const q3 = sorted[Math.floor(sorted.length * 0.75)];
+        return `[${q1.toFixed(0)} - ${q3.toFixed(0)}]`;
+    }
+
+    // Case Exposure Checker for Cohort Classification
+    function checkCaseExposure(data) {
+        const isTrauma = Boolean(data.f1_target_disease === 'trauma' || data.f1_inc4_trauma || data.f1_cond_trauma);
+        const totalMin = parseFloat(data.f2_t_total_min || data.f2_eq1_total_transfer);
+        const totalLimit = isTrauma ? 156 : 141;
+        const isTotalDelay = (!isNaN(totalMin) && totalMin > totalLimit) || data.f2_total_delay;
+
+        const isOffHour = data.f2_ferry_operate === '1' || data.f3_ferry_shift === '1';
+        const isRoughSea = data.f3_sea_state === '2' || (parseFloat(data.f3_wave_height) > 2.0);
+        const isLowTide = data.f3_tide_extreme === '1' || data.f3_sandbar_risk === '1' || (parseFloat(data.f3_tide_height) < 1.0);
+        const isTorrentialRain = data.f3_precipitation === '1' && (data.f3_torrential_rain === '1' || parseFloat(data.f3_rainfall_mm) >= 10.0);
+        const isMonsoonSwell = (data.f3_season === '0' && isRoughSea);
+        const isPierCongest = data.f2_pier_congestion === '1';
+
+        return isTotalDelay || isOffHour || isRoughSea || isLowTide || isTorrentialRain || isMonsoonSwell || isPierCongest;
+    }
+
+    // Main Render Function for Research Admin Dashboard
     function renderAdminDashboard() {
         const index = JSON.parse(localStorage.getItem('online_crf_case_index') || '[]');
         const tbody = document.getElementById('admin-cases-tbody');
         if (!tbody) return;
 
-        let totalPatients = index.length;
+        // Load and parse all cases
+        const allCases = [];
+        index.forEach(studyId => {
+            const raw = localStorage.getItem('online_crf_case_' + studyId);
+            if (!raw) return;
+            try {
+                const data = JSON.parse(raw);
+                const isStemi = Boolean(data.f1_target_disease === 'stemi' || data.f1_inc4_stemi || data.f1_cond_stemi);
+                const isStroke = Boolean(data.f1_target_disease === 'ais' || data.f1_inc4_ais || data.f1_cond_stroke);
+                const isTrauma = Boolean(data.f1_target_disease === 'trauma' || data.f1_inc4_trauma || data.f1_cond_trauma);
+                const diseaseKey = isStemi ? 'stemi' : (isStroke ? 'ais' : (isTrauma ? 'trauma' : 'other'));
+                const esi = String(data.f1_esi || data.f1_triage_esi || '');
+                const transferMin = parseFloat(data.f2_t_total_min || data.f2_eq1_total_transfer);
+                const isExposed = checkCaseExposure(data);
+
+                allCases.push({
+                    studyId: studyId,
+                    displayId: 'LANTA_' + studyId,
+                    hn: data.f1_hn || '-',
+                    referId: data.f1_refer_id || '-',
+                    age: data.f1_age || '',
+                    sex: data.f1_sex || '',
+                    esi: esi,
+                    isStemi: isStemi,
+                    isStroke: isStroke,
+                    isTrauma: isTrauma,
+                    diseaseKey: diseaseKey,
+                    transferMin: transferMin,
+                    isExposed: isExposed,
+                    data: data
+                });
+            } catch(e) {}
+        });
+
+        // Read active filters
+        const filterDisease = document.getElementById('admin-filter-disease')?.value || '';
+        const filterEsi = document.getElementById('admin-filter-esi')?.value || '';
+        const filterCohort = document.getElementById('admin-filter-cohort')?.value || '';
+        const query = (document.getElementById('admin-search-box')?.value || '').toLowerCase().trim();
+
+        // Filter cases
+        const filtered = allCases.filter(c => {
+            if (filterDisease && c.diseaseKey !== filterDisease) return false;
+            if (filterEsi && c.esi !== filterEsi) return false;
+            if (filterCohort === 'exposed' && !c.isExposed) return false;
+            if (filterCohort === 'unexposed' && c.isExposed) return false;
+            if (query) {
+                const matchId = c.displayId.toLowerCase().includes(query) || c.studyId.toLowerCase().includes(query);
+                const matchHn = c.hn.toLowerCase().includes(query);
+                const matchRef = c.referId.toLowerCase().includes(query);
+                if (!matchId && !matchHn && !matchRef) return false;
+            }
+            return true;
+        });
+
+        // Update global filter badges
+        const badgeCount = document.getElementById('admin-filter-count-badge');
+        const badgeTotal = document.getElementById('admin-total-cases-badge');
+        if (badgeCount) badgeCount.textContent = filtered.length;
+        if (badgeTotal) badgeTotal.textContent = allCases.length;
+
+        // =====================================================================
+        // TAB 1: OVERVIEW & CASE DIRECTORY
+        // =====================================================================
+        let totalPatients = filtered.length;
         let totalTransferMinutes = 0;
         let transferTimeCount = 0;
         let esi1Count = 0;
         let survivalCount = 0;
         let mortalityAssessedCount = 0;
 
-        // Pie Chart Statistics Counters
         let diseaseCounts = { stemi: 0, stroke: 0, trauma: 0, other: 0 };
         let timelinessCounts = { ontime: 0, delay: 0, unknown: 0 };
         let outcomeCounts = { survive: 0, death: 0, pending: 0 };
@@ -3120,32 +3262,21 @@ def get_js():
 
         let rowsHtml = '';
 
-        if (index.length === 0) {
-            tbody.innerHTML = '<tr><td colspan="9" style="text-align: center; padding: 25px; color: #64748b; font-size: 14px;">ยังไม่มีข้อมูลเคสผู้ป่วยในระบบ กดปุ่ม "➕ เคสใหม่" เพื่อเริ่มบันทึก</td></tr>';
+        if (filtered.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="9" style="text-align: center; padding: 25px; color: #64748b; font-size: 14px;">ไม่พบข้อมูลเคสที่ตรงกับเงื่อนไขตัวกรอง (หรือยังไม่มีข้อมูลในระบบ)</td></tr>';
         } else {
-            index.forEach(studyId => {
-                const raw = localStorage.getItem('online_crf_case_' + studyId);
-                if (!raw) return;
-                let data = {};
-                try {
-                    data = JSON.parse(raw);
-                } catch(e) {
-                    return;
-                }
-
-                // Calculations for Stats
-                const esi = data.f1_esi || data.f1_triage_esi || '';
-                if (esi === '1') esi1Count++;
-                if (esi === '1') esiCounts.esi1++;
+            filtered.forEach(c => {
+                const data = c.data;
+                const esi = c.esi;
+                if (esi === '1') { esi1Count++; esiCounts.esi1++; }
                 else if (esi === '2') esiCounts.esi2++;
                 else if (esi === '3') esiCounts.esi3++;
                 else esiCounts.other++;
 
-                const transferMin = parseFloat(data.f2_t_total_min || data.f2_eq1_total_transfer);
-                if (!isNaN(transferMin) && transferMin > 0) {
-                    totalTransferMinutes += transferMin;
+                if (!isNaN(c.transferMin) && c.transferMin > 0) {
+                    totalTransferMinutes += c.transferMin;
                     transferTimeCount++;
-                    if (transferMin <= 180) timelinessCounts.ontime++;
+                    if (c.transferMin <= 180) timelinessCounts.ontime++;
                     else timelinessCounts.delay++;
                 } else {
                     timelinessCounts.unknown++;
@@ -3166,76 +3297,55 @@ def get_js():
                     outcomeCounts.pending++;
                 }
 
-                // Extracted strings
-                const displayId = 'LANTA_' + studyId;
-                const hn = data.f1_hn || '-';
-                const referId = data.f1_refer_id || '-';
-                const age = data.f1_age ? data.f1_age + ' ปี' : '-';
-                const sex = data.f1_sex === '1' ? 'ชาย' : data.f1_sex === '2' ? 'หญิง' : '-';
+                if (c.isStemi) diseaseCounts.stemi++;
+                else if (c.isStroke) diseaseCounts.stroke++;
+                else if (c.isTrauma) diseaseCounts.trauma++;
+                else diseaseCounts.other++;
 
-                // Triage badge
+                // Table row generation
+                const ageStr = c.age ? c.age + ' ปี' : '-';
+                const sexStr = c.sex === '1' ? 'ชาย' : c.sex === '2' ? 'หญิง' : '-';
+
                 let esiBadge = '-';
                 if (esi === '1') esiBadge = '<span class="badge-evaluated" style="background:#fee2e2; color:#b91c1c; font-size:11px;">ESI 1</span>';
                 else if (esi === '2') esiBadge = '<span class="badge-evaluated" style="background:#ffedd5; color:#c2410c; font-size:11px;">ESI 2</span>';
                 else if (esi === '3') esiBadge = '<span class="badge-evaluated" style="background:#fef9c3; color:#a16207; font-size:11px;">ESI 3</span>';
                 else if (esi) esiBadge = '<span class="badge-evaluated" style="background:#f1f5f9; color:#475569; font-size:11px;">ESI ' + esi + '</span>';
 
-                // Condition badges
-                const isCaseStemi = data.f1_target_disease === 'stemi' || data.f1_inc4_stemi || data.f1_cond_stemi;
-                const isCaseStroke = data.f1_target_disease === 'ais' || data.f1_inc4_ais || data.f1_cond_stroke;
-                const isCaseTrauma = data.f1_target_disease === 'trauma' || data.f1_inc4_trauma || data.f1_cond_trauma;
-
-                if (isCaseStemi) diseaseCounts.stemi++;
-                else if (isCaseStroke) diseaseCounts.stroke++;
-                else if (isCaseTrauma) diseaseCounts.trauma++;
-                else diseaseCounts.other++;
-
                 const conds = [];
-                if (isCaseStemi) conds.push('<span style="background:#fee2e2; color:#991b1b; padding:1px 6px; border-radius:4px; font-size:11px; font-weight:600;">STEMI</span>');
-                if (isCaseStroke) conds.push('<span style="background:#fef3c7; color:#92400e; padding:1px 6px; border-radius:4px; font-size:11px; font-weight:600;">Stroke</span>');
-                if (isCaseTrauma) conds.push('<span style="background:#ede9fe; color:#5b21b6; padding:1px 6px; border-radius:4px; font-size:11px; font-weight:600;">Trauma</span>');
+                if (c.isStemi) conds.push('<span style="background:#fee2e2; color:#991b1b; padding:1px 6px; border-radius:4px; font-size:11px; font-weight:600;">STEMI</span>');
+                if (c.isStroke) conds.push('<span style="background:#fef3c7; color:#92400e; padding:1px 6px; border-radius:4px; font-size:11px; font-weight:600;">Stroke</span>');
+                if (c.isTrauma) conds.push('<span style="background:#ede9fe; color:#5b21b6; padding:1px 6px; border-radius:4px; font-size:11px; font-weight:600;">Trauma</span>');
                 if (data.f1_cond_sepsis) conds.push('<span style="background:#e0e7ff; color:#3730a3; padding:1px 6px; border-radius:4px; font-size:11px; font-weight:600;">Sepsis</span>');
-                if (data.f1_cond_arrest) conds.push('<span style="background:#fce7f3; color:#9d174d; padding:1px 6px; border-radius:4px; font-size:11px; font-weight:600;">Cardiac Arrest</span>');
-                if (data.f1_cond_other && data.f1_cond_other_specify) {
-                    conds.push('<span style="background:#f1f5f9; color:#475569; padding:1px 6px; border-radius:4px; font-size:11px;">' + data.f1_cond_other_specify + '</span>');
-                }
+                if (data.f1_cond_arrest) conds.push('<span style="background:#fce7f3; color:#9d174d; padding:1px 6px; border-radius:4px; font-size:11px; font-weight:600;">Arrest</span>');
                 const condHtml = conds.length > 0 ? conds.join(' ') : '<span style="color:#94a3b8;">-</span>';
 
-                // Transfer time
                 let transferHtml = '-';
-                if (!isNaN(transferMin) && transferMin > 0) {
-                    const isDelay = transferMin > 180;
-                    transferHtml = '<b>' + transferMin + '</b> น. ' + (isDelay ? '<span class="badge-evaluated badge-delay" style="font-size:10px;">ล่าช้า</span>' : '<span class="badge-evaluated badge-ontime" style="font-size:10px;">ตามเกณฑ์</span>');
+                if (!isNaN(c.transferMin) && c.transferMin > 0) {
+                    const isDelay = c.transferMin > 180;
+                    transferHtml = '<b>' + c.transferMin + '</b> น. ' + (isDelay ? '<span class="badge-evaluated badge-delay" style="font-size:10px;">ล่าช้า</span>' : '<span class="badge-evaluated badge-ontime" style="font-size:10px;">ตามเกณฑ์</span>');
                 }
 
-                // RTS
                 let rtsHtml = '-';
-                if (isCaseTrauma) {
+                if (c.isTrauma) {
                     const rts1 = data.f1_rts_total || '-';
                     const rts4 = data.f4_rts_total || '-';
                     rtsHtml = rts1 + ' ➔ ' + rts4;
-                } else if (isCaseStroke) {
-                    rtsHtml = '<span style="color:#94a3b8; font-size:11px;">(Stroke: N/A)</span>';
-                } else if (isCaseStemi) {
-                    rtsHtml = '<span style="color:#94a3b8; font-size:11px;">(STEMI: N/A)</span>';
-                }
+                } else if (c.isStroke) rtsHtml = '<span style="color:#94a3b8; font-size:11px;">(Stroke: N/A)</span>';
+                else if (c.isStemi) rtsHtml = '<span style="color:#94a3b8; font-size:11px;">(STEMI: N/A)</span>';
 
-                // Outcome
                 let outcomeHtml = '<span style="color:#94a3b8;">รอผล</span>';
-                if (mortStatus === '0') {
-                    outcomeHtml = '<span class="badge-evaluated badge-ontime" style="background:#dcfce7; color:#15803d; font-size:11px;">✓ รอดชีวิต</span>';
-                } else if (mortStatus === '1') {
-                    outcomeHtml = '<span class="badge-evaluated badge-delay" style="background:#fee2e2; color:#b91c1c; font-size:11px;">✕ เสียชีวิต</span>';
-                }
+                if (mortStatus === '0') outcomeHtml = '<span class="badge-evaluated badge-ontime" style="background:#dcfce7; color:#15803d; font-size:11px;">✓ รอดชีวิต</span>';
+                else if (mortStatus === '1') outcomeHtml = '<span class="badge-evaluated badge-delay" style="background:#fee2e2; color:#b91c1c; font-size:11px;">✕ เสียชีวิต</span>';
 
                 rowsHtml += `
-                    <tr class="admin-case-row" data-id="${studyId}" data-hn="${hn}" data-refer="${referId}" data-esi="${esi}">
-                        <td style="text-align: center; font-weight: 700; color: #1e40af;">${displayId}</td>
+                    <tr class="admin-case-row" data-id="${c.studyId}">
+                        <td style="text-align: center; font-weight: 700; color: #1e40af;">${c.displayId}</td>
                         <td>
-                            <div><b>HN:</b> ${hn}</div>
-                            <div style="font-size: 11.5px; color: #64748b;"><b>Ref:</b> ${referId}</div>
+                            <div><b>HN:</b> ${c.hn}</div>
+                            <div style="font-size: 11.5px; color: #64748b;"><b>Ref:</b> ${c.referId}</div>
                         </td>
-                        <td style="text-align: center;">${age} / ${sex}</td>
+                        <td style="text-align: center;">${ageStr} / ${sexStr}</td>
                         <td style="text-align: center;">${esiBadge}</td>
                         <td>${condHtml}</td>
                         <td style="text-align: center;">${transferHtml}</td>
@@ -3243,15 +3353,9 @@ def get_js():
                         <td style="text-align: center;">${outcomeHtml}</td>
                         <td style="text-align: center;">
                             <div style="display: flex; gap: 4px; justify-content: center;">
-                                <button type="button" class="btn btn-outline" style="padding: 3px 7px; font-size: 11.5px;" onclick="adminViewCase('${studyId}')" title="เปิดดูหรือแก้ไขเคสนี้">
-                                    ✏️ ดู/แก้ไข
-                                </button>
-                                <button type="button" class="btn btn-outline" style="padding: 3px 7px; font-size: 11.5px; color: #1e40af; border-color: #93c5fd;" onclick="adminExportPDF('${studyId}')" title="ส่งออกรายงานข้อมูลคนไข้รายนี้เป็น PDF หรือสั่งพิมพ์">
-                                    📄 PDF
-                                </button>
-                                <button type="button" class="btn btn-outline" style="padding: 3px 7px; font-size: 11.5px; color: #b91c1c; border-color: #fca5a5;" onclick="adminDeleteCase('${studyId}')" title="ลบเคสนี้ออกจากฐานข้อมูล">
-                                    🗑️ ลบ
-                                </button>
+                                <button type="button" class="btn btn-outline" style="padding: 3px 7px; font-size: 11.5px;" onclick="adminViewCase('${c.studyId}')" title="เปิดดูหรือแก้ไขเคสนี้">✏️ ดู/แก้ไข</button>
+                                <button type="button" class="btn btn-outline" style="padding: 3px 7px; font-size: 11.5px; color: #1e40af; border-color: #93c5fd;" onclick="adminExportPDF('${c.studyId}')" title="ส่งออกรายงาน PDF">📄 PDF</button>
+                                <button type="button" class="btn btn-outline" style="padding: 3px 7px; font-size: 11.5px; color: #b91c1c; border-color: #fca5a5;" onclick="adminDeleteCase('${c.studyId}')" title="ลบเคสนี้">🗑️ ลบ</button>
                             </div>
                         </td>
                     </tr>
@@ -3260,7 +3364,7 @@ def get_js():
             tbody.innerHTML = rowsHtml;
         }
 
-        // Update Stat Cards
+        // Update Overview Stat Cards
         const statTotal = document.getElementById('stat-total-patients');
         if (statTotal) statTotal.textContent = totalPatients;
 
@@ -3270,9 +3374,7 @@ def get_js():
             const avg = transferTimeCount > 0 ? (totalTransferMinutes / transferTimeCount).toFixed(1) : '0';
             statMean.innerHTML = avg + ' <span style="font-size: 14px; font-weight: 500;">นาที</span>';
         }
-        if (statDetail) {
-            statDetail.textContent = 'คำนวณจาก ' + transferTimeCount + ' เคส';
-        }
+        if (statDetail) statDetail.textContent = 'คำนวณจาก ' + transferTimeCount + ' เคส';
 
         const statEsi1 = document.getElementById('stat-esi1-count');
         const statEsiPct = document.getElementById('stat-esi1-pct');
@@ -3288,11 +3390,9 @@ def get_js():
             const survPct = mortalityAssessedCount > 0 ? ((survivalCount / mortalityAssessedCount) * 100).toFixed(1) : '-';
             statSurv.textContent = survPct !== '-' ? survPct + '%' : '-';
         }
-        if (statSurvDetail) {
-            statSurvDetail.textContent = 'รอดชีวิต ' + survivalCount + ' / ประเมิน ' + mortalityAssessedCount + ' เคส';
-        }
+        if (statSurvDetail) statSurvDetail.textContent = 'รอดชีวิต ' + survivalCount + ' / ประเมิน ' + mortalityAssessedCount + ' เคส';
 
-        // Render 4 Clinical Research Donut / Pie Charts
+        // Render Overview Donut Charts
         renderDonutChart('pie-chart-disease', 'pie-center-disease', 'pie-legend-disease', [
             { label: 'STEMI', count: diseaseCounts.stemi, color: '#dc2626' },
             { label: 'Stroke', count: diseaseCounts.stroke, color: '#d97706' },
@@ -3322,6 +3422,531 @@ def get_js():
             { label: 'ESI 3 (ปานกลาง)', count: esiCounts.esi3, color: '#ca8a04' },
             { label: 'ESI 4-5/อื่นๆ', count: esiCounts.other, color: '#64748b' }
         ], totalPatients, 'เคส');
+
+        // =====================================================================
+        // TAB 2: PRIMARY OBJECTIVE (Definitive Treatment Benchmarks)
+        // =====================================================================
+        const stemiEvalCases = filtered.filter(c => c.isStemi && (c.data.f4_eval_pci || c.data.f4_pci_d2b_min));
+        const stemiAchieved = stemiEvalCases.filter(c => c.data.f4_eval_pci === 'achieved' || (parseFloat(c.data.f4_pci_d2b_min) > 0 && parseFloat(c.data.f4_pci_d2b_min) <= 180));
+        const stemiD2BTimes = stemiEvalCases.map(c => parseFloat(c.data.f4_pci_d2b_min)).filter(t => !isNaN(t) && t > 0);
+
+        const strokeEvalCases = filtered.filter(c => c.isStroke && (c.data.f4_eval_stroke || c.data.f4_stroke_o2n_min));
+        const strokeAchieved = strokeEvalCases.filter(c => c.data.f4_eval_stroke === 'achieved' || (parseFloat(c.data.f4_stroke_o2n_min) > 0 && parseFloat(c.data.f4_stroke_o2n_min) <= 270));
+        const strokeO2NTimes = strokeEvalCases.map(c => parseFloat(c.data.f4_stroke_o2n_min)).filter(t => !isNaN(t) && t > 0);
+
+        const traumaEvalCases = filtered.filter(c => c.isTrauma && (c.data.f4_eval_trauma || c.data.f4_trauma_d2or_min || c.data.f4_trauma_d2ct_min));
+        const traumaAchieved = traumaEvalCases.filter(c => c.data.f4_eval_trauma === 'achieved' || (parseFloat(c.data.f4_trauma_d2or_min) > 0 && parseFloat(c.data.f4_trauma_d2or_min) <= 180) || (parseFloat(c.data.f4_trauma_d2ct_min) > 0 && parseFloat(c.data.f4_trauma_d2ct_min) <= 150));
+        const traumaORTimes = traumaEvalCases.map(c => parseFloat(c.data.f4_trauma_d2or_min)).filter(t => !isNaN(t) && t > 0);
+        const traumaCTTimes = traumaEvalCases.map(c => parseFloat(c.data.f4_trauma_d2ct_min)).filter(t => !isNaN(t) && t > 0);
+
+        const totalBenchmarkEval = stemiEvalCases.length + strokeEvalCases.length + traumaEvalCases.length;
+        const totalBenchmarkAchieved = stemiAchieved.length + strokeAchieved.length + traumaAchieved.length;
+        const overallAchievePct = totalBenchmarkEval > 0 ? (totalBenchmarkAchieved / totalBenchmarkEval) * 100 : 0;
+
+        // Update Primary Tab Top Cards
+        const primRateEl = document.getElementById('prim-overall-rate');
+        const primDetailEl = document.getElementById('prim-overall-detail');
+        if (primRateEl) primRateEl.textContent = overallAchievePct.toFixed(1) + '%';
+        if (primDetailEl) primDetailEl.textContent = `${totalBenchmarkAchieved} / ${totalBenchmarkEval} เคสที่ได้รับการรักษา`;
+
+        const primCardCombPct = document.getElementById('prim-card-combined-pct');
+        const primCardCombSub = document.getElementById('prim-card-combined-sub');
+        if (primCardCombPct) primCardCombPct.textContent = overallAchievePct.toFixed(1) + '%';
+        if (primCardCombSub) primCardCombSub.textContent = `บรรลุ ${totalBenchmarkAchieved} จาก ${totalBenchmarkEval} เคส`;
+
+        const stemiPct = stemiEvalCases.length > 0 ? (stemiAchieved.length / stemiEvalCases.length) * 100 : 0;
+        const stemiMeanD2B = calcMean(stemiD2BTimes);
+        const primCardStemiPct = document.getElementById('prim-card-stemi-pct');
+        const primCardStemiMean = document.getElementById('prim-card-stemi-mean');
+        if (primCardStemiPct) primCardStemiPct.textContent = `${stemiPct.toFixed(1)}% (${stemiAchieved.length}/${stemiEvalCases.length})`;
+        if (primCardStemiMean) primCardStemiMean.textContent = `เวลาเฉลี่ย: ${stemiMeanD2B > 0 ? stemiMeanD2B.toFixed(0) : '--'} น. (เกณฑ์ ≤ 180 น.)`;
+
+        const strokePct = strokeEvalCases.length > 0 ? (strokeAchieved.length / strokeEvalCases.length) * 100 : 0;
+        const strokeMeanO2N = calcMean(strokeO2NTimes);
+        const primCardStrokePct = document.getElementById('prim-card-stroke-pct');
+        const primCardStrokeMean = document.getElementById('prim-card-stroke-mean');
+        if (primCardStrokePct) primCardStrokePct.textContent = `${strokePct.toFixed(1)}% (${strokeAchieved.length}/${strokeEvalCases.length})`;
+        if (primCardStrokeMean) primCardStrokeMean.textContent = `เวลาเฉลี่ย: ${strokeMeanO2N > 0 ? strokeMeanO2N.toFixed(0) : '--'} น. (เกณฑ์ ≤ 4.5 ชม.)`;
+
+        const traumaPct = traumaEvalCases.length > 0 ? (traumaAchieved.length / traumaEvalCases.length) * 100 : 0;
+        const traumaMeanOR = calcMean(traumaORTimes);
+        const traumaMeanCT = calcMean(traumaCTTimes);
+        const primCardTraumaPct = document.getElementById('prim-card-trauma-pct');
+        const primCardTraumaMean = document.getElementById('prim-card-trauma-mean');
+        if (primCardTraumaPct) primCardTraumaPct.textContent = `${traumaPct.toFixed(1)}% (${traumaAchieved.length}/${traumaEvalCases.length})`;
+        if (primCardTraumaMean) primCardTraumaMean.textContent = `OR: ${traumaMeanOR > 0 ? traumaMeanOR.toFixed(0) + ' น.' : '--'} | CT: ${traumaMeanCT > 0 ? traumaMeanCT.toFixed(0) + ' น.' : '--'}`;
+
+        // Render Chart 1: Achievement Stacked Bars
+        const primChartBars = document.getElementById('prim-chart-bars');
+        if (primChartBars) {
+            const items = [
+                { title: 'รวมทุกกลุ่มโรค (All Definitive Benchmarks)', evalCount: totalBenchmarkEval, achCount: totalBenchmarkAchieved, color: '#16a34a' },
+                { title: 'STEMI: Door-to-Balloon (Primary PCI ≤ 180 น.)', evalCount: stemiEvalCases.length, achCount: stemiAchieved.length, color: '#dc2626' },
+                { title: 'Stroke: Onset-to-Needle (IV rtPA ≤ 4.5 ชม.)', evalCount: strokeEvalCases.length, achCount: strokeAchieved.length, color: '#d97706' },
+                { title: 'Severe Trauma: Emergent OR / CT Completion', evalCount: traumaEvalCases.length, achCount: traumaAchieved.length, color: '#7c3aed' }
+            ];
+            let barsHtml = '';
+            items.forEach(it => {
+                const achRate = it.evalCount > 0 ? (it.achCount / it.evalCount) * 100 : 0;
+                const missRate = it.evalCount > 0 ? 100 - achRate : 0;
+                barsHtml += `
+                    <div>
+                        <div style="display:flex; justify-content:space-between; font-size:12px; margin-bottom:3px;">
+                            <span style="font-weight:600; color:#1e293b;">${it.title}</span>
+                            <span><b>${achRate.toFixed(1)}%</b> บรรลุเกณฑ์ (${it.achCount}/${it.evalCount} เคส)</span>
+                        </div>
+                        <div style="height:14px; background:#fee2e2; border-radius:999px; overflow:hidden; display:flex;">
+                            <div style="width:${achRate}%; background:${it.color}; height:100%; transition:width 0.4s ease;" title="บรรลุเกณฑ์: ${achRate.toFixed(1)}%"></div>
+                            <div style="width:${missRate}%; background:#ef4444; height:100%; opacity:0.85;" title="หลุดเกณฑ์: ${missRate.toFixed(1)}%"></div>
+                        </div>
+                        <div style="display:flex; justify-content:space-between; font-size:10.5px; color:#64748b; margin-top:2px;">
+                            <span>✓ บรรลุเกณฑ์ ${achRate.toFixed(0)}%</span>
+                            <span>✕ หลุดเกณฑ์ ${missRate.toFixed(0)}%</span>
+                        </div>
+                    </div>
+                `;
+            });
+            primChartBars.innerHTML = barsHtml;
+        }
+
+        // Render Chart 2: Actual Mean vs Target Limits
+        const primChartDurations = document.getElementById('prim-chart-durations');
+        if (primChartDurations) {
+            const timeBenchmarks = [
+                { name: 'STEMI: Door-to-Balloon (PCI)', actual: stemiMeanD2B, target: 180, maxScale: 300, unit: 'นาที' },
+                { name: 'Stroke: Onset-to-Needle (rtPA)', actual: strokeMeanO2N, target: 270, maxScale: 400, unit: 'นาที' },
+                { name: 'Severe Trauma: Door-to-OR', actual: traumaMeanOR, target: 180, maxScale: 300, unit: 'นาที' },
+                { name: 'Severe Trauma: Door-to-CT', actual: traumaMeanCT, target: 150, maxScale: 250, unit: 'นาที' }
+            ];
+            let durHtml = '';
+            timeBenchmarks.forEach(tb => {
+                const actPct = tb.actual > 0 ? Math.min((tb.actual / tb.maxScale) * 100, 100) : 0;
+                const tgtPct = (tb.target / tb.maxScale) * 100;
+                const isBreach = tb.actual > tb.target;
+                const color = isBreach ? '#dc2626' : '#16a34a';
+
+                durHtml += `
+                    <div>
+                        <div style="display:flex; justify-content:space-between; font-size:12px; margin-bottom:2px;">
+                            <span style="font-weight:600; color:#1e293b;">${tb.name}</span>
+                            <span style="color:${color}; font-weight:700;">เฉลี่ย ${tb.actual > 0 ? tb.actual.toFixed(0) : '--'} ${tb.unit} <span style="font-size:11px; font-weight:normal; color:#64748b;">(เกณฑ์ ≤ ${tb.target} ${tb.unit})</span></span>
+                        </div>
+                        <div style="height:12px; background:#f1f5f9; border-radius:999px; overflow:hidden; position:relative;">
+                            <div style="width:${actPct}%; background:${color}; height:100%; border-radius:999px; transition:width 0.4s ease;"></div>
+                            <div style="position:absolute; left:${tgtPct}%; top:0; bottom:0; width:2px; background:#0f172a; z-index:2;" title="เส้นเกณฑ์เป้าหมาย ${tb.target} ${tb.unit}"></div>
+                        </div>
+                    </div>
+                `;
+            });
+            primChartDurations.innerHTML = durHtml;
+        }
+
+        // Render Table: Primary Benchmarks Summary
+        const primTableBody = document.getElementById('prim-table-body');
+        if (primTableBody) {
+            const tableRows = [
+                { name: 'STEMI Primary PCI (Door-to-Balloon)', bench: '≤ 180 นาที (Remote Primary PCI)', n: stemiEvalCases.length, ach: stemiAchieved.length, arr: stemiD2BTimes },
+                { name: 'Stroke IV rtPA (Onset-to-Needle)', bench: '≤ 270 นาที (4.5 ชั่วโมง)', n: strokeEvalCases.length, ach: strokeAchieved.length, arr: strokeO2NTimes },
+                { name: 'Trauma Emergent OR (Door-to-OR)', bench: '≤ 180 นาที (Damage Control OR)', n: traumaEvalCases.length, ach: traumaAchieved.length, arr: traumaORTimes },
+                { name: 'Trauma CT Scan (Door-to-CT)', bench: '≤ 150 นาที (CT Completion)', n: traumaEvalCases.length, ach: traumaAchieved.length, arr: traumaCTTimes },
+                { name: 'สรุปรวมทุกหัตถการรักษาจำเพาะ (Combined)', bench: 'บรรลุตามเกณฑ์ของแต่ละโรค', n: totalBenchmarkEval, ach: totalBenchmarkAchieved, arr: [] }
+            ];
+            let tHtml = '';
+            tableRows.forEach(tr => {
+                const achPct = tr.n > 0 ? ((tr.ach / tr.n) * 100).toFixed(1) + '%' : '-';
+                const missN = tr.n - tr.ach;
+                const missPct = tr.n > 0 ? ((missN / tr.n) * 100).toFixed(1) + '%' : '-';
+                const meanStr = tr.arr.length > 0 ? `${calcMean(tr.arr).toFixed(1)} ± ${calcSD(tr.arr).toFixed(1)} น.` : '-';
+                const medStr = tr.arr.length > 0 ? `${calcMedian(tr.arr).toFixed(0)} น. ${calcIQRStr(tr.arr)}` : '-';
+
+                tHtml += `
+                    <tr>
+                        <td style="font-weight:600; color:#1e293b;">${tr.name}</td>
+                        <td style="text-align:center; color:#475569;">${tr.bench}</td>
+                        <td style="text-align:center; font-weight:700;">${tr.n}</td>
+                        <td style="text-align:center; color:#16a34a; font-weight:700;">${tr.ach} (${achPct})</td>
+                        <td style="text-align:center; color:#dc2626; font-weight:700;">${missN} (${missPct})</td>
+                        <td style="text-align:center;">${meanStr}</td>
+                        <td style="text-align:center;">${medStr}</td>
+                    </tr>
+                `;
+            });
+            primTableBody.innerHTML = tHtml;
+        }
+
+        // =====================================================================
+        // TAB 3: SECONDARY OBJECTIVE 01 (Micro-timelines & Breaches)
+        // =====================================================================
+        const arrT01 = filtered.map(c => parseFloat(c.data.f2_t0_1_min)).filter(t => !isNaN(t) && t > 0);
+        const arrT12 = filtered.map(c => parseFloat(c.data.f2_t2_min)).filter(t => !isNaN(t) && t > 0);
+        const arrT23 = filtered.map(c => parseFloat(c.data.f2_t3_min)).filter(t => !isNaN(t) && t > 0);
+        const arrT34 = filtered.map(c => parseFloat(c.data.f2_t4_min)).filter(t => !isNaN(t) && t > 0);
+        const arrT45 = filtered.map(c => parseFloat(c.data.f2_t5_min)).filter(t => !isNaN(t) && t > 0);
+        const arrTotal = filtered.map(c => c.transferMin).filter(t => !isNaN(t) && t > 0);
+
+        const m01 = calcMean(arrT01);
+        const m12 = calcMean(arrT12);
+        const m23 = calcMean(arrT23);
+        const m34 = calcMean(arrT34);
+        const m45 = calcMean(arrT45);
+        const mTotal = calcMean(arrTotal);
+
+        // Breach thresholds
+        const b01 = arrT01.filter(t => t > 60).length;
+        const b12 = arrT12.filter(t => t > 25).length;
+        const b23 = arrT23.filter(t => t > 30).length;
+        const b34 = arrT34.filter(t => t > 45).length;
+        const b45 = arrT45.filter(t => t > 60).length;
+        const bTotal = arrTotal.filter(t => t > 180).length;
+
+        const sec1MeanTotalEl = document.getElementById('sec1-mean-total');
+        const sec1BreachBadgeEl = document.getElementById('sec1-total-breach-badge');
+        if (sec1MeanTotalEl) sec1MeanTotalEl.innerHTML = `${mTotal.toFixed(0)} <span style="font-size: 14px; font-weight: 500;">นาที</span>`;
+        if (sec1BreachBadgeEl) {
+            const bPct = arrTotal.length > 0 ? ((bTotal / arrTotal.length) * 100).toFixed(1) : '0';
+            sec1BreachBadgeEl.textContent = `ล่าช้าเกินเกณฑ์ ${bPct}% (${bTotal}/${arrTotal.length} เคส)`;
+        }
+
+        // Bottleneck identification
+        const segments = [
+            { id: 'T0-T1', name: 'ER เกาะลันตา (Pre-departure)', mean: m01, bench: 60, breaches: b01, arr: arrT01, color: '#3b82f6' },
+            { id: 'T1-T2', name: 'รถวิ่งเกาะ ➔ ท่าแพคลองหมาก', mean: m12, bench: 25, breaches: b12, arr: arrT12, color: '#06b6d4' },
+            { id: 'T2-T3', name: 'รอขึ้นแพขนานยนต์ (Ferry Wait)', mean: m23, bench: 30, breaches: b23, arr: arrT23, color: '#f59e0b' },
+            { id: 'T3-T4', name: 'ข้ามฟากทางทะเล (Sea Crossing)', mean: m34, bench: 45, breaches: b34, arr: arrT34, color: '#8b5cf6' },
+            { id: 'T4-T5', name: 'รถวิ่งแผ่นดินใหญ่ ➔ รพ.กระบี่', mean: m45, bench: 60, breaches: b45, arr: arrT45, color: '#10b981' }
+        ];
+
+        let maxMeanSeg = segments[0];
+        segments.forEach(s => { if (s.mean > maxMeanSeg.mean) maxMeanSeg = s; });
+
+        const bottleneckBadge = document.getElementById('sec1-bottleneck-badge');
+        if (bottleneckBadge) {
+            const share = mTotal > 0 ? ((maxMeanSeg.mean / mTotal) * 100).toFixed(0) : '0';
+            bottleneckBadge.textContent = `⚠️ จุดคอขวดหลัก: ${maxMeanSeg.name} (เฉลี่ย ${maxMeanSeg.mean.toFixed(0)} นาที, ${share}% ของเวลารวม)`;
+        }
+
+        // Render Stacked Horizontal Continuum Bar
+        const stackedBarEl = document.getElementById('sec1-stacked-bar-container');
+        const stackedLegendEl = document.getElementById('sec1-stacked-legend');
+        if (stackedBarEl && stackedLegendEl) {
+            const sumSegs = m01 + m12 + m23 + m34 + m45;
+            let barSegmentsHtml = '';
+            let legendHtml = '';
+            segments.forEach(s => {
+                const segPct = sumSegs > 0 ? (s.mean / sumSegs) * 100 : 20;
+                barSegmentsHtml += `
+                    <div style="width:${segPct}%; background:${s.color}; height:100%; display:flex; align-items:center; justify-content:center; color:#ffffff; font-weight:700; font-size:11px; overflow:hidden; white-space:nowrap;" title="${s.name}: ${s.mean.toFixed(0)} นาที (${segPct.toFixed(0)}%)">
+                        ${s.mean > 0 ? s.mean.toFixed(0) + 'น.' : ''}
+                    </div>
+                `;
+                legendHtml += `
+                    <div style="display:flex; align-items:center; gap:6px;">
+                        <span style="width:10px; height:10px; border-radius:50%; background:${s.color};"></span>
+                        <span><b>${s.id}:</b> ${s.name} (<b>${s.mean.toFixed(0)} น.</b> / ${segPct.toFixed(0)}%)</span>
+                    </div>
+                `;
+            });
+            stackedBarEl.innerHTML = barSegmentsHtml;
+            stackedLegendEl.innerHTML = legendHtml;
+        }
+
+        // Render Breach Bars
+        const sec1BreachBarsEl = document.getElementById('sec1-breach-bars');
+        if (sec1BreachBarsEl) {
+            let bBarsHtml = '';
+            segments.concat([{ id: 'T_Total', name: 'เวลารวมทั้งระบบ (TTotal > 180 น.)', mean: mTotal, bench: 180, breaches: bTotal, arr: arrTotal, color: '#dc2626' }]).forEach(s => {
+                const bPct = s.arr.length > 0 ? (s.breaches / s.arr.length) * 100 : 0;
+                bBarsHtml += `
+                    <div>
+                        <div style="display:flex; justify-content:space-between; font-size:12px; margin-bottom:2px;">
+                            <span style="font-weight:600; color:#1e293b;">${s.id}: ${s.name}</span>
+                            <span style="color:#b91c1c; font-weight:700;">หลุดเกณฑ์ ${bPct.toFixed(1)}% (${s.breaches}/${s.arr.length} เคส)</span>
+                        </div>
+                        <div style="height:10px; background:#f1f5f9; border-radius:999px; overflow:hidden;">
+                            <div style="width:${bPct}%; background:${bPct > 30 ? '#dc2626' : '#f59e0b'}; height:100%; border-radius:999px; transition:width 0.4s ease;"></div>
+                        </div>
+                    </div>
+                `;
+            });
+            sec1BreachBarsEl.innerHTML = bBarsHtml;
+        }
+
+        // Render Table: Micro-Interval Summary
+        const sec1TableBody = document.getElementById('sec1-table-body');
+        if (sec1TableBody) {
+            let sHtml = '';
+            segments.concat([{ id: 'T_Total', name: 'เวลารวมระบบส่งต่อ (T0 ➔ T5)', mean: mTotal, bench: '≤ 180 นาที', breaches: bTotal, arr: arrTotal, color: '#0f766e' }]).forEach(s => {
+                const bPct = s.arr.length > 0 ? ((s.breaches / s.arr.length) * 100).toFixed(1) + '%' : '-';
+                const meanStr = s.arr.length > 0 ? `${calcMean(s.arr).toFixed(1)} ± ${calcSD(s.arr).toFixed(1)} น.` : '-';
+                const medStr = s.arr.length > 0 ? `${calcMedian(s.arr).toFixed(0)} น. ${calcIQRStr(s.arr)}` : '-';
+                const benchStr = typeof s.bench === 'number' ? `≤ ${s.bench} นาที` : s.bench;
+
+                sHtml += `
+                    <tr>
+                        <td style="font-weight:600; color:#1e293b;"><b>${s.id}:</b> ${s.name}</td>
+                        <td style="text-align:center; color:#475569;">${benchStr}</td>
+                        <td style="text-align:center;">${meanStr}</td>
+                        <td style="text-align:center;">${medStr}</td>
+                        <td style="text-align:center; color:#b91c1c; font-weight:700;">${s.breaches} (${bPct})</td>
+                    </tr>
+                `;
+            });
+            sec1TableBody.innerHTML = sHtml;
+        }
+
+        // =====================================================================
+        // TAB 4: SECONDARY OBJECTIVE 02 (Bottlenecks & Delay Triggers)
+        // =====================================================================
+        const delayedCases = filtered.filter(c => !isNaN(c.transferMin) && c.transferMin > 180);
+        const ontimeCases = filtered.filter(c => !isNaN(c.transferMin) && c.transferMin <= 180);
+
+        const triggers = {
+            patient: [
+                { id: 'esi1', name: 'ผู้ป่วยวิกฤตระดับกู้ชีพ (ESI 1)', test: c => c.esi === '1' },
+                { id: 'intub', name: 'ใส่ท่อช่วยหายใจ / ทางเดินหายใจวิกฤต', test: c => c.data.f2_ae_intub === '1' || (parseFloat(c.data.f1_gcs_total) <= 8 && c.data.f1_gcs_total !== '') },
+                { id: 'shock', name: 'ภาวะช็อก / ใช้ยากระตุ้นหัวใจ', test: c => (parseFloat(c.data.f1_sbp) < 90 && c.data.f1_sbp !== '') || c.data.f2_ae_hypotension === '1' },
+                { id: 'elderly', name: 'ผู้ป่วยสูงอายุ (Age > 60 ปี)', test: c => parseFloat(c.age) > 60 }
+            ],
+            operational: [
+                { id: 'offhour', name: 'แพนอกเวลาปกติ (Off-Hour Ferry: 24:00–05:00 น.)', test: c => c.data.f2_ferry_operate === '1' || c.data.f3_ferry_shift === '1' },
+                { id: 'night', name: 'เวรดึกห้องฉุกเฉินเกาะ (Night ED Shift: 00:00–08:00 น.)', test: c => c.data.f1_shift === 'night' || c.data.f3_ed_shift === 'night' },
+                { id: 'queue', name: 'คิวรถติดสะสมหน้าท่าแพ (Pier Congestion)', test: c => c.data.f2_pier_congestion === '1' },
+                { id: 'holiday', name: 'วันหยุดยาว / เทศกาลท่องเที่ยว (Holiday ≥ 3 วัน)', test: c => c.data.f3_holiday === '1' }
+            ],
+            maritime: [
+                { id: 'monsoon', name: 'ฤดูมรสุมตะวันตกเฉียงใต้ (Monsoon: พ.ค.–ต.ค.)', test: c => c.data.f3_season === '0' },
+                { id: 'lowtide', name: 'น้ำลงวิกฤต / สันดอนทราย (Tide < 1.0m / Sandbar)', test: c => c.data.f3_tide_extreme === '1' || c.data.f3_sandbar_risk === '1' || (parseFloat(c.data.f3_tide_height) < 1.0) },
+                { id: 'roughsea', name: 'คลื่นลมแรงในทะเลอันดามัน (Waves > 2.0m)', test: c => c.data.f3_sea_state === '2' || (parseFloat(c.data.f3_wave_height) > 2.0) },
+                { id: 'rain', name: 'พายุฝนตกหนักวิกฤต (Torrential Rain ≥ 10mm/hr)', test: c => c.data.f3_precipitation === '1' && (c.data.f3_torrential_rain === '1' || parseFloat(c.data.f3_rainfall_mm) >= 10.0) }
+            ]
+        };
+
+        // Render Domain Horizontal Bar Charts
+        let topTrigger = { name: '-', count: 0, pct: 0 };
+        ['patient', 'operational', 'maritime'].forEach(domain => {
+            const container = document.getElementById('sec2-bars-' + domain);
+            if (!container) return;
+            let dHtml = '';
+            triggers[domain].forEach(trig => {
+                const count = filtered.filter(trig.test).length;
+                const pct = filtered.length > 0 ? (count / filtered.length) * 100 : 0;
+                if (count > topTrigger.count) {
+                    topTrigger = { name: trig.name, count: count, pct: pct };
+                }
+
+                dHtml += `
+                    <div>
+                        <div style="display:flex; justify-content:space-between; font-size:12px; margin-bottom:2px;">
+                            <span style="color:#1e293b; font-weight:500;">${trig.name}</span>
+                            <span style="font-weight:700; color:#0f172a;">${pct.toFixed(0)}% <span style="font-size:10.5px; color:#64748b; font-weight:normal;">(${count} เคส)</span></span>
+                        </div>
+                        <div class="bar-horizontal-track">
+                            <div class="bar-horizontal-fill" style="width:${pct}%; background:#3b82f6;"></div>
+                        </div>
+                    </div>
+                `;
+            });
+            container.innerHTML = dHtml;
+        });
+
+        const topTrigNameEl = document.getElementById('sec2-top-trigger-name');
+        const topTrigPctEl = document.getElementById('sec2-top-trigger-pct');
+        if (topTrigNameEl) topTrigNameEl.textContent = topTrigger.count > 0 ? topTrigger.name : 'ยังไม่พบข้อมูล';
+        if (topTrigPctEl) topTrigPctEl.textContent = topTrigger.count > 0 ? `พบใน ${topTrigger.pct.toFixed(1)}% (${topTrigger.count}/${filtered.length} เคส)` : 'พบใน 0% ของเคสทั้งหมด';
+
+        // Render Contrast Analysis: Delayed vs On-Time
+        const contrastContainer = document.getElementById('sec2-contrast-container');
+        if (contrastContainer) {
+            const allTrigs = [...triggers.patient, ...triggers.operational, ...triggers.maritime];
+            let cHtml = '';
+            allTrigs.slice(0, 6).forEach(trig => {
+                const countDelay = delayedCases.filter(trig.test).length;
+                const pctDelay = delayedCases.length > 0 ? (countDelay / delayedCases.length) * 100 : 0;
+                const countOntime = ontimeCases.filter(trig.test).length;
+                const pctOntime = ontimeCases.length > 0 ? (countOntime / ontimeCases.length) * 100 : 0;
+
+                cHtml += `
+                    <div style="border-bottom:1px solid #f1f5f9; padding-bottom:8px;">
+                        <div style="font-size:12px; font-weight:600; color:#1e293b; margin-bottom:4px;">${trig.name}</div>
+                        <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px;">
+                            <div>
+                                <div style="display:flex; justify-content:space-between; font-size:11px; color:#b91c1c;">
+                                    <span>กลุ่มล่าช้า (> 3 ชม.)</span>
+                                    <b>${pctDelay.toFixed(0)}% (${countDelay}/${delayedCases.length})</b>
+                                </div>
+                                <div class="bar-horizontal-track" style="height:8px;">
+                                    <div class="bar-horizontal-fill" style="width:${pctDelay}%; background:#ef4444;"></div>
+                                </div>
+                            </div>
+                            <div>
+                                <div style="display:flex; justify-content:space-between; font-size:11px; color:#15803d;">
+                                    <span>กลุ่มทันเวลา (≤ 3 ชม.)</span>
+                                    <b>${pctOntime.toFixed(0)}% (${countOntime}/${ontimeCases.length})</b>
+                                </div>
+                                <div class="bar-horizontal-track" style="height:8px;">
+                                    <div class="bar-horizontal-fill" style="width:${pctOntime}%; background:#22c55e;"></div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            });
+            contrastContainer.innerHTML = cHtml;
+        }
+
+        // =====================================================================
+        // TAB 5: SECONDARY OBJECTIVE 03 (Clinical Deterioration & Cohort RR)
+        // =====================================================================
+        const exposedCohort = filtered.filter(c => c.isExposed);
+        const unexposedCohort = filtered.filter(c => !c.isExposed);
+
+        const expTotalEl = document.getElementById('sec3-cohort-total');
+        const expEl = document.getElementById('sec3-cohort-exposed');
+        const expSubEl = document.getElementById('sec3-cohort-exposed-sub');
+        const unexpEl = document.getElementById('sec3-cohort-unexposed');
+        const unexpSubEl = document.getElementById('sec3-cohort-unexposed-sub');
+
+        if (expTotalEl) expTotalEl.textContent = filtered.length;
+        if (expEl) expEl.textContent = exposedCohort.length;
+        if (expSubEl) {
+            const pct = filtered.length > 0 ? ((exposedCohort.length / filtered.length) * 100).toFixed(1) : '0';
+            expSubEl.textContent = `${pct}% • กลุ่มสัมผัสความล่าช้า/อุปสรรค`;
+        }
+        if (unexpEl) unexpEl.textContent = unexposedCohort.length;
+        if (unexpSubEl) {
+            const pct = filtered.length > 0 ? ((unexposedCohort.length / filtered.length) * 100).toFixed(1) : '0';
+            unexpSubEl.textContent = `${pct}% • กลุ่มควบคุมส่งต่อทันเวลา`;
+        }
+
+        // Clinical Outcomes to evaluate
+        const outcomes = [
+            {
+                name: 'ภาวะผู้ป่วยทรุดลงระหว่างส่งต่อ (In-Transit Clinical Deterioration)',
+                desc: 'Composite: En-route CPR, ใส่ท่อช่วยหายใจฉุกเฉิน, ช็อก/ความดันตกวิกฤต',
+                test: c => c.data.f2_composite_ae === '1' || c.data.f4_composite_deter === '1' || c.data.f2_ae_cpr === '1' || c.data.f2_ae_intub === '1'
+            },
+            {
+                name: 'การเสียชีวิต ณ ห้องฉุกเฉิน รพ.กระบี่ (Mainland ED Death)',
+                desc: 'MORT_ER_KBH = 1 (เสียชีวิตทันทีก่อนรับไว้รักษาในหอผู้ป่วย)',
+                test: c => c.data.f4_mort_er === '1'
+            },
+            {
+                name: 'การเสียชีวิตภายใน 24 ชม. แรกหลังรับไว้รักษา (24-Hour Mortality)',
+                desc: 'MORT_24H_POST = 1 หรือ MORT_STATUS = 1 (เสียชีวิตภายใน 24 ชม.)',
+                test: c => c.data.f4_mort_24h === '1' || c.data.f4_mort_status === '1'
+            }
+        ];
+
+        let incidenceBarsHtml = '';
+        let riskTableHtml = '';
+        let takeawayStatements = [];
+
+        outcomes.forEach(out => {
+            const a = exposedCohort.filter(out.test).length;
+            const b = exposedCohort.length - a;
+            const c = unexposedCohort.filter(out.test).length;
+            const d = unexposedCohort.length - c;
+
+            const nExp = exposedCohort.length;
+            const nUnexp = unexposedCohort.length;
+
+            const iExp = nExp > 0 ? (a / nExp) * 100 : 0;
+            const iUnexp = nUnexp > 0 ? (c / nUnexp) * 100 : 0;
+
+            let rr = '-';
+            let ciStr = '-';
+            let arrStr = '-';
+
+            if (nExp > 0 && nUnexp > 0) {
+                const arr = iExp - iUnexp;
+                arrStr = `${arr > 0 ? '+' : ''}${arr.toFixed(1)}%`;
+
+                if (iUnexp === 0) {
+                    if (iExp === 0) {
+                        rr = '1.00';
+                        ciStr = '[0.00 - 0.00]';
+                    } else {
+                        // Continuity correction (+0.5)
+                        const rrAdj = ((a + 0.5) / (nExp + 0.5)) / ((0.5) / (nUnexp + 0.5));
+                        rr = `${rrAdj.toFixed(2)}*`;
+                        ciStr = '(Corrected)';
+                    }
+                } else {
+                    const rrVal = (a / nExp) / (c / nUnexp);
+                    rr = rrVal.toFixed(2);
+                    const se = Math.sqrt((1 / (a || 0.5)) - (1 / nExp) + (1 / (c || 0.5)) - (1 / nUnexp));
+                    const ciLow = Math.max(0.01, rrVal * Math.exp(-1.96 * se));
+                    const ciHigh = rrVal * Math.exp(1.96 * se);
+                    ciStr = `[${ciLow.toFixed(2)} - ${ciHigh.toFixed(2)}]`;
+                }
+            }
+
+            // Side-by-side Incidence Bars
+            incidenceBarsHtml += `
+                <div>
+                    <div style="font-size:12.5px; font-weight:700; color:#1e293b; margin-bottom:4px;">${out.name}</div>
+                    <div style="font-size:11px; color:#64748b; margin-bottom:6px;">${out.desc}</div>
+                    <div style="display:grid; grid-template-columns:1fr 1fr; gap:14px;">
+                        <div>
+                            <div style="display:flex; justify-content:space-between; font-size:11.5px; color:#b91c1c; margin-bottom:2px;">
+                                <span>กลุ่ม Exposed (เสี่ยง/ล่าช้า)</span>
+                                <b>${iExp.toFixed(1)}% (${a}/${nExp})</b>
+                            </div>
+                            <div class="bar-horizontal-track" style="height:12px; background:#fee2e2;">
+                                <div class="bar-horizontal-fill" style="width:${iExp}%; background:#dc2626;"></div>
+                            </div>
+                        </div>
+                        <div>
+                            <div style="display:flex; justify-content:space-between; font-size:11.5px; color:#15803d; margin-bottom:2px;">
+                                <span>กลุ่ม Unexposed (ทันเวลา)</span>
+                                <b>${iUnexp.toFixed(1)}% (${c}/${nUnexp})</b>
+                            </div>
+                            <div class="bar-horizontal-track" style="height:12px; background:#dcfce7;">
+                                <div class="bar-horizontal-fill" style="width:${iUnexp}%; background:#16a34a;"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `;
+
+            // 2x2 Risk Table Row
+            let interp = 'ความเสี่ยงเท่ากัน';
+            if (rr !== '-' && parseFloat(rr) > 1.0) interp = `<span style="color:#b91c1c; font-weight:700;">เสี่ยงเพิ่มขึ้น ${rr} เท่า</span>`;
+            else if (rr !== '-' && parseFloat(rr) < 1.0) interp = `<span style="color:#15803d; font-weight:700;">ความเสี่ยงลดลง</span>`;
+
+            riskTableHtml += `
+                <tr>
+                    <td style="font-weight:600; color:#1e293b;">
+                        <div>${out.name}</div>
+                        <div style="font-size:11px; color:#64748b;">${out.desc}</div>
+                    </td>
+                    <td style="text-align:center; font-weight:700; color:#dc2626;">${a}/${nExp} (${iExp.toFixed(1)}%)</td>
+                    <td style="text-align:center; font-weight:700; color:#16a34a;">${c}/${nUnexp} (${iUnexp.toFixed(1)}%)</td>
+                    <td style="text-align:center; font-weight:700;">${rr} ${ciStr}</td>
+                    <td style="text-align:center; font-weight:600;">${arrStr}</td>
+                    <td style="text-align:center;">${interp}</td>
+                </tr>
+            `;
+
+            if (rr !== '-' && parseFloat(rr) > 1.0) {
+                takeawayStatements.push(`ผู้ป่วยในกลุ่มที่ส่งต่อล่าช้า/เผชิญอุปสรรค (Exposed Cohort) มีอุบัติการณ์เกิด <b>${out.name}</b> คิดเป็น ${iExp.toFixed(1)}% เทียบกับ ${iUnexp.toFixed(1)}% ในกลุ่มควบคุม (Relative Risk = ${rr})`);
+            }
+        });
+
+        const incidenceBarsEl = document.getElementById('sec3-incidence-bars');
+        if (incidenceBarsEl) incidenceBarsEl.innerHTML = incidenceBarsHtml;
+
+        const riskTableEl = document.getElementById('sec3-risk-table-body');
+        if (riskTableEl) riskTableEl.innerHTML = riskTableHtml;
+
+        const takeawayTextEl = document.getElementById('sec3-takeaway-text');
+        if (takeawayTextEl) {
+            if (takeawayStatements.length > 0) {
+                takeawayTextEl.innerHTML = takeawayStatements.map(s => `• ${s}`).join('<br><br>');
+            } else {
+                takeawayTextEl.innerHTML = `จากการวิเคราะห์เบื้องต้นในกลุ่มตัวอย่างปัจจุบัน (N=${filtered.length} เคส) ยังไม่พบความแตกต่างอย่างมีนัยสำคัญระหว่างกลุ่ม Exposed และ Unexposed หรือยังไม่มีรายงานการเกิด Adverse Clinical Outcomes`;
+            }
+        }
     }
 
     function renderDonutChart(chartId, centerId, legendId, slices, centerText, centerLabel) {
@@ -3368,26 +3993,7 @@ def get_js():
     }
 
     function filterAdminCases() {
-        const query = (document.getElementById('admin-search-box')?.value || '').toLowerCase().trim();
-        const esiFilter = document.getElementById('admin-esi-filter')?.value || '';
-
-        const rows = document.querySelectorAll('.admin-case-row');
-        rows.forEach(row => {
-            const id = (row.getAttribute('data-id') || '').toLowerCase();
-            const hn = (row.getAttribute('data-hn') || '').toLowerCase();
-            const refer = (row.getAttribute('data-refer') || '').toLowerCase();
-            const esi = row.getAttribute('data-esi') || '';
-            const rowText = row.textContent.toLowerCase();
-
-            const matchQuery = !query || id.includes(query) || hn.includes(query) || refer.includes(query) || rowText.includes(query);
-            const matchEsi = !esiFilter || esi === esiFilter;
-
-            if (matchQuery && matchEsi) {
-                row.style.display = '';
-            } else {
-                row.style.display = 'none';
-            }
-        });
+        renderAdminDashboard();
     }
 
     function adminViewCase(studyId) {
@@ -3407,27 +4013,19 @@ def get_js():
             return;
         }
 
-        // Delete from localStorage
         localStorage.removeItem('online_crf_case_' + studyId);
-
-        // Remove from index
         let index = JSON.parse(localStorage.getItem('online_crf_case_index') || '[]');
         index = index.filter(id => id !== studyId);
         localStorage.setItem('online_crf_case_index', JSON.stringify(index));
 
-        // If active case was deleted
         const curActive = localStorage.getItem('online_crf_last_active_id');
         if (curActive === studyId) {
-            if (index.length > 0) {
-                loadCase(index[0]);
-            } else {
-                createNewCase();
-            }
+            if (index.length > 0) loadCase(index[0]);
+            else createNewCase();
         }
 
         loadCaseIndex();
         renderAdminDashboard();
-
         alert('✓ ลบข้อมูลเคส LANTA_' + studyId + ' เรียบร้อยแล้ว');
     }
     """

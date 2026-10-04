@@ -10,6 +10,7 @@ from build_form1 import get_form1_html
 from build_form2 import get_form2_html
 from build_form3 import get_form3_html
 from build_form4 import get_form4_html
+from build_admin_dashboard import get_admin_dashboard_html, get_admin_dashboard_css
 from build_js import get_js
 
 import re
@@ -24,6 +25,8 @@ def wrap_tables(content):
 
 def assemble():
     css_content = get_css()
+    admin_css = get_admin_dashboard_css()
+    admin_dashboard_html = get_admin_dashboard_html()
     f1_html = wrap_tables(get_form1_html())
     f2_html = wrap_tables(get_form2_html())
     f3_html = wrap_tables(get_form3_html())
@@ -42,6 +45,7 @@ def assemble():
     <link href="https://fonts.googleapis.com/css2?family=Sarabun:ital,wght@0,300;0,400;0,500;0,600;0,700;1,400&display=swap" rel="stylesheet">
     <style>
 {css_content}
+{admin_css}
     </style>
 </head>
 <body>
@@ -193,198 +197,7 @@ def assemble():
         </div>
     </div>
 
-    <!-- Admin Dashboard Modal -->
-    <div id="admin-dashboard-modal" class="modal-overlay" style="display:none;">
-        <div class="modal-box modal-box-large">
-            <!-- Dashboard Header -->
-            <div class="modal-header" style="background: linear-gradient(135deg, #1e1b4b 0%, #3b0764 100%); color: #ffffff; padding: 12px 20px; border-radius: 8px 8px 0 0;">
-                <div>
-                    <h2 style="font-size: 18px; font-weight: 700; display: flex; align-items: center; gap: 8px; color: #ffffff;">
-                        <span>📊 แดชบอร์ดสรุปและจัดการข้อมูลผู้ป่วย (Admin Dashboard)</span>
-                        <span style="font-size: 11px; background: rgba(255,255,255,0.2); padding: 2px 8px; border-radius: 999px; font-weight: 500;">Authorized</span>
-                    </h2>
-                    <p style="font-size: 12.5px; opacity: 0.85; margin-top: 1px; color: #e2e8f0;">
-                        ระบบฐานข้อมูลผู้ป่วยส่งต่อฉุกเฉินออนไลน์ รพ.เกาะลันตา - รพ.กระบี่
-                    </p>
-                </div>
-                <div style="display: flex; gap: 8px; align-items: center;">
-                    <button type="button" class="btn btn-success" onclick="exportToExcel()" style="font-size: 13px; padding: 4px 10px;" title="ดาวน์โหลดฐานข้อมูลทุกเคสเป็นไฟล์ Excel (.xlsx)">
-                        📥 Export Excel
-                    </button>
-                    <button type="button" class="btn btn-blue" onclick="openPdfModal()" style="font-size: 13px; padding: 4px 10px;" title="ส่งออกรายงานข้อมูลคนไข้เป็น PDF หรือสั่งพิมพ์">
-                        📄 Export PDF
-                    </button>
-                    <button type="button" class="btn btn-outline" onclick="adminLogout()" style="font-size: 13px; padding: 4px 10px; color: #fca5a5; border-color: rgba(255,255,255,0.3); background: transparent;" title="ออกจากระบบผู้ดูแล">
-                        🔒 ล็อคระบบ
-                    </button>
-                    <button type="button" class="modal-close-btn" onclick="closeAdminDashboard()" style="color: #ffffff; font-size: 18px;" title="ปิดหน้าต่าง">✕</button>
-                </div>
-            </div>
-
-            <!-- Dashboard Content -->
-            <div style="padding: 16px 20px; background: #f8fafc; max-height: calc(85vh - 100px); overflow-y: auto;">
-                <!-- Summary Stat Cards -->
-                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 12px; margin-bottom: 16px;">
-                    <!-- Card 1: Total Patients -->
-                    <div style="background: #ffffff; border: 1px solid #cbd5e1; border-left: 4px solid #1e40af; border-radius: 6px; padding: 10px 14px; box-shadow: 0 1px 3px rgba(0,0,0,0.03);">
-                        <div style="font-size: 12.5px; color: #64748b; font-weight: 600;">ผู้ป่วยในฐานข้อมูลทั้งหมด</div>
-                        <div id="stat-total-patients" style="font-size: 26px; font-weight: 700; color: #1e40af; line-height: 1.2; margin-top: 2px;">0</div>
-                        <div style="font-size: 11.5px; color: #94a3b8;">เคสที่บันทึกแล้วในเบราว์เซอร์</div>
-                    </div>
-                    <!-- Card 2: Mean Transfer Time -->
-                    <div style="background: #ffffff; border: 1px solid #cbd5e1; border-left: 4px solid #0f766e; border-radius: 6px; padding: 10px 14px; box-shadow: 0 1px 3px rgba(0,0,0,0.03);">
-                        <div style="font-size: 12.5px; color: #64748b; font-weight: 600;">เวลาส่งต่อเฉลี่ย (T0 ➔ T10)</div>
-                        <div id="stat-mean-time" style="font-size: 26px; font-weight: 700; color: #0f766e; line-height: 1.2; margin-top: 2px;">0 <span style="font-size: 14px; font-weight: 500;">นาที</span></div>
-                        <div id="stat-time-detail" style="font-size: 11.5px; color: #94a3b8;">จากเคสที่มีข้อมูลเวลาครบ</div>
-                    </div>
-                    <!-- Card 3: ESI Level 1 -->
-                    <div style="background: #ffffff; border: 1px solid #cbd5e1; border-left: 4px solid #b91c1c; border-radius: 6px; padding: 10px 14px; box-shadow: 0 1px 3px rgba(0,0,0,0.03);">
-                        <div style="font-size: 12.5px; color: #64748b; font-weight: 600;">ผู้ป่วยวิกฤตฉุกเฉิน (ESI 1)</div>
-                        <div id="stat-esi1-count" style="font-size: 26px; font-weight: 700; color: #b91c1c; line-height: 1.2; margin-top: 2px;">0</div>
-                        <div id="stat-esi1-pct" style="font-size: 11.5px; color: #94a3b8;">0% ของผู้ป่วยทั้งหมด</div>
-                    </div>
-                    <!-- Card 4: Survival Rate -->
-                    <div style="background: #ffffff; border: 1px solid #cbd5e1; border-left: 4px solid #16a34a; border-radius: 6px; padding: 10px 14px; box-shadow: 0 1px 3px rgba(0,0,0,0.03);">
-                        <div style="font-size: 12.5px; color: #64748b; font-weight: 600;">อัตรารอดชีวิต 24 ชม. รพ.กระบี่</div>
-                        <div id="stat-survival-rate" style="font-size: 26px; font-weight: 700; color: #16a34a; line-height: 1.2; margin-top: 2px;">100%</div>
-                        <div id="stat-survival-detail" style="font-size: 11.5px; color: #94a3b8;">Early Survival Outcome</div>
-                    </div>
-                </div>
-
-                <!-- Clinical Research Pie Charts Overview -->
-                <div style="background: #ffffff; border: 1px solid #cbd5e1; border-radius: 8px; padding: 12px 16px; margin-bottom: 14px; box-shadow: 0 1px 3px rgba(0,0,0,0.03);">
-                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; border-bottom: 1px solid #e2e8f0; padding-bottom: 6px;">
-                        <div style="font-size: 14px; font-weight: 700; color: #1e3a8a; display: flex; align-items: center; gap: 6px;">
-                            <span>📊 แผนภูมิวิเคราะห์สัดส่วนข้อมูลทางคลินิก (Clinical Research Distribution)</span>
-                        </div>
-                        <span style="font-size: 11.5px; color: #64748b; font-weight: 500;">สรุปสัดส่วนตัวแปรสำคัญจากฐานข้อมูลจริง</span>
-                    </div>
-
-                    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 12px;">
-                        <!-- Chart 1: Target Disease -->
-                        <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 6px; padding: 10px 12px;">
-                            <div style="font-size: 12.5px; font-weight: 700; color: #1e293b; margin-bottom: 8px; display: flex; align-items: center; gap: 5px;">
-                                <span>🫀 กลุ่มโรคเป้าหมาย (Disease)</span>
-                            </div>
-                            <div style="display: flex; align-items: center; gap: 10px;">
-                                <div id="pie-chart-disease" style="width: 82px; height: 82px; border-radius: 50%; position: relative; flex-shrink: 0; box-shadow: 0 1px 4px rgba(0,0,0,0.08); background: #e2e8f0;">
-                                    <div style="position: absolute; inset: 17px; background: #ffffff; border-radius: 50%; display: flex; flex-direction: column; align-items: center; justify-content: center; box-shadow: inset 0 1px 2px rgba(0,0,0,0.05);">
-                                        <span id="pie-center-disease" style="font-size: 13px; font-weight: 700; color: #1e293b; line-height: 1;">0</span>
-                                        <span style="font-size: 8.5px; color: #64748b;">เคส</span>
-                                    </div>
-                                </div>
-                                <div id="pie-legend-disease" style="flex: 1; min-width: 0;"></div>
-                            </div>
-                        </div>
-
-                        <!-- Chart 2: Transfer Timeliness -->
-                        <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 6px; padding: 10px 12px;">
-                            <div style="font-size: 12.5px; font-weight: 700; color: #1e293b; margin-bottom: 8px; display: flex; align-items: center; gap: 5px;">
-                                <span>⏱️ ความทันเวลาส่งต่อ (≤ 3 ชม.)</span>
-                            </div>
-                            <div style="display: flex; align-items: center; gap: 10px;">
-                                <div id="pie-chart-timeliness" style="width: 82px; height: 82px; border-radius: 50%; position: relative; flex-shrink: 0; box-shadow: 0 1px 4px rgba(0,0,0,0.08); background: #e2e8f0;">
-                                    <div style="position: absolute; inset: 17px; background: #ffffff; border-radius: 50%; display: flex; flex-direction: column; align-items: center; justify-content: center; box-shadow: inset 0 1px 2px rgba(0,0,0,0.05);">
-                                        <span id="pie-center-timeliness" style="font-size: 13px; font-weight: 700; color: #059669; line-height: 1;">0%</span>
-                                        <span style="font-size: 8.5px; color: #64748b;">ทันเวลา</span>
-                                    </div>
-                                </div>
-                                <div id="pie-legend-timeliness" style="flex: 1; min-width: 0;"></div>
-                            </div>
-                        </div>
-
-                        <!-- Chart 3: Survival Outcome -->
-                        <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 6px; padding: 10px 12px;">
-                            <div style="font-size: 12.5px; font-weight: 700; color: #1e293b; margin-bottom: 8px; display: flex; align-items: center; gap: 5px;">
-                                <span>🏥 ผลลัพธ์รอดชีวิต 24 ชม.</span>
-                            </div>
-                            <div style="display: flex; align-items: center; gap: 10px;">
-                                <div id="pie-chart-survival" style="width: 82px; height: 82px; border-radius: 50%; position: relative; flex-shrink: 0; box-shadow: 0 1px 4px rgba(0,0,0,0.08); background: #e2e8f0;">
-                                    <div style="position: absolute; inset: 17px; background: #ffffff; border-radius: 50%; display: flex; flex-direction: column; align-items: center; justify-content: center; box-shadow: inset 0 1px 2px rgba(0,0,0,0.05);">
-                                        <span id="pie-center-survival" style="font-size: 13px; font-weight: 700; color: #16a34a; line-height: 1;">0%</span>
-                                        <span style="font-size: 8.5px; color: #64748b;">รอดชีวิต</span>
-                                    </div>
-                                </div>
-                                <div id="pie-legend-survival" style="flex: 1; min-width: 0;"></div>
-                            </div>
-                        </div>
-
-                        <!-- Chart 4: Triage ESI -->
-                        <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 6px; padding: 10px 12px;">
-                            <div style="font-size: 12.5px; font-weight: 700; color: #1e293b; margin-bottom: 8px; display: flex; align-items: center; gap: 5px;">
-                                <span>🚨 ระดับความเร่งด่วน (ESI)</span>
-                            </div>
-                            <div style="display: flex; align-items: center; gap: 10px;">
-                                <div id="pie-chart-esi" style="width: 82px; height: 82px; border-radius: 50%; position: relative; flex-shrink: 0; box-shadow: 0 1px 4px rgba(0,0,0,0.08); background: #e2e8f0;">
-                                    <div style="position: absolute; inset: 17px; background: #ffffff; border-radius: 50%; display: flex; flex-direction: column; align-items: center; justify-content: center; box-shadow: inset 0 1px 2px rgba(0,0,0,0.05);">
-                                        <span id="pie-center-esi" style="font-size: 13px; font-weight: 700; color: #1e293b; line-height: 1;">0</span>
-                                        <span style="font-size: 8.5px; color: #64748b;">เคส</span>
-                                    </div>
-                                </div>
-                                <div id="pie-legend-esi" style="flex: 1; min-width: 0;"></div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Controls Toolbar -->
-                <div style="background: #ffffff; border: 1px solid #cbd5e1; border-radius: 6px; padding: 10px 14px; margin-bottom: 12px; display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 10px;">
-                    <div style="display: flex; gap: 8px; align-items: center; flex: 1; min-width: 260px;">
-                        <span style="font-weight: 600; font-size: 13.5px;">🔍 ค้นหา:</span>
-                        <input type="text" id="admin-search-box" oninput="filterAdminCases()" placeholder="พิมพ์ค้นหา STUDY_ID, HN, หรือเลขใบ Refer..." style="padding: 4px 8px; font-size: 13.5px; border: 1px solid #cbd5e1; border-radius: 4px; flex: 1;">
-                    </div>
-                    <div style="display: flex; gap: 8px; align-items: center;">
-                        <span style="font-weight: 600; font-size: 13.5px;">กรอง ESI:</span>
-                        <select id="admin-esi-filter" onchange="filterAdminCases()" style="padding: 4px 8px; font-size: 13.5px; border: 1px solid #cbd5e1; border-radius: 4px; width: 130px;">
-                            <option value="">ทั้งหมด (All)</option>
-                            <option value="1">ESI 1 (Resuscitation)</option>
-                            <option value="2">ESI 2 (Emergent)</option>
-                            <option value="3">ESI 3 (Urgent)</option>
-                            <option value="4">ESI 4 (Semi-urgent)</option>
-                            <option value="5">ESI 5 (Non-urgent)</option>
-                        </select>
-                        <button type="button" class="btn btn-primary" onclick="createNewCase(); closeAdminDashboard();" style="font-size: 13px; padding: 5px 12px;">
-                            ➕ เคสใหม่
-                        </button>
-                    </div>
-                </div>
-
-                <!-- Patient Cases Table -->
-                <div style="background: #ffffff; border: 1px solid #cbd5e1; border-radius: 6px; overflow: hidden; box-shadow: 0 1px 3px rgba(0,0,0,0.03);">
-                    <div class="table-responsive" style="margin-bottom: 0;">
-                        <table class="crf-table" style="margin-bottom: 0; font-size: 13px; width: 100%;">
-                            <thead>
-                                <tr style="background: #f1f5f9;">
-                                    <th style="width: 100px; text-align: center;">STUDY_ID</th>
-                                    <th style="width: 130px;">HN / Refer_ID</th>
-                                    <th style="width: 100px; text-align: center;">อายุ / เพศ</th>
-                                    <th style="width: 90px; text-align: center;">Triage ESI</th>
-                                    <th>หมวดโรค / การวินิจฉัย</th>
-                                    <th style="width: 130px; text-align: center;">เวลาส่งต่อรวม</th>
-                                    <th style="width: 90px; text-align: center;">RTS (เกาะ/กระบี่)</th>
-                                    <th style="width: 100px; text-align: center;">ผลลัพธ์ 24 ชม.</th>
-                                    <th style="width: 200px; text-align: center;">จัดการข้อมูล</th>
-                                </tr>
-                            </thead>
-                            <tbody id="admin-cases-tbody">
-                                <!-- Populated dynamically by JS -->
-                            </tbody>
-                        </table>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Modal Footer -->
-            <div style="padding: 10px 18px; background: #ffffff; border-top: 1px solid #cbd5e1; border-radius: 0 0 8px 8px; display: flex; justify-content: space-between; align-items: center;">
-                <div style="font-size: 12.5px; color: #64748b;">
-                    💡 คลิก <b>"ดู/แก้ไข"</b> เพื่อเปิดดูหรือแก้ไขข้อมูลในฟอร์ม หรือคลิก <b>"ลบ"</b> หากต้องการถอนเคสออกจากฐานข้อมูล
-                </div>
-                <button type="button" class="btn btn-outline" onclick="closeAdminDashboard()" style="padding: 4px 12px; font-size: 13px;">
-                    ปิดหน้าต่าง
-                </button>
-            </div>
-        </div>
-    </div>
+{admin_dashboard_html}
 
     <!-- SheetJS for Offline Excel Export & Online CDN Fallback -->
     <script src="./xlsx.full.min.js"></script>
