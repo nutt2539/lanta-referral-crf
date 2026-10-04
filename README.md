@@ -7,7 +7,7 @@
 ## 🏥 วัตถุประสงค์
 ระบบบันทึกและจัดการข้อมูลการวิจัยทางคลินิกออนไลน์ (Clinical Research Electronic Data Capture / Online CRF) สำหรับการเก็บข้อมูลผู้ป่วยฉุกเฉินวิกฤต 3 กลุ่มโรคเป้าหมายที่ได้รับการส่งต่อจาก **โรงพยาบาลเกาะลันตา** ไปยัง **โรงพยาบาลกระบี่**:
 1. **STEMI / Acute Coronary Syndrome (ACS)**
-2. **Acute Ischemic Stroke (AIS)**
+2. **Acute Stroke**
 3. **Severe Trauma (บาดเจ็บรุนแรง)**
 
 ---

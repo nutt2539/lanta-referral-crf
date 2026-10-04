@@ -172,7 +172,7 @@ def get_admin_dashboard_html():
                         <select id="admin-filter-disease" onchange="renderAdminDashboard()" style="padding: 3px 8px; font-size: 12.5px; border: 1px solid #cbd5e1; border-radius: 4px; background: #ffffff;">
                             <option value="">ทั้งหมด (All Diseases)</option>
                             <option value="stemi">STEMI / ACS</option>
-                            <option value="ais">Stroke (AIS)</option>
+                            <option value="ais">Acute Stroke</option>
                             <option value="trauma">Severe Trauma</option>
                         </select>
                     </div>
@@ -804,7 +804,7 @@ def get_admin_dashboard_html():
                                 🫀 อัตราการทรุดลงจำแนกตามกลุ่มโรค (Deterioration Rate by Disease)
                             </div>
                             <div style="font-size: 11.5px; color: #64748b; margin-bottom: 10px;">
-                                ความชุกของการทรุดตัวในผู้ป่วย STEMI, Stroke (AIS) และ Severe Trauma
+                                ความชุกของการทรุดตัวในผู้ป่วย STEMI, Acute Stroke และ Severe Trauma
                             </div>
                             <div id="deter-disease-matrix" style="display: flex; flex-direction: column; gap: 8px;">
                                 <!-- Populated by JS -->

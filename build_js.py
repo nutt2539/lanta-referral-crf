@@ -117,7 +117,7 @@ def get_js():
         const disease = getActiveDisease();
         if (!disease) {
             if (shouldAlert) {
-                alert('⚠️ แจ้งเตือน: ในเกณฑ์การคัดเข้าข้อ 4 บังคับต้องเลือก 1 ใน 3 กลุ่มโรคเป้าหมาย\\n(1. STEMI / ACS, 2. Acute Ischemic Stroke หรือ 3. Severe Trauma)\\n\\nกรุณาติ๊กเลือกกลุ่มโรคก่อนดำเนินการต่อไป');
+                alert('⚠️ แจ้งเตือน: ในเกณฑ์การคัดเข้าข้อ 4 บังคับต้องเลือก 1 ใน 3 กลุ่มโรคเป้าหมาย\\n(1. STEMI / ACS, 2. Acute Stroke หรือ 3. Severe Trauma)\\n\\nกรุณาติ๊กเลือกกลุ่มโรคก่อนดำเนินการต่อไป');
                 const alertEl = document.getElementById('f1_inc4_disease_alert');
                 if (alertEl) {
                     alertEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
@@ -141,10 +141,9 @@ def get_js():
         const exc2 = document.querySelector('input[name="f1_exc2"]:checked')?.value;
         const exc3 = document.querySelector('input[name="f1_exc3"]:checked')?.value;
         const exc4 = document.querySelector('input[name="f1_exc4"]:checked')?.value;
-        const exc5 = document.querySelector('input[name="f1_exc5"]:checked')?.value;
 
         const isIncAnyNo = (inc1 === 'no' || inc2 === 'no' || inc3 === 'no' || inc4 === 'no');
-        const isExcAnyYes = (exc1 === 'yes' || exc2 === 'yes' || exc3 === 'yes' || exc4 === 'yes' || exc5 === 'yes');
+        const isExcAnyYes = (exc1 === 'yes' || exc2 === 'yes' || exc3 === 'yes' || exc4 === 'yes');
 
         return Boolean(isIncAnyNo || isExcAnyYes);
     }
@@ -404,7 +403,7 @@ def get_js():
         } else if (val === 'yes') {
             const disease = getActiveDisease();
             if (!disease) {
-                alert('⚠️ ในเกณฑ์การคัดเข้าข้อ 4 บังคับต้องเลือก 1 ใน 3 กลุ่มโรคเป้าหมาย\\n(1. STEMI / ACS, 2. Acute Ischemic Stroke หรือ 3. Severe Trauma)\\n\\nกรุณาคลิกเลือกกลุ่มโรคทางด้านซ้าย');
+                alert('⚠️ ในเกณฑ์การคัดเข้าข้อ 4 บังคับต้องเลือก 1 ใน 3 กลุ่มโรคเป้าหมาย\\n(1. STEMI / ACS, 2. Acute Stroke หรือ 3. Severe Trauma)\\n\\nกรุณาคลิกเลือกกลุ่มโรคทางด้านซ้าย');
                 const alertEl = document.getElementById('f1_inc4_disease_alert');
                 if (alertEl) {
                     alertEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
@@ -689,7 +688,7 @@ def get_js():
             if (inc4Badge) inc4Badge.style.display = 'inline-block';
             let dName = '';
             if (disease === 'stemi') dName = '1. STEMI / Acute Coronary Syndrome (ACS)';
-            else if (disease === 'ais') dName = '2. Acute Ischemic Stroke (AIS)';
+            else if (disease === 'ais') dName = '2. Acute Stroke';
             else if (disease === 'trauma') dName = '3. Severe Trauma (อุบัติเหตุบาดเจ็บรุนแรง)';
             if (inc4Name) inc4Name.textContent = dName;
             if (inc4Cell) {
@@ -1186,7 +1185,6 @@ def get_js():
         const exc2 = document.querySelector('input[name="f1_exc2"]:checked')?.value;
         const exc3 = document.querySelector('input[name="f1_exc3"]:checked')?.value;
         const exc4 = document.querySelector('input[name="f1_exc4"]:checked')?.value;
-        const exc5 = document.querySelector('input[name="f1_exc5"]:checked')?.value;
 
         const reasons = [];
         if (inc1 === 'no') reasons.push('เกณฑ์คัดเข้าข้อ 1: ระยะเวลาส่งต่อนอกช่วง 1 ม.ค. 2564 – 31 ธ.ค. 2569');
@@ -1194,14 +1192,13 @@ def get_js():
         if (inc3 === 'no') reasons.push('เกณฑ์คัดเข้าข้อ 3: ไม่มีเอกสารการส่งต่อ หรือไม่ได้ส่งต่อผ่านทางรถพยาบาลและแพขนานยนต์');
         if (inc4 === 'no') reasons.push('เกณฑ์คัดเข้าข้อ 4: ไม่ได้เป็นผู้ป่วยฉุกเฉินระดับ ESI 1–2 ใน 3 กลุ่มโรคเป้าหมาย');
 
-        if (exc1 === 'yes') reasons.push('เกณฑ์คัดออกข้อ 1: โรคหลอดเลือดสมองแตกเฉียบพลัน (Acute Hemorrhagic Stroke)');
-        if (exc2 === 'yes') reasons.push('เกณฑ์คัดออกข้อ 2: เสียชีวิตก่อนนำส่งหรือก่อนเคลื่อนย้ายออกจาก รพ.เกาะลันตา (DOA)');
-        if (exc3 === 'yes') reasons.push('เกณฑ์คัดออกข้อ 3: ส่งต่อด้วยอากาศยานทางการแพทย์ (Sky doctor / HEMS)');
-        if (exc4 === 'yes') reasons.push('เกณฑ์คัดออกข้อ 4: ปฏิเสธการส่งต่อ / ขอย้ายไปเอง (Refused transfer / DAMA)');
-        if (exc5 === 'yes') reasons.push('เกณฑ์คัดออกข้อ 5: ข้อมูลระบุเวลาของผลลัพธ์ปฐมภูมิไม่ครบถ้วน');
+        if (exc1 === 'yes') reasons.push('เกณฑ์คัดออกข้อ 1: เสียชีวิตก่อนนำส่งหรือเสียชีวิตก่อนเคลื่อนย้ายออกจาก รพ.เกาะลันตา (DOA / Deceased before transfer)');
+        if (exc2 === 'yes') reasons.push('เกณฑ์คัดออกข้อ 2: ส่งต่อด้วยอากาศยานทางการแพทย์ (Sky doctor / HEMS)');
+        if (exc3 === 'yes') reasons.push('เกณฑ์คัดออกข้อ 3: ปฏิเสธการส่งต่อ / ขอย้ายไปเอง (Refused transfer / DAMA)');
+        if (exc4 === 'yes') reasons.push('เกณฑ์คัดออกข้อ 4: ข้อมูลระบุเวลาของผลลัพธ์ปฐมภูมิไม่ครบถ้วน (Missing essential timestamps)');
 
         const isIncAllYes = (inc1 === 'yes' && inc2 === 'yes' && inc3 === 'yes' && inc4 === 'yes' && Boolean(disease));
-        const isExcAllNo = (exc1 === 'no' && exc2 === 'no' && exc3 === 'no' && exc4 === 'no' && exc5 === 'no');
+        const isExcAllNo = (exc1 === 'no' && exc2 === 'no' && exc3 === 'no' && exc4 === 'no');
 
         const isExcluded = (reasons.length > 0);
         const isEligible = (!isExcluded && isIncAllYes && isExcAllNo);
@@ -1262,7 +1259,7 @@ def get_js():
             }
             let diseaseName = 'ยังไม่ระบุ';
             if (disease === 'stemi') diseaseName = 'STEMI / ACS';
-            else if (disease === 'ais') diseaseName = 'Acute Ischemic Stroke (AIS)';
+            else if (disease === 'ais') diseaseName = 'Acute Stroke';
             else if (disease === 'trauma') diseaseName = 'Severe Trauma';
 
             if (desc) {
@@ -1290,7 +1287,7 @@ def get_js():
                 lockIndicator.innerHTML = '<span style="color: #64748b; font-size: 11.5px;">รอประเมินเกณฑ์</span>';
             }
             if (desc) {
-                desc.innerHTML = '<span style="color: #64748b;">กรุณาตอบเกณฑ์การคัดเข้า (Inclusion 4 ข้อ) และเกณฑ์การคัดออก (Exclusion 5 ข้อ) ด้านบนให้ครบถ้วนเพื่อประเมินอัตโนมัติ</span>';
+                desc.innerHTML = '<span style="color: #64748b;">กรุณาตอบเกณฑ์การคัดเข้า (Inclusion 4 ข้อ) และเกณฑ์การคัดออก (Exclusion 4 ข้อ) ด้านบนให้ครบถ้วนเพื่อประเมินอัตโนมัติ</span>';
             }
 
             applyScreeningLock(false);
@@ -2881,7 +2878,7 @@ def get_js():
         if (!isAuto) {
             const disease = getActiveDisease();
             if (!disease) {
-                alert('⚠️ บันทึกข้อมูลฉบับร่างแล้ว แต่ยังไม่ได้ติ๊กเลือกกลุ่มโรคในเกณฑ์การคัดเข้าข้อ 4\\n(บังคับเลือก 1 กลุ่มโรค: STEMI, Acute Ischemic Stroke หรือ Severe Trauma)');
+                alert('⚠️ บันทึกข้อมูลฉบับร่างแล้ว แต่ยังไม่ได้ติ๊กเลือกกลุ่มโรคในเกณฑ์การคัดเข้าข้อ 4\\n(บังคับเลือก 1 กลุ่มโรค: STEMI, Acute Stroke หรือ Severe Trauma)');
                 const alertEl = document.getElementById('f1_inc4_disease_alert');
                 if (alertEl) {
                     alertEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
@@ -3001,7 +2998,7 @@ def get_js():
                 Arrival_Mode: c.f1_arrival_mode || '',
                 Triage_ESI: c.f1_esi || '',
                 ED_Shift: c.f1_shift || '',
-                Target_Disease: c.f1_target_disease || (c.f1_inc4_stemi ? 'STEMI' : (c.f1_inc4_ais ? 'AIS' : (c.f1_inc4_trauma ? 'Trauma' : ''))),
+                Target_Disease: (c.f1_target_disease === 'ais' || c.f1_inc4_ais) ? 'Acute Stroke' : (c.f1_target_disease === 'stemi' || c.f1_inc4_stemi ? 'STEMI' : (c.f1_target_disease === 'trauma' || c.f1_inc4_trauma ? 'Trauma' : (c.f1_target_disease || ''))),
                 Disease_STEMI: (c.f1_target_disease === 'stemi' || c.f1_inc4_stemi) ? 1 : 0,
                 Disease_AIS: (c.f1_target_disease === 'ais' || c.f1_inc4_ais) ? 1 : 0,
                 Disease_Trauma: (c.f1_target_disease === 'trauma' || c.f1_inc4_trauma) ? 1 : 0,
@@ -3116,7 +3113,7 @@ def get_js():
                 Abstract_Date: c.f1_abs_date || '',
                 Abstractor: c.f1_abstractor || '',
                 Inclusion_All: c.f1_eligible || '',
-                Target_Disease: c.f1_target_disease || (c.f1_inc4_stemi ? 'STEMI' : (c.f1_inc4_ais ? 'AIS' : (c.f1_inc4_trauma ? 'Trauma' : ''))),
+                Target_Disease: (c.f1_target_disease === 'ais' || c.f1_inc4_ais) ? 'Acute Stroke' : (c.f1_target_disease === 'stemi' || c.f1_inc4_stemi ? 'STEMI' : (c.f1_target_disease === 'trauma' || c.f1_inc4_trauma ? 'Trauma' : (c.f1_target_disease || ''))),
                 Age: c.f1_age || '',
                 Sex: c.f1_sex || '',
                 Residency: c.f1_residency || '',
@@ -4527,7 +4524,7 @@ def get_js():
                     <b style="color:#dc2626;">${stemiDeter}/${stemiAll.length} (${stemiAll.length > 0 ? ((stemiDeter / stemiAll.length) * 100).toFixed(1) : '0'}%)</b>
                 </div>
                 <div style="display:flex; justify-content:space-between; align-items:center; padding:6px 10px; background:#f8fafc; border-radius:4px; font-size:12.5px;">
-                    <span style="font-weight:600; color:#1e293b;">🧠 Acute Ischemic Stroke:</span>
+                    <span style="font-weight:600; color:#1e293b;">🧠 Acute Stroke:</span>
                     <b style="color:#d97706;">${strokeDeter}/${strokeAll.length} (${strokeAll.length > 0 ? ((strokeDeter / strokeAll.length) * 100).toFixed(1) : '0'}%)</b>
                 </div>
                 <div style="display:flex; justify-content:space-between; align-items:center; padding:6px 10px; background:#f8fafc; border-radius:4px; font-size:12.5px;">

@@ -93,12 +93,12 @@ def get_form1_html():
                         <div style="font-weight: 600; color: #1e293b;">ผู้ป่วยฉุกเฉินระดับ ESI 1–2 ใน 3 กลุ่มโรคที่ไวต่อเวลา (3 Time-Sensitive Conditions): <span style="font-size: 12px; color: #dc2626; font-weight: 700;">* บังคับเลือก 1 กลุ่มโรค</span> <span style="font-size: 11px; color: #64748b; font-weight: normal;">(คลิกซ้ำเพื่อเลิกติ๊ก)</span></div>
                         <div style="margin-left: 20px; margin-top: 6px;" class="check-group">
                             <label class="form-check" style="cursor: pointer; padding: 3px 6px; border-radius: 4px;"><input type="radio" name="f1_target_disease" id="f1_inc4_stemi" value="stemi" onchange="syncDiseaseGroup()"> 1. STEMI / Acute Coronary Syndrome (ACS)</label>
-                            <label class="form-check" style="cursor: pointer; padding: 3px 6px; border-radius: 4px;"><input type="radio" name="f1_target_disease" id="f1_inc4_ais" value="ais" onchange="syncDiseaseGroup()"> 2. Acute Ischemic Stroke (AIS)</label>
+                            <label class="form-check" style="cursor: pointer; padding: 3px 6px; border-radius: 4px;"><input type="radio" name="f1_target_disease" id="f1_inc4_ais" value="ais" onchange="syncDiseaseGroup()"> 2. Acute Stroke</label>
                             <label class="form-check" style="cursor: pointer; padding: 3px 6px; border-radius: 4px;"><input type="radio" name="f1_target_disease" id="f1_inc4_trauma" value="trauma" onchange="syncDiseaseGroup()"> 3. Severe Trauma (อุบัติเหตุบาดเจ็บรุนแรง)</label>
                         </div>
                         <div id="f1_inc4_disease_alert" style="margin-top: 8px; padding: 6px 12px; background: #fff1f2; border: 1.5px solid #f43f5e; border-radius: 6px; color: #be123c; font-size: 12.5px; font-weight: 600; display: flex; align-items: center; gap: 8px;">
                             <span style="font-size: 16px;">⚠️</span>
-                            <span><strong>บังคับติ๊กเลือกโรค:</strong> กรุณาเลือก 1 ใน 3 กลุ่มโรคเป้าหมาย (STEMI, AIS หรือ Severe Trauma)</span>
+                            <span><strong>บังคับติ๊กเลือกโรค:</strong> กรุณาเลือก 1 ใน 3 กลุ่มโรคเป้าหมาย (STEMI, Acute Stroke หรือ Severe Trauma)</span>
                         </div>
                         <div id="f1_inc4_disease_selected_badge" style="display: none; margin-top: 6px; padding: 5px 12px; background: #ecfdf5; border: 1.5px solid #10b981; border-radius: 6px; color: #047857; font-size: 12.5px; font-weight: 600;">
                             ✓ <strong>เลือกกลุ่มโรคแล้ว:</strong> <span id="f1_active_disease_name" style="font-weight: 700; color: #065f46;"></span>
@@ -125,7 +125,7 @@ def get_form1_html():
             <tbody>
                 <tr>
                     <td class="td-center">1</td>
-                    <td>โรคหลอดเลือดสมองแตกเฉียบพลัน (Acute Hemorrhagic Stroke)</td>
+                    <td>เสียชีวิตก่อนนำส่งหรือเสียชีวิตก่อนเคลื่อนย้ายออกจาก รพ.เกาะลันตา (Dead on arrival / Deceased before transfer)</td>
                     <td>
                         <div class="check-row" style="justify-content: center;">
                             <label class="form-check"><input type="radio" name="f1_exc1" value="yes" onchange="calcScreening()"> ใช่ (คัดออก)</label>
@@ -135,7 +135,7 @@ def get_form1_html():
                 </tr>
                 <tr>
                     <td class="td-center">2</td>
-                    <td>เสียชีวิตก่อนนำส่งหรือเสียชีวิตก่อนเคลื่อนย้ายออกจาก รพ.เกาะลันตา (Dead on arrival / Deceased before transfer)</td>
+                    <td>ส่งต่อด้วยอากาศยานทางการแพทย์ (Aeromedical: Sky doctor / HEMS)</td>
                     <td>
                         <div class="check-row" style="justify-content: center;">
                             <label class="form-check"><input type="radio" name="f1_exc2" value="yes" onchange="calcScreening()"> ใช่ (คัดออก)</label>
@@ -145,7 +145,7 @@ def get_form1_html():
                 </tr>
                 <tr>
                     <td class="td-center">3</td>
-                    <td>ส่งต่อด้วยอากาศยานทางการแพทย์ (Aeromedical: Sky doctor / HEMS)</td>
+                    <td>ปฏิเสธการส่งต่อ / ขอย้ายไปเอง (Refused transfer / self-transport / DAMA)</td>
                     <td>
                         <div class="check-row" style="justify-content: center;">
                             <label class="form-check"><input type="radio" name="f1_exc3" value="yes" onchange="calcScreening()"> ใช่ (คัดออก)</label>
@@ -155,21 +155,11 @@ def get_form1_html():
                 </tr>
                 <tr>
                     <td class="td-center">4</td>
-                    <td>ปฏิเสธการส่งต่อ / ขอย้ายไปเอง (Refused transfer / self-transport / DAMA)</td>
+                    <td>ข้อมูลระบุเวลาของผลลัพธ์ไม่ครบถ้วน (Missing essential primary outcome timestamps)</td>
                     <td>
                         <div class="check-row" style="justify-content: center;">
                             <label class="form-check"><input type="radio" name="f1_exc4" value="yes" onchange="calcScreening()"> ใช่ (คัดออก)</label>
                             <label class="form-check"><input type="radio" name="f1_exc4" value="no" onchange="calcScreening()"> ไม่ใช่</label>
-                        </div>
-                    </td>
-                </tr>
-                <tr>
-                    <td class="td-center">5</td>
-                    <td>ข้อมูลระบุเวลาของผลลัพธ์ไม่ครบถ้วน (Missing essential primary outcome timestamps)</td>
-                    <td>
-                        <div class="check-row" style="justify-content: center;">
-                            <label class="form-check"><input type="radio" name="f1_exc5" value="yes" onchange="calcScreening()"> ใช่ (คัดออก)</label>
-                            <label class="form-check"><input type="radio" name="f1_exc5" value="no" onchange="calcScreening()"> ไม่ใช่</label>
                         </div>
                     </td>
                 </tr>
@@ -194,7 +184,7 @@ def get_form1_html():
 
             <!-- บรรทัดที่ 2: รายละเอียดสรุปผล / เหตุผลคัดออก -->
             <div id="screening_status_desc" style="font-size: 12px; color: #64748b; line-height: 1.4;">
-                กรุณาตอบเกณฑ์การคัดเข้า (Inclusion 4 ข้อ) และเกณฑ์การคัดออก (Exclusion 5 ข้อ) ด้านบนให้ครบถ้วนเพื่อประเมินอัตโนมัติ
+                กรุณาตอบเกณฑ์การคัดเข้า (Inclusion 4 ข้อ) และเกณฑ์การคัดออก (Exclusion 4 ข้อ) ด้านบนให้ครบถ้วนเพื่อประเมินอัตโนมัติ
             </div>
 
             <!-- Hidden radio inputs for data persistence / form save without manual clicking -->
@@ -424,7 +414,7 @@ def get_form1_html():
                 </td>
             </tr>
             <tr id="sec3_row_ais" class="disease-specific-row" data-disease="ais">
-                <td style="font-weight: 700; background: #f8fafc;">2. Acute Ischemic Stroke (AIS)</td>
+                <td style="font-weight: 700; background: #f8fafc;">2. Acute Stroke</td>
                 <td>
                     <div style="font-weight: 600; margin-bottom: 4px;">ระดับความรู้สึกตัวแรกรับ (Stroke Consciousness / GCS):</div>
                     <div class="check-group">

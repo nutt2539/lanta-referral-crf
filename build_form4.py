@@ -426,7 +426,7 @@ def get_form4_html():
                 </td>
             </tr>
             <tr id="f4_row_golden_ais" class="disease-specific-row" data-disease="ais">
-                <td style="font-weight: 700; background: #f8fafc; vertical-align: top;">2. Acute Ischemic Stroke: Reperfusion Therapy</td>
+                <td style="font-weight: 700; background: #f8fafc; vertical-align: top;">2. Acute Stroke: Reperfusion & Specific Therapy</td>
                 <td>
                     <div class="check-group">
                         <div style="display: flex; align-items: center; gap: 6px;">
@@ -552,7 +552,7 @@ def get_form4_html():
                 <td>
                     <div id="f4_mort_cause_container" class="check-group" style="opacity: 0.35; pointer-events: none;">
                         <label class="form-check"><input type="radio" name="f4_mort_cause" value="stemi" disabled> Cardiogenic shock / Malignant ventricular arrhythmia (STEMI)</label>
-                        <label class="form-check"><input type="radio" name="f4_mort_cause" value="stroke" disabled> Massive cerebral infarction / Brain herniation (Ischemic Stroke)</label>
+                        <label class="form-check"><input type="radio" name="f4_mort_cause" value="stroke" disabled> Massive cerebral infarction / Intracranial hemorrhage / Herniation (Acute Stroke)</label>
                         <label class="form-check"><input type="radio" name="f4_mort_cause" value="trauma" disabled> Exsanguinating hemorrhagic shock / Coagulopathy (Severe Trauma)</label>
                         <div style="display: flex; align-items: center; gap: 6px;">
                             <label class="form-check"><input type="radio" name="f4_mort_cause" value="other" disabled> อื่นๆ ระบุ (ICD-10):</label>
