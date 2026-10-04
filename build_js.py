@@ -612,10 +612,10 @@ def get_js():
         let html = '';
         if (val === '0') {
             const timeInfo = sourceTime ? ` (T2: ${sourceTime} น.)` : '';
-            html = `<span class="badge" style="background:#e0f2fe; color:#0369a1; padding:3px 10px; border-radius:12px; font-size:12px; font-weight:700; display:inline-flex; align-items:center; gap:4px;">⚡ Auto${timeInfo}: 0 = Scheduled Daytime (06:00–22:00 น.)</span>`;
+            html = `<span class="badge" style="background:#e0f2fe; color:#0369a1; padding:3px 10px; border-radius:12px; font-size:12px; font-weight:700; display:inline-flex; align-items:center; gap:4px;">⚡ Auto${timeInfo}: 0 = Scheduled Daytime (05:00–24:00 น.)</span>`;
         } else if (val === '1') {
             const timeInfo = sourceTime ? ` (T2: ${sourceTime} น.)` : '';
-            html = `<span class="badge" style="background:#fef3c7; color:#b45309; padding:3px 10px; border-radius:12px; font-size:12px; font-weight:700; display:inline-flex; align-items:center; gap:4px;">⚡ Auto${timeInfo}: 1 = Standby Off-Hour (22:00–06:00 น.)</span>`;
+            html = `<span class="badge" style="background:#fef3c7; color:#b45309; padding:3px 10px; border-radius:12px; font-size:12px; font-weight:700; display:inline-flex; align-items:center; gap:4px;">⚡ Auto${timeInfo}: 1 = Standby Off-Hour (24:00–05:00 น.)</span>`;
         } else {
             html = `<span style="color:#64748b; font-size:11px; font-weight:normal;">(รอระบุเวลา T2 เพื่อคำนวณรอบการเดินแพ)</span>`;
         }
@@ -644,8 +644,8 @@ def get_js():
         const parts = t2Time.split(':').map(Number);
         if (parts.length >= 2 && !isNaN(parts[0])) {
             const hour = parts[0];
-            // 06:00 to 21:59 -> 0 (Scheduled Daytime), 22:00 to 05:59 -> 1 (Standby Off-Hour)
-            const isDaytime = (hour >= 6 && hour < 22);
+            // 05:00 to 23:59 -> 0 (Scheduled Daytime 05:00-24:00), 00:00 to 04:59 -> 1 (Standby Off-Hour 24:00-05:00)
+            const isDaytime = (hour >= 5 && hour < 24);
             const targetVal = isDaytime ? '0' : '1';
 
             if (radF2_0 && radF2_1) {
@@ -758,11 +758,13 @@ def get_js():
         scheduleAutoSave();
     }
 
-    // --- Automatic ED Shift Detection from T0 ---
+    // --- Automatic ED Shift Detection from T1 (Door-Out) ---
     function autoDetectShift() {
-        const t0Time = document.getElementById('f1_t0_time')?.value || document.getElementById('f2_t0_time')?.value;
-        if (!t0Time) return;
-        const parts = t0Time.split(':').map(Number);
+        // Primary source: T1 (Island ED Departure Time); fallback to T0 if T1 not set
+        const t1Time = document.getElementById('f1_t1_time')?.value || document.getElementById('f2_t1_time')?.value;
+        const sourceTime = t1Time || document.getElementById('f1_t0_time')?.value || document.getElementById('f2_t0_time')?.value;
+        if (!sourceTime) return;
+        const parts = sourceTime.split(':').map(Number);
         if (parts.length < 2 || isNaN(parts[0]) || isNaN(parts[1])) return;
         const totalMinutes = parts[0] * 60 + parts[1];
 
@@ -850,6 +852,7 @@ def get_js():
         const f2_t = document.getElementById('f2_t1_time');
         if (f2_d) f2_d.value = d;
         if (f2_t) f2_t.value = t;
+        autoDetectShift();
         if (typeof calcForm2Timelines === 'function') calcForm2Timelines();
     }
 
@@ -860,6 +863,7 @@ def get_js():
         const f1_t = document.getElementById('f1_t1_time');
         if (f1_d) f1_d.value = d;
         if (f1_t) f1_t.value = t;
+        autoDetectShift();
         if (typeof calcTimelines === 'function') calcTimelines();
     }
 
@@ -1363,9 +1367,27 @@ def get_js():
     }
 
     // --- FORM 3 CALCULATIONS ---
+    function updateTidePhaseBadgeManual() {
+        const curPhase = document.querySelector('input[name="f3_tide_phase"]:checked')?.value;
+        const badgePhase = document.getElementById('f3_tide_phase_badge');
+        if (!badgePhase) return;
+        if (curPhase === '1') {
+            badgePhase.innerHTML = '<span style="color:#0369a1; font-size:11px;">(เลือกระยะน้ำ: 1 = น้ำขึ้น Flood Tide)</span>';
+        } else if (curPhase === '2') {
+            badgePhase.innerHTML = '<span style="color:#b91c1c; font-size:11px;">(เลือกระยะน้ำ: 2 = น้ำลง Ebb Tide)</span>';
+        } else if (curPhase === '3') {
+            badgePhase.innerHTML = '<span style="color:#475569; font-size:11px;">(เลือกระยะน้ำ: 3 = น้ำนิ่ง/น้ำทรง Slack Water)</span>';
+        }
+        if (typeof updateEpidemiologicalAssessment === 'function') updateEpidemiologicalAssessment();
+        scheduleAutoSave();
+    }
+
     function calcTide() {
         const h = parseFloat(document.getElementById('f3_tide_height')?.value);
+        const badgePhase = document.getElementById('f3_tide_phase_badge');
+
         if (!isNaN(h)) {
+            // 1. TIDE_EXTREME_LOW (< 1.0 m LAT)
             if (h < 1.0) {
                 const low = document.getElementById('f3_tide_low');
                 if (low) low.checked = true;
@@ -1373,7 +1395,105 @@ def get_js():
                 const norm = document.getElementById('f3_tide_normal');
                 if (norm) norm.checked = true;
             }
+
+            // 2. Auto TIDE_PHASE selection based on TIDE_HEIGHT_M
+            const floodRad = document.getElementById('f3_tide_phase_flood');
+            const ebbRad = document.getElementById('f3_tide_phase_ebb');
+
+            if (h < 1.0) {
+                if (ebbRad) ebbRad.checked = true;
+                if (badgePhase) {
+                    badgePhase.innerHTML = `<span style="display:inline-flex; align-items:center; gap:4px; background:#fee2e2; color:#991b1b; padding:2px 8px; border-radius:10px; font-weight:600; font-size:11px;">⚡ Auto: 2 = น้ำลง (Ebb Tide) จากระดับน้ำ ${h.toFixed(2)} ม. (&lt; 1.0 ม.)</span>`;
+                }
+            } else {
+                if (floodRad) floodRad.checked = true;
+                if (badgePhase) {
+                    badgePhase.innerHTML = `<span style="display:inline-flex; align-items:center; gap:4px; background:#e0f2fe; color:#0369a1; padding:2px 8px; border-radius:10px; font-weight:600; font-size:11px;">⚡ Auto: 1 = น้ำขึ้น (Flood Tide) จากระดับน้ำ ${h.toFixed(2)} ม. (&ge; 1.0 ม.)</span>`;
+                }
+            }
+        } else {
+            if (badgePhase) badgePhase.innerHTML = '';
         }
+        if (typeof updateEpidemiologicalAssessment === 'function') updateEpidemiologicalAssessment();
+        scheduleAutoSave();
+    }
+
+    function toggleRainDetails() {
+        const precipVal = document.querySelector('input[name="f3_precipitation"]:checked')?.value;
+        const rainInput = document.getElementById('f3_rainfall_mm');
+        const rainNormRad = document.getElementById('f3_rain_normal');
+        const rainHeavyRad = document.getElementById('f3_rain_heavy');
+        const rowRain = document.getElementById('row_f3_rainfall');
+        const rowTorr = document.getElementById('row_f3_torrential');
+        const rainHint = document.getElementById('f3_rain_hint');
+
+        if (precipVal === '0') {
+            // สภาพฝนตกขณะส่งต่อ = 0 (ไม่มีฝน / อากาศแจ่มใส): ไม่ต้องทำปริมาณฝนและเกณฑ์พายุ
+            if (rainInput) {
+                rainInput.disabled = true;
+                rainInput.value = '';
+                rainInput.style.backgroundColor = '#f1f5f9';
+                rainInput.style.color = '#94a3b8';
+            }
+            if (rainNormRad) {
+                rainNormRad.checked = true;
+                rainNormRad.disabled = true;
+            }
+            if (rainHeavyRad) {
+                rainHeavyRad.checked = false;
+                rainHeavyRad.disabled = true;
+            }
+            if (rowRain) {
+                rowRain.style.opacity = '0.45';
+                rowRain.style.backgroundColor = '#f8fafc';
+            }
+            if (rowTorr) {
+                rowTorr.style.opacity = '0.45';
+                rowTorr.style.backgroundColor = '#f8fafc';
+            }
+            if (rainHint) {
+                rainHint.innerHTML = '<span style="color: #15803d; font-weight: 600;">✓ ไม่ต้องกรอก (สภาพฝนตกขณะส่งต่อ = 0 ไม่มีฝน)</span>';
+            }
+        } else if (precipVal === '1') {
+            // สภาพฝนตกขณะส่งต่อ = 1 (ฝนตกหนัก / พายุ): ให้กรอก
+            if (rainInput) {
+                rainInput.disabled = false;
+                rainInput.style.backgroundColor = '#ffffff';
+                rainInput.style.color = '';
+            }
+            if (rainNormRad) rainNormRad.disabled = false;
+            if (rainHeavyRad) rainHeavyRad.disabled = false;
+            if (rowRain) {
+                rowRain.style.opacity = '1';
+                rowRain.style.backgroundColor = '';
+            }
+            if (rowTorr) {
+                rowTorr.style.opacity = '1';
+                rowTorr.style.backgroundColor = '';
+            }
+            if (rainHint) {
+                rainHint.innerHTML = '<span style="color: #b45309; font-weight: 600;">⚠️ ฝนตกขณะส่งต่อ: ระบุปริมาณฝนสะสมเพื่อประเมินเกณฑ์พายุ</span>';
+            }
+            calcRain();
+        } else {
+            if (rainInput) {
+                rainInput.disabled = false;
+                rainInput.style.backgroundColor = '#ffffff';
+                rainInput.style.color = '';
+            }
+            if (rainNormRad) rainNormRad.disabled = false;
+            if (rainHeavyRad) rainHeavyRad.disabled = false;
+            if (rowRain) {
+                rowRain.style.opacity = '1';
+                rowRain.style.backgroundColor = '';
+            }
+            if (rowTorr) {
+                rowTorr.style.opacity = '1';
+                rowTorr.style.backgroundColor = '';
+            }
+            if (rainHint) rainHint.innerHTML = '';
+        }
+        if (typeof updateEpidemiologicalAssessment === 'function') updateEpidemiologicalAssessment();
         scheduleAutoSave();
     }
 
@@ -1388,6 +1508,7 @@ def get_js():
                 if (norm) norm.checked = true;
             }
         }
+        if (typeof updateEpidemiologicalAssessment === 'function') updateEpidemiologicalAssessment();
         scheduleAutoSave();
     }
 
@@ -1408,15 +1529,11 @@ def get_js():
             }
         }
 
-        // Sync ED shift from Form 1
-        const f1Shift = document.querySelector('input[name="f1_shift"]:checked')?.value;
-        if (f1Shift) {
-            const shiftRad = document.querySelector(`input[name="f3_ed_shift"][value="${f1Shift}"]`);
-            if (shiftRad) shiftRad.checked = true;
-        }
+        // Auto sync ED shift based on T1 (from autoDetectShift)
+        autoDetectShift();
 
         calcTide();
-        calcRain();
+        toggleRainDetails();
         if (typeof updateEpidemiologicalAssessment === 'function') updateEpidemiologicalAssessment();
         scheduleAutoSave();
     }
@@ -1839,7 +1956,7 @@ def get_js():
         // --- 1. COHORT EXPOSURE CLASSIFICATION ---
         const exposedFactors = [];
 
-        // Determinant 1: Off-hour ferry (22:00-06:00)
+        // Determinant 1: Off-hour ferry (24:00-05:00)
         const ferryF2 = document.querySelector('input[name="f2_ferry_operate"]:checked')?.value;
         const ferryF3 = document.querySelector('input[name="f3_ferry_shift"]:checked')?.value;
         const t2Time = document.getElementById('f2_t2_time')?.value;
@@ -1850,12 +1967,12 @@ def get_js():
             const parts = ferryTime.split(':');
             if (parts.length >= 2) {
                 const h = parseInt(parts[0], 10);
-                if (!isNaN(h) && (h >= 22 || h < 6)) isOffHour = true;
+                if (!isNaN(h) && (h >= 0 && h < 5)) isOffHour = true;
             }
         }
         if (isOffHour) {
             exposedFactors.push({
-                name: 'การเดินแพนอกเวลาปกติ (Off-Hour Ferry: 22:00–06:00 น.)',
+                name: 'การเดินแพนอกเวลาปกติ (Off-Hour Ferry: 24:00–05:00 น.)',
                 desc: 'แพปิดบริการรอบปกติ ต้องโทรเรียกคนขับแพฉุกเฉิน (Emergency On-Call)',
                 icon: '⛴️'
             });
@@ -1886,11 +2003,10 @@ def get_js():
         // Determinant 4: Rough sea state (> 2.0m / Beaufort >= 5)
         const seaState = document.querySelector('input[name="f3_sea_state"]:checked')?.value;
         const waveH = parseFloat(document.getElementById('f3_wave_height')?.value);
-        const windSpd = parseFloat(document.getElementById('f3_wind_speed')?.value);
-        if (seaState === '2' || (!isNaN(waveH) && waveH > 2.0) || (!isNaN(windSpd) && windSpd >= 20.0)) {
+        if (seaState === '2' || (!isNaN(waveH) && waveH > 2.0)) {
             exposedFactors.push({
                 name: 'คลื่นลมแรงในร่องน้ำทะเลอันดามัน (Rough Sea / High Waves > 2.0m)',
-                desc: 'ความสูงคลื่น > 2.0 เมตร หรือลมแรงจัด เพิ่มความโคลงเคลงและเวลาข้ามฟาก',
+                desc: 'ความสูงคลื่น > 2.0 เมตร เพิ่มความโคลงเคลงและเวลาข้ามฟาก',
                 icon: '💨'
             });
         }
@@ -1990,7 +2106,7 @@ def get_js():
             cohortFactorsEl.innerHTML = `
                 <div style="background: #ffffff; border: 1px solid #bbf7d0; border-left: 3.5px solid #22c55e; border-radius: 5px; padding: 8px 10px; margin-top: 6px; color: #166534; font-size: 12px; line-height: 1.5;">
                     <div style="font-weight: 700; margin-bottom: 2px;">✓ ไม่พบปัจจัยคุกคามจากการขนส่งและสิ่งแวดล้อม</div>
-                    <div style="color: #475569; font-size: 11.5px;">เคสนี้ส่งต่อในสภาวะปกติ (ช่วงกลางวัน 06:00–22:00 น., ทะเลสงบ, น้ำทะเลปกติ, ไม่มีพายุฝน, ท่าเรือไม่ติดขัด, เวรปกติ และส่งต่อตรงเวลา)</div>
+                    <div style="color: #475569; font-size: 11.5px;">เคสนี้ส่งต่อในสภาวะปกติ (ช่วงกลางวัน 05:00–24:00 น., ทะเลสงบ, น้ำทะเลปกติ, ไม่มีพายุฝน, ท่าเรือไม่ติดขัด, เวรปกติ และส่งต่อตรงเวลา)</div>
                 </div>
             `;
         } else {
@@ -2396,6 +2512,7 @@ def get_js():
 
         toggleCprDetails();
         toggleMortalityDetails();
+        toggleRainDetails();
         autoDetectFerryOperate();
 
         calcAll();
@@ -2490,6 +2607,7 @@ def get_js():
 
             toggleCprDetails();
             toggleMortalityDetails();
+            toggleRainDetails();
 
             calcAll();
             saveCurrentCase(true);

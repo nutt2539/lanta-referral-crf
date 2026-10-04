@@ -118,13 +118,15 @@ def get_form3_html():
                 <td style="font-weight: 700; background: #f8fafc;">
                     <div>ระยะการขึ้น-ลงของน้ำทะเล</div>
                     <div style="font-size: 13px; color: #64748b;">(TIDE_PHASE)</div>
+                    <div style="font-size: 11px; color: #0284c7; font-weight: normal; margin-top: 2px;">(Auto เลือกตามระดับน้ำจริง TIDE_HEIGHT_M)</div>
                 </td>
                 <td>
                     <div class="check-row">
-                        <label class="form-check"><input type="radio" name="f3_tide_phase" value="1"> 1 = น้ำขึ้น (Flood Tide)</label>
-                        <label class="form-check"><input type="radio" name="f3_tide_phase" value="2"> 2 = น้ำลง (Ebb Tide)</label>
-                        <label class="form-check"><input type="radio" name="f3_tide_phase" value="3"> 3 = น้ำนิ่ง/น้ำทรง (Slack Water)</label>
+                        <label class="form-check"><input type="radio" name="f3_tide_phase" id="f3_tide_phase_flood" value="1" onchange="updateTidePhaseBadgeManual();"> 1 = น้ำขึ้น (Flood Tide)</label>
+                        <label class="form-check"><input type="radio" name="f3_tide_phase" id="f3_tide_phase_ebb" value="2" onchange="updateTidePhaseBadgeManual();"> 2 = น้ำลง (Ebb Tide)</label>
+                        <label class="form-check"><input type="radio" name="f3_tide_phase" id="f3_tide_phase_slack" value="3" onchange="updateTidePhaseBadgeManual();"> 3 = น้ำนิ่ง/น้ำทรง (Slack Water)</label>
                     </div>
+                    <div id="f3_tide_phase_badge" style="margin-top: 4px;"></div>
                 </td>
             </tr>
             <tr>
@@ -175,57 +177,39 @@ def get_form3_html():
             </tr>
             <tr>
                 <td style="font-weight: 700; background: #f8fafc;">
-                    <div>ความเร็วลมและทิศทางลม</div>
-                    <div style="font-size: 13px; color: #64748b;">(Wind Speed & Direction)</div>
-                </td>
-                <td>
-                    <div style="display: flex; gap: 20px; align-items: center;">
-                        <div style="display: flex; align-items: center; gap: 4px;">
-                            <span>ความเร็วลม:</span>
-                            <input type="number" id="f3_wind_speed" step="0.1" style="width: 80px;">
-                            <span>น็อต (Knots)</span>
-                        </div>
-                        <div style="display: flex; align-items: center; gap: 4px;">
-                            <span>| ทิศทางลม:</span>
-                            <input type="text" id="f3_wind_direction" style="width: 120px;" placeholder="เช่น ตะวันตกเฉียงใต้">
-                        </div>
-                    </div>
-                </td>
-            </tr>
-            <tr>
-                <td style="font-weight: 700; background: #f8fafc;">
                     <div>สภาพฝนตกขณะส่งต่อ</div>
                     <div style="font-size: 13px; color: #64748b;">(Precipitation)</div>
                 </td>
                 <td>
                     <div class="check-group">
-                        <label class="form-check"><input type="radio" name="f3_precipitation" value="0"> 0 = Fair / No rain (อากาศแจ่มใส / ไม่มีฝน หรือฝนเล็กน้อย)</label>
-                        <label class="form-check"><input type="radio" name="f3_precipitation" value="1"> 1 = Heavy rainfall / Storm (ฝนตกหนัก / พายุฝน)</label>
+                        <label class="form-check"><input type="radio" name="f3_precipitation" id="f3_precip_0" value="0" onchange="toggleRainDetails();"> 0 = Fair / No rain (อากาศแจ่มใส / ไม่มีฝน หรือฝนเล็กน้อย)</label>
+                        <label class="form-check"><input type="radio" name="f3_precipitation" id="f3_precip_1" value="1" onchange="toggleRainDetails();"> 1 = Heavy rainfall / Storm (ฝนตกหนัก / พายุฝน)</label>
                     </div>
                 </td>
             </tr>
-            <tr>
-                <td style="font-weight: 700; background: #f8fafc;">
-                    <div>เกณฑ์พายุฝนตกหนัก</div>
-                    <div style="font-size: 13px; color: #64748b;">(Torrential Rain Rate: RAIN_MM_DAILY)</div>
-                </td>
-                <td>
-                    <div class="check-group">
-                        <label class="form-check"><input type="radio" name="f3_torrential_rain" id="f3_rain_normal" value="0"> 0 = ไม่เข้าเกณฑ์พายุฝนหนัก</label>
-                        <label class="form-check"><input type="radio" name="f3_torrential_rain" id="f3_rain_heavy" value="1"> 1 = พายุฝนตกหนักวิกฤต (&gt;= 10.0 มม./ชม. หรือ &gt;= 35.0 มม./วัน)</label>
-                    </div>
-                </td>
-            </tr>
-            <tr>
+            <tr id="row_f3_rainfall">
                 <td style="font-weight: 700; background: #f8fafc;">
                     <div>ปริมาณน้ำฝนสะสมรายชั่วโมง</div>
                     <div style="font-size: 13px; color: #64748b;">(Rain fall rate TMD)</div>
+                    <div id="f3_rain_hint" style="font-size: 11px; font-weight: normal; margin-top: 2px;"></div>
                 </td>
                 <td>
                     <div style="display: flex; align-items: center; gap: 6px;">
                         <span>ปริมาณฝน:</span>
                         <input type="number" id="f3_rainfall_mm" step="0.1" style="width: 90px;" oninput="calcRain();" placeholder="เช่น 0.0">
                         <span>มม./ชม. (mm/hr)</span>
+                    </div>
+                </td>
+            </tr>
+            <tr id="row_f3_torrential">
+                <td style="font-weight: 700; background: #f8fafc;">
+                    <div>เกณฑ์พายุฝนตกหนัก</div>
+                    <div style="font-size: 13px; color: #64748b;">(Torrential Rain Rate: RAIN_MM_DAILY)</div>
+                </td>
+                <td>
+                    <div class="check-group">
+                        <label class="form-check"><input type="radio" name="f3_torrential_rain" id="f3_rain_normal" value="0" onchange="scheduleAutoSave();"> 0 = ไม่เข้าเกณฑ์พายุฝนหนัก</label>
+                        <label class="form-check"><input type="radio" name="f3_torrential_rain" id="f3_rain_heavy" value="1" onchange="scheduleAutoSave();"> 1 = พายุฝนตกหนักวิกฤต (&gt;= 10.0 มม./ชม. หรือ &gt;= 35.0 มม./วัน)</label>
                     </div>
                 </td>
             </tr>
@@ -254,8 +238,8 @@ def get_form3_html():
                 </td>
                 <td>
                     <div class="check-group">
-                        <label class="form-check"><input type="radio" name="f3_ferry_shift" id="f3_ferry_shift_0" value="0" onchange="syncFerryShiftFromF3();"> 0 = Scheduled Daytime (06:00–22:00 น.): บริการเดินเรือตามรอบปกติ</label>
-                        <label class="form-check"><input type="radio" name="f3_ferry_shift" id="f3_ferry_shift_1" value="1" onchange="syncFerryShiftFromF3();"> 1 = Standby Off-Hour (22:00–06:00 น.): แพปิดบริการ ต้องโทรเรียกแพฉุกเฉิน (Emergency Call-out)</label>
+                        <label class="form-check"><input type="radio" name="f3_ferry_shift" id="f3_ferry_shift_0" value="0" onchange="syncFerryShiftFromF3();"> 0 = Scheduled Daytime (05:00–24:00 น.): บริการเดินเรือตามรอบปกติ</label>
+                        <label class="form-check"><input type="radio" name="f3_ferry_shift" id="f3_ferry_shift_1" value="1" onchange="syncFerryShiftFromF3();"> 1 = Standby Off-Hour (24:00–05:00 น.): แพปิดบริการ ต้องโทรเรียกแพฉุกเฉิน (Emergency Call-out)</label>
                     </div>
                     <div id="f3_ferry_shift_badge" style="margin-top: 5px;"></div>
                 </td>
@@ -264,6 +248,7 @@ def get_form3_html():
                 <td style="font-weight: 700; background: #f8fafc;">
                     <div>ช่วงเวรการทำงานห้องฉุกเฉินเกาะลันตา</div>
                     <div style="font-size: 13px; color: #64748b;">(ED Shift)</div>
+                    <div style="font-size: 11px; color: #0284c7; font-weight: normal; margin-top: 2px;">(Auto เลือกตามเวลา T1 ออกจากห้องฉุกเฉิน)</div>
                 </td>
                 <td>
                     <div class="check-row">

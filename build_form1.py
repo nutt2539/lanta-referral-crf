@@ -364,7 +364,10 @@ def get_form1_html():
                     </td>
                 </tr>
                 <tr>
-                    <td style="font-weight: 700; background: #f8fafc;">ช่วงเวรการทำงาน (Island ED Shift)</td>
+                    <td style="font-weight: 700; background: #f8fafc;">
+                        <div>ช่วงเวรการทำงาน (Island ED Shift)</div>
+                        <div style="font-size: 11px; color: #0284c7; font-weight: normal; margin-top: 2px;">(Auto เลือกตามเวลา T1 ออกจากห้องฉุกเฉิน)</div>
+                    </td>
                     <td colspan="3">
                         <div class="check-row">
                             <label class="form-check"><input type="radio" name="f1_shift" value="morning"> เวรเช้า (08:00–16:00 น.)</label>

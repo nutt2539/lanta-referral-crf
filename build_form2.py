@@ -310,8 +310,8 @@ def get_form2_html():
                 </td>
                 <td style="width: 65%;">
                     <div class="check-group">
-                        <label class="form-check"><input type="radio" name="f2_ferry_operate" id="f2_ferry_operate_0" value="0" onchange="syncFerryShiftFromF2();"> 0 = Scheduled Daytime (06:00–22:00 น.): บริการเดินเรือตามรอบปกติ</label>
-                        <label class="form-check"><input type="radio" name="f2_ferry_operate" id="f2_ferry_operate_1" value="1" onchange="syncFerryShiftFromF2();"> 1 = Standby Off-Hour (22:00–06:00 น.): แพปิดบริการ ต้องโทรเรียกแพฉุกเฉิน (Emergency Call-out)</label>
+                        <label class="form-check"><input type="radio" name="f2_ferry_operate" id="f2_ferry_operate_0" value="0" onchange="syncFerryShiftFromF2();"> 0 = Scheduled Daytime (05:00–24:00 น.): บริการเดินเรือตามรอบปกติ</label>
+                        <label class="form-check"><input type="radio" name="f2_ferry_operate" id="f2_ferry_operate_1" value="1" onchange="syncFerryShiftFromF2();"> 1 = Standby Off-Hour (24:00–05:00 น.): แพปิดบริการ ต้องโทรเรียกแพฉุกเฉิน (Emergency Call-out)</label>
                     </div>
                     <div id="f2_ferry_operate_badge" style="margin-top: 5px;"></div>
                 </td>
