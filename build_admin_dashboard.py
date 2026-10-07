@@ -208,6 +208,32 @@ def get_admin_dashboard_css():
             border-color: #10b981;
             background: #f0fdf4;
         }
+
+        /* Admin Cases Table Sortable Headers */
+        .admin-th-sortable {
+            cursor: pointer !important;
+            user-select: none;
+            transition: background-color 0.15s ease, color 0.15s ease;
+        }
+        .admin-th-sortable:hover {
+            background-color: #e2e8f0 !important;
+            color: #1e40af !important;
+        }
+        .admin-th-sortable.active-sort {
+            background-color: #e0e7ff !important;
+            color: #1d4ed8 !important;
+        }
+        .sort-indicator {
+            display: inline-block;
+            font-size: 11px;
+            opacity: 0.45;
+            transition: transform 0.15s ease, opacity 0.15s ease;
+        }
+        .admin-th-sortable.active-sort .sort-indicator {
+            opacity: 1;
+            font-weight: 700;
+            color: #1d4ed8;
+        }
     """
 
 def get_admin_dashboard_html():
@@ -439,15 +465,51 @@ def get_admin_dashboard_html():
                             <table class="crf-table" style="margin-bottom: 0; font-size: 13px; width: 100%;">
                                 <thead>
                                     <tr style="background: #f1f5f9;">
-                                        <th style="width: 100px; text-align: center;">STUDY_ID</th>
-                                        <th style="width: 130px;">HN / Refer_ID</th>
-                                        <th style="width: 100px; text-align: center;">อายุ / เพศ</th>
-                                        <th style="width: 90px; text-align: center;">Triage ESI</th>
-                                        <th>หมวดโรค / การวินิจฉัย</th>
-                                        <th style="width: 130px; text-align: center;">เวลาส่งต่อรวม</th>
-                                        <th style="width: 90px; text-align: center;">RTS (เกาะ/กระบี่)</th>
-                                        <th style="width: 100px; text-align: center;">ผลลัพธ์ 24 ชม.</th>
-                                        <th style="width: 140px; text-align: center;">ความสมบูรณ์ข้อมูล</th>
+                                        <th class="admin-th-sortable" data-sort="studyId" onclick="handleAdminTableSort('studyId')" style="width: 105px; text-align: center;" title="คลิกเพื่อเรียงลำดับตาม STUDY_ID">
+                                            <div style="display: flex; align-items: center; justify-content: center; gap: 4px;">
+                                                <span>STUDY_ID</span><span class="sort-indicator" id="th-sort-studyId">▲</span>
+                                            </div>
+                                        </th>
+                                        <th class="admin-th-sortable" data-sort="hn" onclick="handleAdminTableSort('hn')" style="width: 130px;" title="คลิกเพื่อเรียงลำดับตาม HN / Refer_ID">
+                                            <div style="display: flex; align-items: center; gap: 4px;">
+                                                <span>HN / Refer_ID</span><span class="sort-indicator" id="th-sort-hn">⇅</span>
+                                            </div>
+                                        </th>
+                                        <th class="admin-th-sortable" data-sort="age" onclick="handleAdminTableSort('age')" style="width: 100px; text-align: center;" title="คลิกเพื่อเรียงลำดับตาม อายุ / เพศ">
+                                            <div style="display: flex; align-items: center; justify-content: center; gap: 4px;">
+                                                <span>อายุ / เพศ</span><span class="sort-indicator" id="th-sort-age">⇅</span>
+                                            </div>
+                                        </th>
+                                        <th class="admin-th-sortable" data-sort="esi" onclick="handleAdminTableSort('esi')" style="width: 90px; text-align: center;" title="คลิกเพื่อเรียงลำดับตาม Triage ESI">
+                                            <div style="display: flex; align-items: center; justify-content: center; gap: 4px;">
+                                                <span>Triage ESI</span><span class="sort-indicator" id="th-sort-esi">⇅</span>
+                                            </div>
+                                        </th>
+                                        <th class="admin-th-sortable" data-sort="disease" onclick="handleAdminTableSort('disease')" style="min-width: 130px;" title="คลิกเพื่อเรียงลำดับตาม หมวดโรค / การวินิจฉัย">
+                                            <div style="display: flex; align-items: center; gap: 4px;">
+                                                <span>หมวดโรค / การวินิจฉัย</span><span class="sort-indicator" id="th-sort-disease">⇅</span>
+                                            </div>
+                                        </th>
+                                        <th class="admin-th-sortable" data-sort="transferTime" onclick="handleAdminTableSort('transferTime')" style="width: 130px; text-align: center;" title="คลิกเพื่อเรียงลำดับตาม เวลาส่งต่อรวม">
+                                            <div style="display: flex; align-items: center; justify-content: center; gap: 4px;">
+                                                <span>เวลาส่งต่อรวม</span><span class="sort-indicator" id="th-sort-transferTime">⇅</span>
+                                            </div>
+                                        </th>
+                                        <th class="admin-th-sortable" data-sort="rts" onclick="handleAdminTableSort('rts')" style="width: 95px; text-align: center;" title="คลิกเพื่อเรียงลำดับตาม RTS">
+                                            <div style="display: flex; align-items: center; justify-content: center; gap: 4px;">
+                                                <span>RTS (เกาะ/กระบี่)</span><span class="sort-indicator" id="th-sort-rts">⇅</span>
+                                            </div>
+                                        </th>
+                                        <th class="admin-th-sortable" data-sort="outcome" onclick="handleAdminTableSort('outcome')" style="width: 105px; text-align: center;" title="คลิกเพื่อเรียงลำดับตาม ผลลัพธ์ 24 ชม.">
+                                            <div style="display: flex; align-items: center; justify-content: center; gap: 4px;">
+                                                <span>ผลลัพธ์ 24 ชม.</span><span class="sort-indicator" id="th-sort-outcome">⇅</span>
+                                            </div>
+                                        </th>
+                                        <th class="admin-th-sortable" data-sort="completeness" onclick="handleAdminTableSort('completeness')" style="width: 140px; text-align: center;" title="คลิกเพื่อเรียงลำดับตาม ความสมบูรณ์ข้อมูล">
+                                            <div style="display: flex; align-items: center; justify-content: center; gap: 4px;">
+                                                <span>ความสมบูรณ์ข้อมูล</span><span class="sort-indicator" id="th-sort-completeness">⇅</span>
+                                            </div>
+                                        </th>
                                         <th style="width: 220px; text-align: center;">จัดการข้อมูล</th>
                                     </tr>
                                 </thead>

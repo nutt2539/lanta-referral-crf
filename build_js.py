@@ -4041,6 +4041,126 @@ const CRF_AUDIT_FIELDS = [
         };
     }
 
+    // --- Admin Table Sorting State & Handlers ---
+    let adminSortColumn = 'studyId';
+    let adminSortDirection = 'asc';
+
+    function handleAdminTableSort(columnKey) {
+        if (adminSortColumn === columnKey) {
+            adminSortDirection = (adminSortDirection === 'asc') ? 'desc' : 'asc';
+        } else {
+            adminSortColumn = columnKey;
+            if (columnKey === 'completeness' || columnKey === 'transferTime') {
+                adminSortDirection = 'desc';
+            } else {
+                adminSortDirection = 'asc';
+            }
+        }
+        renderAdminDashboard();
+    }
+    if (typeof window !== 'undefined') {
+        window.handleAdminTableSort = handleAdminTableSort;
+    }
+
+    function compareSortable(valA, valB, isNumeric = false) {
+        const isEmptyA = (valA === null || valA === undefined || valA === '');
+        const isEmptyB = (valB === null || valB === undefined || valB === '');
+        if (isEmptyA && isEmptyB) return 0;
+        if (isEmptyA) return 1;  // empty A stays at bottom
+        if (isEmptyB) return -1; // empty B stays at bottom
+
+        let res = 0;
+        if (isNumeric) {
+            res = Number(valA) - Number(valB);
+        } else {
+            res = String(valA).localeCompare(String(valB), 'th', { numeric: true, sensitivity: 'base' });
+        }
+        return adminSortDirection === 'asc' ? res : -res;
+    }
+
+    function compareAdminCases(a, b) {
+        switch (adminSortColumn) {
+            case 'studyId': {
+                const numA = parseInt(a.studyId, 10);
+                const numB = parseInt(b.studyId, 10);
+                const isNumA = !isNaN(numA);
+                const isNumB = !isNaN(numB);
+                if (isNumA && isNumB) return compareSortable(numA, numB, true);
+                return compareSortable(a.studyId, b.studyId, false);
+            }
+            case 'hn': {
+                const strA = (a.hn && a.hn !== '-' ? a.hn : '') || a.referId || '';
+                const strB = (b.hn && b.hn !== '-' ? b.hn : '') || b.referId || '';
+                return compareSortable(strA, strB, false);
+            }
+            case 'age': {
+                const ageA = a.age ? parseFloat(a.age) : null;
+                const ageB = b.age ? parseFloat(b.age) : null;
+                return compareSortable(ageA, ageB, true);
+            }
+            case 'esi': {
+                const esiA = a.esi ? parseInt(a.esi, 10) : null;
+                const esiB = b.esi ? parseInt(b.esi, 10) : null;
+                return compareSortable(esiA, esiB, true);
+            }
+            case 'disease': {
+                const disA = a.isStemi ? 'STEMI' : (a.isStroke ? 'Stroke' : (a.isTrauma ? 'Trauma' : (a.diseaseKey || null)));
+                const disB = b.isStemi ? 'STEMI' : (b.isStroke ? 'Stroke' : (b.isTrauma ? 'Trauma' : (b.diseaseKey || null)));
+                return compareSortable(disA, disB, false);
+            }
+            case 'transferTime': {
+                const tA = (!isNaN(a.transferMin) && a.transferMin > 0) ? a.transferMin : null;
+                const tB = (!isNaN(b.transferMin) && b.transferMin > 0) ? b.transferMin : null;
+                return compareSortable(tA, tB, true);
+            }
+            case 'rts': {
+                const rtsA = !isNaN(parseFloat(a.data?.f1_rts_total)) ? parseFloat(a.data.f1_rts_total) : (!isNaN(parseFloat(a.data?.f4_rts_total)) ? parseFloat(a.data.f4_rts_total) : null);
+                const rtsB = !isNaN(parseFloat(b.data?.f1_rts_total)) ? parseFloat(b.data.f1_rts_total) : (!isNaN(parseFloat(b.data?.f4_rts_total)) ? parseFloat(b.data.f4_rts_total) : null);
+                return compareSortable(rtsA, rtsB, true);
+            }
+            case 'outcome': {
+                const getRank = c => {
+                    const d = c.data || {};
+                    const st = d.f4_mort_status !== undefined && d.f4_mort_status !== '' ? d.f4_mort_status : (d.f4_mort_24h !== undefined && d.f4_mort_24h !== '' ? d.f4_mort_24h : d.f4_mort_er);
+                    if (st === '0') return 1; // รอดชีวิต
+                    if (st === '1') return 2; // เสียชีวิต
+                    return null; // รอผล / ไม่ระบุ
+                };
+                return compareSortable(getRank(a), getRank(b), true);
+            }
+            case 'completeness': {
+                const pctA = a.completeness ? a.completeness.pct : null;
+                const pctB = b.completeness ? b.completeness.pct : null;
+                return compareSortable(pctA, pctB, true);
+            }
+            default:
+                return 0;
+        }
+    }
+
+    function updateAdminSortIndicators() {
+        const sortKeys = ['studyId', 'hn', 'age', 'esi', 'disease', 'transferTime', 'rts', 'outcome', 'completeness'];
+        sortKeys.forEach(key => {
+            const iconEl = document.getElementById('th-sort-' + key);
+            const thEl = document.querySelector(`.admin-th-sortable[data-sort="${key}"]`);
+            if (key === adminSortColumn) {
+                if (iconEl) {
+                    iconEl.textContent = adminSortDirection === 'asc' ? '▲' : '▼';
+                    iconEl.style.opacity = '1';
+                    iconEl.style.color = '#1d4ed8';
+                }
+                if (thEl) thEl.classList.add('active-sort');
+            } else {
+                if (iconEl) {
+                    iconEl.textContent = '⇅';
+                    iconEl.style.opacity = '0.4';
+                    iconEl.style.color = '#64748b';
+                }
+                if (thEl) thEl.classList.remove('active-sort');
+            }
+        });
+    }
+
     // Main Render Function for Research Admin Dashboard
     function renderAdminDashboard() {
         const index = JSON.parse(localStorage.getItem('online_crf_case_index') || '[]');
@@ -4151,6 +4271,9 @@ const CRF_AUDIT_FIELDS = [
             }
             return true;
         });
+
+        // Sort cases according to active column & direction
+        filtered.sort(compareAdminCases);
 
         // Update global filter badges
         const badgeCount = document.getElementById('admin-filter-count-badge');
@@ -4327,6 +4450,9 @@ const CRF_AUDIT_FIELDS = [
             });
             tbody.innerHTML = rowsHtml;
         }
+
+        // Update Sort Indicators on Table Headers
+        updateAdminSortIndicators();
 
         // Update Overview Stat Cards
         const statTotal = document.getElementById('stat-total-patients');

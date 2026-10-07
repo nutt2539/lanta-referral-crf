@@ -1616,6 +1616,32 @@
             border-color: #10b981;
             background: #f0fdf4;
         }
+
+        /* Admin Cases Table Sortable Headers */
+        .admin-th-sortable {
+            cursor: pointer !important;
+            user-select: none;
+            transition: background-color 0.15s ease, color 0.15s ease;
+        }
+        .admin-th-sortable:hover {
+            background-color: #e2e8f0 !important;
+            color: #1e40af !important;
+        }
+        .admin-th-sortable.active-sort {
+            background-color: #e0e7ff !important;
+            color: #1d4ed8 !important;
+        }
+        .sort-indicator {
+            display: inline-block;
+            font-size: 11px;
+            opacity: 0.45;
+            transition: transform 0.15s ease, opacity 0.15s ease;
+        }
+        .admin-th-sortable.active-sort .sort-indicator {
+            opacity: 1;
+            font-weight: 700;
+            color: #1d4ed8;
+        }
     
     </style>
 </head>
@@ -4121,15 +4147,51 @@
                             <table class="crf-table" style="margin-bottom: 0; font-size: 13px; width: 100%;">
                                 <thead>
                                     <tr style="background: #f1f5f9;">
-                                        <th style="width: 100px; text-align: center;">STUDY_ID</th>
-                                        <th style="width: 130px;">HN / Refer_ID</th>
-                                        <th style="width: 100px; text-align: center;">อายุ / เพศ</th>
-                                        <th style="width: 90px; text-align: center;">Triage ESI</th>
-                                        <th>หมวดโรค / การวินิจฉัย</th>
-                                        <th style="width: 130px; text-align: center;">เวลาส่งต่อรวม</th>
-                                        <th style="width: 90px; text-align: center;">RTS (เกาะ/กระบี่)</th>
-                                        <th style="width: 100px; text-align: center;">ผลลัพธ์ 24 ชม.</th>
-                                        <th style="width: 140px; text-align: center;">ความสมบูรณ์ข้อมูล</th>
+                                        <th class="admin-th-sortable" data-sort="studyId" onclick="handleAdminTableSort('studyId')" style="width: 105px; text-align: center;" title="คลิกเพื่อเรียงลำดับตาม STUDY_ID">
+                                            <div style="display: flex; align-items: center; justify-content: center; gap: 4px;">
+                                                <span>STUDY_ID</span><span class="sort-indicator" id="th-sort-studyId">▲</span>
+                                            </div>
+                                        </th>
+                                        <th class="admin-th-sortable" data-sort="hn" onclick="handleAdminTableSort('hn')" style="width: 130px;" title="คลิกเพื่อเรียงลำดับตาม HN / Refer_ID">
+                                            <div style="display: flex; align-items: center; gap: 4px;">
+                                                <span>HN / Refer_ID</span><span class="sort-indicator" id="th-sort-hn">⇅</span>
+                                            </div>
+                                        </th>
+                                        <th class="admin-th-sortable" data-sort="age" onclick="handleAdminTableSort('age')" style="width: 100px; text-align: center;" title="คลิกเพื่อเรียงลำดับตาม อายุ / เพศ">
+                                            <div style="display: flex; align-items: center; justify-content: center; gap: 4px;">
+                                                <span>อายุ / เพศ</span><span class="sort-indicator" id="th-sort-age">⇅</span>
+                                            </div>
+                                        </th>
+                                        <th class="admin-th-sortable" data-sort="esi" onclick="handleAdminTableSort('esi')" style="width: 90px; text-align: center;" title="คลิกเพื่อเรียงลำดับตาม Triage ESI">
+                                            <div style="display: flex; align-items: center; justify-content: center; gap: 4px;">
+                                                <span>Triage ESI</span><span class="sort-indicator" id="th-sort-esi">⇅</span>
+                                            </div>
+                                        </th>
+                                        <th class="admin-th-sortable" data-sort="disease" onclick="handleAdminTableSort('disease')" style="min-width: 130px;" title="คลิกเพื่อเรียงลำดับตาม หมวดโรค / การวินิจฉัย">
+                                            <div style="display: flex; align-items: center; gap: 4px;">
+                                                <span>หมวดโรค / การวินิจฉัย</span><span class="sort-indicator" id="th-sort-disease">⇅</span>
+                                            </div>
+                                        </th>
+                                        <th class="admin-th-sortable" data-sort="transferTime" onclick="handleAdminTableSort('transferTime')" style="width: 130px; text-align: center;" title="คลิกเพื่อเรียงลำดับตาม เวลาส่งต่อรวม">
+                                            <div style="display: flex; align-items: center; justify-content: center; gap: 4px;">
+                                                <span>เวลาส่งต่อรวม</span><span class="sort-indicator" id="th-sort-transferTime">⇅</span>
+                                            </div>
+                                        </th>
+                                        <th class="admin-th-sortable" data-sort="rts" onclick="handleAdminTableSort('rts')" style="width: 95px; text-align: center;" title="คลิกเพื่อเรียงลำดับตาม RTS">
+                                            <div style="display: flex; align-items: center; justify-content: center; gap: 4px;">
+                                                <span>RTS (เกาะ/กระบี่)</span><span class="sort-indicator" id="th-sort-rts">⇅</span>
+                                            </div>
+                                        </th>
+                                        <th class="admin-th-sortable" data-sort="outcome" onclick="handleAdminTableSort('outcome')" style="width: 105px; text-align: center;" title="คลิกเพื่อเรียงลำดับตาม ผลลัพธ์ 24 ชม.">
+                                            <div style="display: flex; align-items: center; justify-content: center; gap: 4px;">
+                                                <span>ผลลัพธ์ 24 ชม.</span><span class="sort-indicator" id="th-sort-outcome">⇅</span>
+                                            </div>
+                                        </th>
+                                        <th class="admin-th-sortable" data-sort="completeness" onclick="handleAdminTableSort('completeness')" style="width: 140px; text-align: center;" title="คลิกเพื่อเรียงลำดับตาม ความสมบูรณ์ข้อมูล">
+                                            <div style="display: flex; align-items: center; justify-content: center; gap: 4px;">
+                                                <span>ความสมบูรณ์ข้อมูล</span><span class="sort-indicator" id="th-sort-completeness">⇅</span>
+                                            </div>
+                                        </th>
                                         <th style="width: 220px; text-align: center;">จัดการข้อมูล</th>
                                     </tr>
                                 </thead>
@@ -8886,6 +8948,126 @@ const CRF_AUDIT_FIELDS = [
         };
     }
 
+    // --- Admin Table Sorting State & Handlers ---
+    let adminSortColumn = 'studyId';
+    let adminSortDirection = 'asc';
+
+    function handleAdminTableSort(columnKey) {
+        if (adminSortColumn === columnKey) {
+            adminSortDirection = (adminSortDirection === 'asc') ? 'desc' : 'asc';
+        } else {
+            adminSortColumn = columnKey;
+            if (columnKey === 'completeness' || columnKey === 'transferTime') {
+                adminSortDirection = 'desc';
+            } else {
+                adminSortDirection = 'asc';
+            }
+        }
+        renderAdminDashboard();
+    }
+    if (typeof window !== 'undefined') {
+        window.handleAdminTableSort = handleAdminTableSort;
+    }
+
+    function compareSortable(valA, valB, isNumeric = false) {
+        const isEmptyA = (valA === null || valA === undefined || valA === '');
+        const isEmptyB = (valB === null || valB === undefined || valB === '');
+        if (isEmptyA && isEmptyB) return 0;
+        if (isEmptyA) return 1;  // empty A stays at bottom
+        if (isEmptyB) return -1; // empty B stays at bottom
+
+        let res = 0;
+        if (isNumeric) {
+            res = Number(valA) - Number(valB);
+        } else {
+            res = String(valA).localeCompare(String(valB), 'th', { numeric: true, sensitivity: 'base' });
+        }
+        return adminSortDirection === 'asc' ? res : -res;
+    }
+
+    function compareAdminCases(a, b) {
+        switch (adminSortColumn) {
+            case 'studyId': {
+                const numA = parseInt(a.studyId, 10);
+                const numB = parseInt(b.studyId, 10);
+                const isNumA = !isNaN(numA);
+                const isNumB = !isNaN(numB);
+                if (isNumA && isNumB) return compareSortable(numA, numB, true);
+                return compareSortable(a.studyId, b.studyId, false);
+            }
+            case 'hn': {
+                const strA = (a.hn && a.hn !== '-' ? a.hn : '') || a.referId || '';
+                const strB = (b.hn && b.hn !== '-' ? b.hn : '') || b.referId || '';
+                return compareSortable(strA, strB, false);
+            }
+            case 'age': {
+                const ageA = a.age ? parseFloat(a.age) : null;
+                const ageB = b.age ? parseFloat(b.age) : null;
+                return compareSortable(ageA, ageB, true);
+            }
+            case 'esi': {
+                const esiA = a.esi ? parseInt(a.esi, 10) : null;
+                const esiB = b.esi ? parseInt(b.esi, 10) : null;
+                return compareSortable(esiA, esiB, true);
+            }
+            case 'disease': {
+                const disA = a.isStemi ? 'STEMI' : (a.isStroke ? 'Stroke' : (a.isTrauma ? 'Trauma' : (a.diseaseKey || null)));
+                const disB = b.isStemi ? 'STEMI' : (b.isStroke ? 'Stroke' : (b.isTrauma ? 'Trauma' : (b.diseaseKey || null)));
+                return compareSortable(disA, disB, false);
+            }
+            case 'transferTime': {
+                const tA = (!isNaN(a.transferMin) && a.transferMin > 0) ? a.transferMin : null;
+                const tB = (!isNaN(b.transferMin) && b.transferMin > 0) ? b.transferMin : null;
+                return compareSortable(tA, tB, true);
+            }
+            case 'rts': {
+                const rtsA = !isNaN(parseFloat(a.data?.f1_rts_total)) ? parseFloat(a.data.f1_rts_total) : (!isNaN(parseFloat(a.data?.f4_rts_total)) ? parseFloat(a.data.f4_rts_total) : null);
+                const rtsB = !isNaN(parseFloat(b.data?.f1_rts_total)) ? parseFloat(b.data.f1_rts_total) : (!isNaN(parseFloat(b.data?.f4_rts_total)) ? parseFloat(b.data.f4_rts_total) : null);
+                return compareSortable(rtsA, rtsB, true);
+            }
+            case 'outcome': {
+                const getRank = c => {
+                    const d = c.data || {};
+                    const st = d.f4_mort_status !== undefined && d.f4_mort_status !== '' ? d.f4_mort_status : (d.f4_mort_24h !== undefined && d.f4_mort_24h !== '' ? d.f4_mort_24h : d.f4_mort_er);
+                    if (st === '0') return 1; // รอดชีวิต
+                    if (st === '1') return 2; // เสียชีวิต
+                    return null; // รอผล / ไม่ระบุ
+                };
+                return compareSortable(getRank(a), getRank(b), true);
+            }
+            case 'completeness': {
+                const pctA = a.completeness ? a.completeness.pct : null;
+                const pctB = b.completeness ? b.completeness.pct : null;
+                return compareSortable(pctA, pctB, true);
+            }
+            default:
+                return 0;
+        }
+    }
+
+    function updateAdminSortIndicators() {
+        const sortKeys = ['studyId', 'hn', 'age', 'esi', 'disease', 'transferTime', 'rts', 'outcome', 'completeness'];
+        sortKeys.forEach(key => {
+            const iconEl = document.getElementById('th-sort-' + key);
+            const thEl = document.querySelector(`.admin-th-sortable[data-sort="${key}"]`);
+            if (key === adminSortColumn) {
+                if (iconEl) {
+                    iconEl.textContent = adminSortDirection === 'asc' ? '▲' : '▼';
+                    iconEl.style.opacity = '1';
+                    iconEl.style.color = '#1d4ed8';
+                }
+                if (thEl) thEl.classList.add('active-sort');
+            } else {
+                if (iconEl) {
+                    iconEl.textContent = '⇅';
+                    iconEl.style.opacity = '0.4';
+                    iconEl.style.color = '#64748b';
+                }
+                if (thEl) thEl.classList.remove('active-sort');
+            }
+        });
+    }
+
     // Main Render Function for Research Admin Dashboard
     function renderAdminDashboard() {
         const index = JSON.parse(localStorage.getItem('online_crf_case_index') || '[]');
@@ -8996,6 +9178,9 @@ const CRF_AUDIT_FIELDS = [
             }
             return true;
         });
+
+        // Sort cases according to active column & direction
+        filtered.sort(compareAdminCases);
 
         // Update global filter badges
         const badgeCount = document.getElementById('admin-filter-count-badge');
@@ -9172,6 +9357,9 @@ const CRF_AUDIT_FIELDS = [
             });
             tbody.innerHTML = rowsHtml;
         }
+
+        // Update Sort Indicators on Table Headers
+        updateAdminSortIndicators();
 
         // Update Overview Stat Cards
         const statTotal = document.getElementById('stat-total-patients');
