@@ -1515,6 +1515,107 @@
             border-radius: 999px;
             transition: width 0.4s ease;
         }
+
+        /* Missing Data Audit & Fill Blanks Modal Styles */
+        .missing-chip {
+            display: inline-flex;
+            align-items: center;
+            gap: 3px;
+            padding: 2px 7px;
+            border-radius: 4px;
+            font-size: 11px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.15s ease;
+            text-decoration: none;
+            white-space: nowrap;
+            user-select: none;
+        }
+        .missing-chip:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 2px 5px rgba(0,0,0,0.12);
+            filter: brightness(0.95);
+        }
+        .missing-chip-f1 {
+            background: #fffbeb;
+            color: #b45309;
+            border: 1px solid #fde68a;
+        }
+        .missing-chip-f2 {
+            background: #eff6ff;
+            color: #1e40af;
+            border: 1px solid #bfdbfe;
+        }
+        .missing-chip-f3 {
+            background: #ecfeff;
+            color: #0e7490;
+            border: 1px solid #a5f3fc;
+        }
+        .missing-chip-f4 {
+            background: #f5f3ff;
+            color: #6d28d9;
+            border: 1px solid #ddd6fe;
+        }
+        .blank-field-card {
+            background: #ffffff;
+            border: 1px solid #e2e8f0;
+            border-radius: 8px;
+            margin-bottom: 14px;
+            overflow: hidden;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.03);
+        }
+        .blank-field-card-header {
+            padding: 8px 14px;
+            font-size: 13px;
+            font-weight: 700;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+        .blank-field-item {
+            padding: 10px 14px;
+            border-top: 1px solid #f1f5f9;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 14px;
+            flex-wrap: wrap;
+            transition: background 0.15s ease;
+        }
+        .blank-field-item:hover {
+            background: #fafafa;
+        }
+        .blank-field-item.pulse-focus {
+            animation: pulseAmber 1.5s 2;
+            background: #fffbeb !important;
+        }
+        @keyframes pulseAmber {
+            0% { box-shadow: 0 0 0 0 rgba(245, 158, 11, 0.7); }
+            70% { box-shadow: 0 0 0 8px rgba(245, 158, 11, 0); }
+            100% { box-shadow: 0 0 0 0 rgba(245, 158, 11, 0); }
+        }
+        .blank-field-input {
+            padding: 5px 8px;
+            border: 1.5px solid #cbd5e1;
+            border-radius: 5px;
+            font-size: 13px;
+            transition: all 0.15s ease;
+            background: #ffffff;
+            font-family: inherit;
+        }
+        .blank-field-input:focus {
+            outline: none;
+            border-color: #2563eb;
+            box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.15);
+        }
+        .blank-field-input.is-empty {
+            border-color: #f59e0b;
+            background: #fffdf5;
+        }
+        .blank-field-input.is-filled {
+            border-color: #10b981;
+            background: #f0fdf4;
+        }
     
     </style>
 </head>
@@ -3841,6 +3942,10 @@
                 <button type="button" class="admin-tab-btn" id="admin-tab-btn-deterioration" onclick="switchAdminSubTab('deterioration')">
                     <span>🚨 รายงาน Deterioration</span>
                 </button>
+                <button type="button" class="admin-tab-btn" id="admin-tab-btn-missing" onclick="switchAdminSubTab('missing')">
+                    <span>📝 ตรวจสอบช่องว่าง (Missing Audit)</span>
+                    <span id="admin-nav-missing-badge" style="background: #f59e0b; color: #ffffff; padding: 1px 6px; border-radius: 999px; font-size: 10.5px; font-weight: 700; margin-left: 4px;">0</span>
+                </button>
             </div>
 
             <!-- Global Cohort Filter Toolbar (มีผลต่อการวิเคราะห์ทุกแท็บ) -->
@@ -3922,6 +4027,14 @@
                             </div>
                             <div id="stat-deter-count" style="font-size: 26px; font-weight: 700; color: #e11d48; line-height: 1.2; margin-top: 2px;">0</div>
                             <div id="stat-deter-pct" style="font-size: 11.5px; color: #94a3b8;">0% เกิด AE หรือสรีรวิทยาแย่ลง</div>
+                        </div>
+                        <div style="background: #ffffff; border: 1px solid #cbd5e1; border-left: 4px solid #f59e0b; border-radius: 6px; padding: 10px 14px; box-shadow: 0 1px 3px rgba(0,0,0,0.03); cursor: pointer;" onclick="switchAdminSubTab('missing')" title="คลิกเพื่อดูรายงานช่องว่างและเติมข้อมูล">
+                            <div style="display: flex; justify-content: space-between; align-items: center;">
+                                <div style="font-size: 12.5px; color: #64748b; font-weight: 600;">ความสมบูรณ์ข้อมูล (Completeness)</div>
+                                <span style="font-size: 10.5px; color: #b45309; font-weight: 700;">ตรวจสอบ ➔</span>
+                            </div>
+                            <div id="stat-data-completeness" style="font-size: 26px; font-weight: 700; color: #d97706; line-height: 1.2; margin-top: 2px;">100%</div>
+                            <div id="stat-missing-cases-detail" style="font-size: 11.5px; color: #94a3b8;">0 ช่องว่างในระบบ</div>
                         </div>
                     </div>
 
@@ -4016,7 +4129,8 @@
                                         <th style="width: 130px; text-align: center;">เวลาส่งต่อรวม</th>
                                         <th style="width: 90px; text-align: center;">RTS (เกาะ/กระบี่)</th>
                                         <th style="width: 100px; text-align: center;">ผลลัพธ์ 24 ชม.</th>
-                                        <th style="width: 200px; text-align: center;">จัดการข้อมูล</th>
+                                        <th style="width: 140px; text-align: center;">ความสมบูรณ์ข้อมูล</th>
+                                        <th style="width: 220px; text-align: center;">จัดการข้อมูล</th>
                                     </tr>
                                 </thead>
                                 <tbody id="admin-cases-tbody">
@@ -4552,6 +4666,106 @@
                     </div>
                 </div>
 
+                <!-- ========================================== -->
+                <!-- TAB 7: MISSING DATA AUDIT                  -->
+                <!-- ========================================== -->
+                <div id="admin-tab-content-missing" class="admin-tab-pane" style="display:none;">
+                    <div class="research-banner" style="background: linear-gradient(135deg, #fffbeb 0%, #fef3c7 100%); border: 1px solid #fde68a; border-left: 5px solid #d97706;">
+                        <div>
+                            <div style="font-size: 11.5px; font-weight: 800; color: #b45309; letter-spacing: 0.5px; text-transform: uppercase;">
+                                📋 DATA QUALITY & COMPLETENESS AUDIT • "Missing Fields"
+                            </div>
+                            <div style="font-size: 16px; font-weight: 700; color: #78350f; margin-top: 2px;">
+                                การตรวจสอบความสมบูรณ์ของข้อมูลและรายงานช่องว่างรายฟอร์ม
+                            </div>
+                            <div style="font-size: 12.5px; color: #92400e; opacity: 0.9; margin-top: 2px;">
+                                ตรวจสอบตัวแปรที่ยังไม่ได้บันทึก แยกตาม Form 1 (แรกรับ), Form 2 (นำส่ง), Form 3 (ทะเล), Form 4 (รพ.กระบี่) พร้อมคลิกเพื่อเติมข้อมูลทันที
+                            </div>
+                        </div>
+                        <div style="background: #ffffff; border: 1px solid #fde68a; border-radius: 8px; padding: 8px 16px; text-align: right; box-shadow: 0 1px 3px rgba(0,0,0,0.05);">
+                            <div style="font-size: 11.5px; color: #64748b; font-weight: 600;">ความสมบูรณ์เฉลี่ยรวม</div>
+                            <div id="audit-overall-rate" style="font-size: 26px; font-weight: 800; color: #d97706; line-height: 1.1;">100%</div>
+                            <div id="audit-overall-detail" style="font-size: 11px; color: #94a3b8;">0 ช่องว่าง จาก 0 เคส</div>
+                        </div>
+                    </div>
+
+                    <!-- 4 Form KPI Cards -->
+                    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); gap: 12px; margin-bottom: 16px;">
+                        <div class="research-card" style="border-left: 4px solid #b45309;">
+                            <div style="display:flex; justify-content:space-between; align-items:center;">
+                                <div style="font-size: 12px; font-weight: 700; color: #1e293b;">📋 Form 1: ข้อมูลแรกรับ</div>
+                                <span id="audit-f1-badge" style="font-size: 11px; background: #fef3c7; color: #92400e; font-weight: 700; padding: 1px 6px; border-radius: 4px;">0 ช่อง</span>
+                            </div>
+                            <div id="audit-f1-pct" style="font-size: 22px; font-weight: 800; color: #b45309; margin-top: 4px;">100%</div>
+                            <div id="audit-f1-sub" style="font-size: 11px; color: #64748b; margin-top: 2px;">แรกรับ, สัญญาณชีพ, DIDO</div>
+                        </div>
+                        <div class="research-card" style="border-left: 4px solid #1e40af;">
+                            <div style="display:flex; justify-content:space-between; align-items:center;">
+                                <div style="font-size: 12px; font-weight: 700; color: #1e293b;">🚑 Form 2: การนำส่ง & แพ</div>
+                                <span id="audit-f2-badge" style="font-size: 11px; background: #dbeafe; color: #1e40af; font-weight: 700; padding: 1px 6px; border-radius: 4px;">0 ช่อง</span>
+                            </div>
+                            <div id="audit-f2-pct" style="font-size: 22px; font-weight: 800; color: #1e40af; margin-top: 4px;">100%</div>
+                            <div id="audit-f2-sub" style="font-size: 11px; color: #64748b; margin-top: 2px;">ไทม์ไลน์ T0–T4, AE ระหว่างทาง</div>
+                        </div>
+                        <div class="research-card" style="border-left: 4px solid #0e7490;">
+                            <div style="display:flex; justify-content:space-between; align-items:center;">
+                                <div style="font-size: 12px; font-weight: 700; color: #1e293b;">🌊 Form 3: ทะเล & อากาศ</div>
+                                <span id="audit-f3-badge" style="font-size: 11px; background: #cffafe; color: #0e7490; font-weight: 700; padding: 1px 6px; border-radius: 4px;">0 ช่อง</span>
+                            </div>
+                            <div id="audit-f3-pct" style="font-size: 22px; font-weight: 800; color: #0e7490; margin-top: 4px;">100%</div>
+                            <div id="audit-f3-sub" style="font-size: 11px; color: #64748b; margin-top: 2px;">น้ำขึ้นน้ำลง, คลื่นลม, ฝน</div>
+                        </div>
+                        <div class="research-card" style="border-left: 4px solid #6d28d9;">
+                            <div style="display:flex; justify-content:space-between; align-items:center;">
+                                <div style="font-size: 12px; font-weight: 700; color: #1e293b;">🏥 Form 4: รพ.กระบี่</div>
+                                <span id="audit-f4-badge" style="font-size: 11px; background: #ede9fe; color: #6d28d9; font-weight: 700; padding: 1px 6px; border-radius: 4px;">0 ช่อง</span>
+                            </div>
+                            <div id="audit-f4-pct" style="font-size: 22px; font-weight: 800; color: #6d28d9; margin-top: 4px;">100%</div>
+                            <div id="audit-f4-sub" style="font-size: 11px; color: #64748b; margin-top: 2px;">หัตถการ T5, ผลลัพธ์ 24 ชม.</div>
+                        </div>
+                    </div>
+
+                    <!-- Audit Cases Table Card -->
+                    <div class="research-card" style="margin-bottom: 16px;">
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; flex-wrap: wrap; gap: 8px;">
+                            <div>
+                                <div style="font-size: 14px; font-weight: 700; color: #1e3a8a;">
+                                    📝 รายการเคสและช่องว่างที่ต้องบันทึกเพิ่มเติม (Cases with Missing CRF Items)
+                                </div>
+                                <div style="font-size: 12px; color: #64748b; margin-top: 1px;">
+                                    คลิกที่ <b>ชิปตัวแปร</b> หรือกดปุ่ม <b>"เติมช่องว่าง"</b> เพื่อเปิดหน้าต่างกรอกข้อมูลและบันทึกได้ทันที
+                                </div>
+                            </div>
+                            <div style="display: flex; gap: 8px; align-items: center;">
+                                <label class="form-check" style="font-size: 12px; font-weight: 600; cursor: pointer;">
+                                    <input type="checkbox" id="audit-filter-incomplete-only" checked onchange="renderAdminDashboard()"> แสดงเฉพาะเคสที่มีช่องว่าง
+                                </label>
+                            </div>
+                        </div>
+
+                        <div class="table-responsive" style="margin-bottom: 0;">
+                            <table class="crf-table" style="margin-bottom: 0; font-size: 12.5px; width: 100%;">
+                                <thead>
+                                    <tr style="background: #f8fafc;">
+                                        <th style="width: 90px; text-align: center;">STUDY_ID</th>
+                                        <th style="width: 110px;">HN / Refer</th>
+                                        <th style="width: 100px; text-align: center;">กลุ่มโรค</th>
+                                        <th>📋 Form 1 (แรกรับ)</th>
+                                        <th>🚑 Form 2 (นำส่ง)</th>
+                                        <th>🌊 Form 3 (ทะเล)</th>
+                                        <th>🏥 Form 4 (รพ.กระบี่)</th>
+                                        <th style="width: 110px; text-align: center;">ความสมบูรณ์</th>
+                                        <th style="width: 110px; text-align: center;">ดำเนินการ</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="audit-cases-tbody">
+                                    <!-- Populated dynamically by JS -->
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+
             </div>
 
             <!-- Modal Footer -->
@@ -4562,6 +4776,62 @@
                 <button type="button" class="btn btn-outline" onclick="closeAdminDashboard()" style="padding: 4px 12px; font-size: 13px;">
                     ปิดหน้าต่าง
                 </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Fill Blanks Modal Popup -->
+    <div id="fill-blanks-modal" class="modal-overlay" style="display:none; z-index: 2500;">
+        <div class="modal-box modal-box-large" style="max-width: 860px; max-height: 90vh; display: flex; flex-direction: column;">
+            <!-- Modal Header -->
+            <div class="modal-header" style="background: linear-gradient(135deg, #1e3a8a 0%, #0369a1 100%); color: #ffffff; padding: 12px 20px; border-radius: 8px 8px 0 0;">
+                <div>
+                    <h3 style="font-size: 16px; font-weight: 700; color: #ffffff; display: flex; align-items: center; gap: 8px; margin: 0;">
+                        <span>📝 เติมข้อมูลช่องว่างในแบบบันทึก (Fill Missing CRF Data)</span>
+                    </h3>
+                    <div id="blanks-modal-subtitle" style="font-size: 12px; opacity: 0.9; margin-top: 2px; color: #e0f2fe;">
+                        ผู้ป่วย: LANTA_... | HN: ...
+                    </div>
+                </div>
+                <button type="button" class="modal-close-btn" onclick="closeFillBlanksModal()" style="color: #ffffff; font-size: 18px;" title="ปิดหน้าต่าง">✕</button>
+            </div>
+
+            <!-- Completeness Toolbar inside Modal -->
+            <div style="background: #f8fafc; border-bottom: 1px solid #e2e8f0; padding: 10px 20px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px;">
+                <div style="flex: 1; min-width: 220px;">
+                    <div style="display: flex; justify-content: space-between; font-size: 12px; margin-bottom: 4px;">
+                        <span id="blanks-modal-count-text" style="font-weight: 700; color: #1e3a8a;">พบช่องว่าง N รายการ</span>
+                        <span id="blanks-modal-pct-text" style="font-weight: 700; color: #0284c7;">85% สมบูรณ์</span>
+                    </div>
+                    <div style="height: 6px; background: #e2e8f0; border-radius: 999px; overflow: hidden;">
+                        <div id="blanks-modal-progress-bar" style="height: 100%; background: #0284c7; width: 85%; transition: width 0.3s ease;"></div>
+                    </div>
+                </div>
+                <div style="display: flex; gap: 6px; align-items: center;">
+                    <button type="button" class="btn btn-outline" id="blanks-toggle-all-btn" onclick="toggleBlanksFilterAll()" style="font-size: 11.5px; padding: 3px 10px;">
+                        👁️ แสดงทุกช่อง
+                    </button>
+                </div>
+            </div>
+
+            <!-- Scrollable Field Content -->
+            <div id="blanks-modal-body" style="padding: 16px 20px; overflow-y: auto; flex: 1; background: #ffffff;">
+                <!-- Populated dynamically by JS -->
+            </div>
+
+            <!-- Modal Footer -->
+            <div style="padding: 10px 20px; background: #f8fafc; border-top: 1px solid #e2e8f0; border-radius: 0 0 8px 8px; display: flex; justify-content: space-between; align-items: center;">
+                <div id="blanks-save-feedback" style="font-size: 12.5px; font-weight: 700; color: #16a34a; display: none;">
+                    ✓ บันทึกข้อมูลสำเร็จ
+                </div>
+                <div style="display: flex; gap: 8px; margin-left: auto;">
+                    <button type="button" class="btn btn-outline" onclick="closeFillBlanksModal()" style="font-size: 13px; padding: 5px 14px;">
+                        ปิดหน้าต่าง
+                    </button>
+                    <button type="button" class="btn btn-success" onclick="saveBlanksModalData()" style="font-size: 13px; padding: 5px 16px; font-weight: 700;">
+                        💾 บันทึกข้อมูล (Save)
+                    </button>
+                </div>
             </div>
         </div>
     </div>
@@ -8015,9 +8285,9 @@
     // RESEARCH ADMIN DASHBOARD & CLINICAL OBJECTIVES ANALYTICS ENGINE
     // =========================================================================
 
-    // Tab Switching for Admin Dashboard (6 Sub-tabs)
+    // Tab Switching for Admin Dashboard (7 Sub-tabs)
     function switchAdminSubTab(tabName) {
-        const tabs = ['overview', 'primary', 'sec1', 'sec2', 'sec3', 'deterioration'];
+        const tabs = ['overview', 'primary', 'sec1', 'sec2', 'sec3', 'deterioration', 'missing'];
         tabs.forEach(t => {
             const btn = document.getElementById('admin-tab-btn-' + t);
             const pane = document.getElementById('admin-tab-content-' + t);
@@ -8087,6 +8357,258 @@
         const isPierCongest = data.f2_pier_congestion === '1';
 
         return isTotalDelay || isOffHour || isRoughSea || isLowTide || isTorrentialRain || isMonsoonSwell || isPierCongest;
+    }
+
+    // --- Data Quality & Completeness Audit Variables Schema ---
+    function isCaseStemi(data) {
+        if (!data) return false;
+        return Boolean(data.f1_target_disease === 'stemi' || data.f1_inc4_stemi || data.f1_cond_stemi);
+    }
+    function isCaseStroke(data) {
+        if (!data) return false;
+        return Boolean(data.f1_target_disease === 'ais' || data.f1_inc4_ais || data.f1_cond_stroke);
+    }
+    function isCaseTrauma(data) {
+        if (!data) return false;
+        return Boolean(data.f1_target_disease === 'trauma' || data.f1_inc4_trauma || data.f1_cond_trauma);
+    }
+
+    function isFieldFilled(data, key) {
+        if (!data) return false;
+        const val = data[key];
+        return (val !== undefined && val !== null && String(val).trim() !== '');
+    }
+
+    const CRF_AUDIT_FIELDS = [
+        // Form 1: Demographics & Context
+        { key: 'f1_age', label: 'อายุ (Age)', form: 1, formName: 'Form 1', category: 'ประชากรศาสตร์', type: 'number', unit: 'ปี', min: 0, max: 120 },
+        { key: 'f1_sex', label: 'เพศ (Sex)', form: 1, formName: 'Form 1', category: 'ประชากรศาสตร์', type: 'select', options: [{ value: 'male', label: 'ชาย (Male)' }, { value: 'female', label: 'หญิง (Female)' }] },
+        { key: 'f1_residency', label: 'สถานะประชากร (Residency)', form: 1, formName: 'Form 1', category: 'ประชากรศาสตร์', type: 'select', options: [
+            { value: '1', label: 'ชาวเกาะในพื้นที่ (Islander)' },
+            { value: '2', label: 'นักท่องเที่ยวไทย (Thai tourist)' },
+            { value: '3', label: 'นักท่องเที่ยวต่างชาติ (Foreigner)' },
+            { value: '4', label: 'แรงงานข้ามชาติ (Migrant)' }
+        ]},
+        { key: 'f1_premrs', label: 'ระดับความพิการเดิม (Pre-morbid mRS)', form: 1, formName: 'Form 1', category: 'ประชากรศาสตร์', type: 'select', options: [
+            { value: '0', label: '0 = ปกติ ไม่มีอาการ' },
+            { value: '1', label: '1 = ไม่มีทุพพลภาพ ทำงานได้ปกติ' },
+            { value: '2', label: '2 = เล็กน้อย ดูแลตนเองได้' },
+            { value: '3', label: '3 = ปานกลาง เดินได้เอง' },
+            { value: '4', label: '4 = มาก ช่วยตนเองไม่ได้' },
+            { value: '5', label: '5 = นอนติดเตียง' }
+        ]},
+        // Form 1: Arrival & Triage
+        { key: 'f1_onset_date', label: 'วันที่เริ่มมีอาการ (Onset Date)', form: 1, formName: 'Form 1', category: 'แรกรับ ER เกาะลันตา', type: 'date' },
+        { key: 'f1_onset_time', label: 'เวลาเริ่มมีอาการ (Onset Time)', form: 1, formName: 'Form 1', category: 'แรกรับ ER เกาะลันตา', type: 'time' },
+        { key: 'f1_t0_date', label: 'วันที่ถึง ER เกาะลันตา (T0 Date)', form: 1, formName: 'Form 1', category: 'แรกรับ ER เกาะลันตา', type: 'date' },
+        { key: 'f1_t0_time', label: 'เวลาถึง ER เกาะลันตา (T0 Time)', form: 1, formName: 'Form 1', category: 'แรกรับ ER เกาะลันตา', type: 'time' },
+        { key: 'f1_arrival_mode', label: 'รูปแบบการมา ER (Arrival Mode)', form: 1, formName: 'Form 1', category: 'แรกรับ ER เกาะลันตา', type: 'select', options: [
+            { value: 'ems', label: 'EMS 1669 (ระบบการแพทย์ฉุกเฉิน)' },
+            { value: 'refer', label: 'ส่งต่อจาก รพ.สต./คลินิก' },
+            { value: 'walkin', label: 'มาเอง / ญาติส่ง' }
+        ]},
+        { key: 'f1_esi', label: 'ระดับความเร่งด่วน Triage ESI', form: 1, formName: 'Form 1', category: 'แรกรับ ER เกาะลันตา', type: 'select', options: [
+            { value: '1', label: 'ESI 1 (Resuscitation)' },
+            { value: '2', label: 'ESI 2 (Emergent)' },
+            { value: '3', label: 'ESI 3 (Urgent)' },
+            { value: '4', label: 'ESI 4 (Semi-urgent)' },
+            { value: '5', label: 'ESI 5 (Non-urgent)' }
+        ]},
+        { key: 'f1_shift', label: 'เวรแรกรับ ER (ED Shift)', form: 1, formName: 'Form 1', category: 'แรกรับ ER เกาะลันตา', type: 'select', options: [
+            { value: 'morning', label: 'เวรเช้า (08:30–16:30 น.)' },
+            { value: 'evening', label: 'เวรบ่าย (16:30–00:30 น.)' },
+            { value: 'night', label: 'เวรดึก (00:30–08:30 น.)' }
+        ]},
+        // Form 1: Vitals
+        { key: 'f1_sbp', label: 'SBP แรกรับเกาะลันตา', form: 1, formName: 'Form 1', category: 'สัญญาณชีพแรกรับ', type: 'number', unit: 'mmHg' },
+        { key: 'f1_dbp', label: 'DBP แรกรับเกาะลันตา', form: 1, formName: 'Form 1', category: 'สัญญาณชีพแรกรับ', type: 'number', unit: 'mmHg' },
+        { key: 'f1_hr', label: 'ชีพจรแรกรับ (Heart Rate)', form: 1, formName: 'Form 1', category: 'สัญญาณชีพแรกรับ', type: 'number', unit: 'bpm' },
+        { key: 'f1_rr', label: 'อัตราหายใจแรกรับ (Resp Rate)', form: 1, formName: 'Form 1', category: 'สัญญาณชีพแรกรับ', type: 'number', unit: '/min' },
+        { key: 'f1_spo2', label: 'ออกซิเจนในเลือด (SpO2)', form: 1, formName: 'Form 1', category: 'สัญญาณชีพแรกรับ', type: 'number', unit: '%' },
+        { key: 'f1_bt', label: 'อุณหภูมิกายแรกรับ (Body Temp)', form: 1, formName: 'Form 1', category: 'สัญญาณชีพแรกรับ', type: 'number', unit: '°C' },
+        { key: 'f1_gcs_total', label: 'คะแนนความรู้สึกตัว (GCS Total)', form: 1, formName: 'Form 1', category: 'สัญญาณชีพแรกรับ', type: 'number', unit: 'คะแนน', min: 3, max: 15 },
+        // Form 1: Disease-specific
+        { key: 'f1_killip', label: 'ระดับความรุนแรง Killip (STEMI)', form: 1, formName: 'Form 1', category: 'ความรุนแรงจำเพาะโรค', type: 'select', condition: isCaseStemi, options: [
+            { value: '1', label: 'Killip I (ไม่มีหัวใจล้มเหลว)' },
+            { value: '2', label: 'Killip II (มี Rales / S3)' },
+            { value: '3', label: 'Killip III (Pulmonary edema)' },
+            { value: '4', label: 'Killip IV (Cardiogenic shock)' }
+        ]},
+        { key: 'f1_stroke_gcs', label: 'ระดับความรู้สึกตัว Stroke Consciousness', form: 1, formName: 'Form 1', category: 'ความรุนแรงจำเพาะโรค', type: 'select', condition: isCaseStroke, options: [
+            { value: '1', label: '1 = รู้สึกตัวดี (Alert: GCS 15)' },
+            { value: '2', label: '2 = ซึมเล็กน้อย (Drowsy: GCS 13–14)' },
+            { value: '3', label: '3 = ซึมมาก (Stupor: GCS 9–12)' },
+            { value: '4', label: '4 = หมดสติ (Coma: GCS 3–8)' }
+        ]},
+        { key: 'f1_trauma_acuity', label: 'ระดับความรุนแรงบาดเจ็บ Trauma Acuity', form: 1, formName: 'Form 1', category: 'ความรุนแรงจำเพาะโรค', type: 'select', condition: isCaseTrauma, options: [
+            { value: 'critical', label: 'Critical: GCS ≤ 8 / SBP < 90 / Shock' },
+            { value: 'urgent', label: 'Urgent: GCS 9–12 / Stable SBP' },
+            { value: 'non_urgent', label: 'Stable: GCS 13–15 / บาดเจ็บเฉพาะที่' }
+        ]},
+        // Form 1: DIDO
+        { key: 'f1_t1_date', label: 'วันที่ออกจาก ER เกาะลันตา (T1 Date)', form: 1, formName: 'Form 1', category: 'ส่งต่อออกจากเกาะ (DIDO)', type: 'date' },
+        { key: 'f1_t1_time', label: 'เวลาออกจาก ER เกาะลันตา (T1 Time)', form: 1, formName: 'Form 1', category: 'ส่งต่อออกจากเกาะ (DIDO)', type: 'time' },
+
+        // Form 2: Transport & Timeline
+        { key: 'f2_amb_plate', label: 'ทะเบียนรถพยาบาล (Ambulance Plate)', form: 2, formName: 'Form 2', category: 'ทีมส่งต่อ', type: 'text', placeholder: 'เช่น กข-1234 กระบี่' },
+        { key: 'f2_escort_rn', label: 'ชื่อพยาบาลนำส่ง (Escort RN)', form: 2, formName: 'Form 2', category: 'ทีมส่งต่อ', type: 'text', placeholder: 'ชื่อ-สกุล พยาบาล' },
+        { key: 'f2_driver', label: 'พนักงานขับรถพยาบาล', form: 2, formName: 'Form 2', category: 'ทีมส่งต่อ', type: 'text', placeholder: 'ชื่อ-สกุล พนักงานขับรถ' },
+        { key: 'f2_t2_date', label: 'วันที่ถึงท่าเรือคลองหมาก (T2 Date)', form: 2, formName: 'Form 2', category: 'หมุดเวลา T2 ท่าเรือ', type: 'date' },
+        { key: 'f2_t2_time', label: 'เวลาถึงท่าเรือคลองหมาก (T2 Time)', form: 2, formName: 'Form 2', category: 'หมุดเวลา T2 ท่าเรือ', type: 'time' },
+        { key: 'f2_t3_embark_date', label: 'วันที่รถขึ้นแพขนานยนต์ (T3 Embark Date)', form: 2, formName: 'Form 2', category: 'หมุดเวลา T3 ข้ามแพ', type: 'date' },
+        { key: 'f2_t3_embark_time', label: 'เวลารถขึ้นแพขนานยนต์ (T3 Embark Time)', form: 2, formName: 'Form 2', category: 'หมุดเวลา T3 ข้ามแพ', type: 'time' },
+        { key: 'f2_t3_disembark_date', label: 'วันที่รถลงแพถึงท่าหัวหิน (T3 Disembark Date)', form: 2, formName: 'Form 2', category: 'หมุดเวลา T3 ข้ามแพ', type: 'date' },
+        { key: 'f2_t3_disembark_time', label: 'เวลารถลงแพถึงท่าหัวหิน (T3 Disembark Time)', form: 2, formName: 'Form 2', category: 'หมุดเวลา T3 ข้ามแพ', type: 'time' },
+        { key: 'f2_t4_date', label: 'วันที่ถึง ER รพ.กระบี่ (T4 Date)', form: 2, formName: 'Form 2', category: 'หมุดเวลา T4 รพ.กระบี่', type: 'date' },
+        { key: 'f2_t4_time', label: 'เวลาถึง ER รพ.กระบี่ (T4 Time)', form: 2, formName: 'Form 2', category: 'หมุดเวลา T4 รพ.กระบี่', type: 'time' },
+        { key: 'f2_ferry_operate', label: 'ช่วงเวลาเดินแพขนานยนต์ (Ferry Period)', form: 2, formName: 'Form 2', category: 'บริบทแพขนานยนต์', type: 'select', options: [
+            { value: '0', label: '0 = Scheduled Daytime (05:00–24:00 น.) เดินแพปกติ' },
+            { value: '1', label: '1 = Standby Off-Hour (24:00–05:00 น.) โทรตามแพพิเศษ' }
+        ]},
+        { key: 'f2_pier_congestion', label: 'ภาวะคิวแพติดสะสม (Pier Congestion)', form: 2, formName: 'Form 2', category: 'บริบทแพขนานยนต์', type: 'select', options: [
+            { value: '0', label: '0 = ไม่มีคิวสะสม รถพยาบาลลงแพได้ทันที' },
+            { value: '1', label: '1 = มีคิวรถสะสมหน้าท่าข้ามแพ' }
+        ]},
+        { key: 'f2_ferry_count', label: 'จำนวนเที่ยวแพขนานยนต์ที่รอ', form: 2, formName: 'Form 2', category: 'บริบทแพขนานยนต์', type: 'select', options: [
+            { value: '1', label: '1 เที่ยว (ลงแพเที่ยวที่จอดรอทันที)' },
+            { value: '2', label: '2 เที่ยวขึ้นไป (ต้องรอแพเที่ยวถัดไป)' }
+        ]},
+        { key: 'f2_ae_cpr', label: 'มี CPR ระหว่างนำส่ง', form: 2, formName: 'Form 2', category: 'เหตุการณ์ไม่พึงประสงค์ (AE)', type: 'select', options: [
+            { value: '0', label: '0 = ไม่มี' },
+            { value: '1', label: '1 = มีการทำ CPR ระหว่างทาง' }
+        ]},
+        { key: 'f2_ae_intub', label: 'มีใส่ท่อช่วยหายใจระหว่างทาง', form: 2, formName: 'Form 2', category: 'เหตุการณ์ไม่พึงประสงค์ (AE)', type: 'select', options: [
+            { value: '0', label: '0 = ไม่มี' },
+            { value: '1', label: '1 = มีการใส่ท่อช่วยหายใจฉุกเฉิน' }
+        ]},
+        { key: 'f2_ae_inotropes', label: 'เริ่ม/ปรับยากระตุ้นความดันระหว่างทาง', form: 2, formName: 'Form 2', category: 'เหตุการณ์ไม่พึงประสงค์ (AE)', type: 'select', options: [
+            { value: '0', label: '0 = ไม่มี' },
+            { value: '1', label: '1 = มีการให้/ปรับขนาดยา' }
+        ]},
+        { key: 'f2_ae_death', label: 'เสียชีวิตระหว่างนำส่ง (Transit Death)', form: 2, formName: 'Form 2', category: 'เหตุการณ์ไม่พึงประสงค์ (AE)', type: 'select', options: [
+            { value: '0', label: '0 = ไม่มี (รอดชีวิตถึง รพ.กระบี่)' },
+            { value: '1', label: '1 = เสียชีวิตระหว่างนำส่ง' }
+        ]},
+
+        // Form 3: Maritime & Weather
+        { key: 'f3_tide_height', label: 'ระดับความสูงน้ำทะเล ณ เวลา T3', form: 3, formName: 'Form 3', category: 'อุทกศาสตร์ทางทะเล', type: 'number', unit: 'เมตร', step: '0.1' },
+        { key: 'f3_tide_phase', label: 'ช่วงเวลาน้ำขึ้น-น้ำลง (Tide Phase)', form: 3, formName: 'Form 3', category: 'อุทกศาสตร์ทางทะเล', type: 'select', options: [
+            { value: '1', label: '1 = น้ำขึ้น (High / Flood tide)' },
+            { value: '2', label: '2 = น้ำลง (Low / Ebb tide)' },
+            { value: '3', label: '3 = น้ำนิ่ง/น้ำทรง (Slack water)' }
+        ]},
+        { key: 'f3_tide_extreme', label: 'เสี่ยงน้ำลงแห้งขอดจัด (< 1.0 ม.)', form: 3, formName: 'Form 3', category: 'อุทกศาสตร์ทางทะเล', type: 'select', options: [
+            { value: '0', label: '0 = ปกติ (ระดับน้ำ ≥ 1.0 ม.)' },
+            { value: '1', label: '1 = เสี่ยงน้ำแห้งขอดจัด (< 1.0 ม.)' }
+        ]},
+        { key: 'f3_sandbar_risk', label: 'ความเสี่ยงสันทรายท่าเรือ (Sandbar Risk)', form: 3, formName: 'Form 3', category: 'อุทกศาสตร์ทางทะเล', type: 'select', options: [
+            { value: '0', label: '0 = ไม่มีสันทรายขวางร่องน้ำ' },
+            { value: '1', label: '1 = มีความเสี่ยงติดสันทราย' }
+        ]},
+        { key: 'f3_season', label: 'ฤดูกาลมรสุม (Monsoon Season)', form: 3, formName: 'Form 3', category: 'สภาพอากาศและคลื่นลม', type: 'select', options: [
+            { value: '0', label: '0 = ฤดูมรสุมตะวันตกเฉียงใต้ (พ.ค.–ต.ค.)' },
+            { value: '1', label: '1 = นอกฤดูมรสุม / ไฮซีซั่น (พ.ย.–เม.ย.)' }
+        ]},
+        { key: 'f3_sea_state', label: 'ระดับคลื่นลมทะเล (Beaufort Sea State)', form: 3, formName: 'Form 3', category: 'สภาพอากาศและคลื่นลม', type: 'select', options: [
+            { value: '0', label: '0 = Calm (คลื่นสงบ ≤ 1.0 ม.)' },
+            { value: '1', label: '1 = Moderate (คลื่นปานกลาง 1.0–2.0 ม.)' },
+            { value: '2', label: '2 = Rough (คลื่นลมแรงมรสุม > 2.0 ม.)' }
+        ]},
+        { key: 'f3_wind_speed', label: 'ความเร็วลม (Wind Speed)', form: 3, formName: 'Form 3', category: 'สภาพอากาศและคลื่นลม', type: 'number', unit: 'น็อต (knots)' },
+        { key: 'f3_precipitation', label: 'สภาพฝนตก (Precipitation)', form: 3, formName: 'Form 3', category: 'สภาพอากาศและคลื่นลม', type: 'select', options: [
+            { value: '0', label: '0 = ไม่มีฝนตก' },
+            { value: '1', label: '1 = มีฝนตก' }
+        ]},
+        { key: 'f3_holiday', label: 'ช่วงวันหยุดยาว / เทศกาลท่องเที่ยว', form: 3, formName: 'Form 3', category: 'สภาพอากาศและคลื่นลม', type: 'select', options: [
+            { value: '0', label: '0 = วันธรรมดาปกติ' },
+            { value: '1', label: '1 = วันหยุดยาว / เทศกาล' }
+        ]},
+
+        // Form 4: Mainland ER & Outcomes
+        { key: 'f4_krabi_hn', label: 'เลข HN รพ.กระบี่', form: 4, formName: 'Form 4', category: 'แรกรับ รพ.กระบี่', type: 'text', placeholder: 'HN รพ.กระบี่' },
+        { key: 'f4_ward', label: 'หอผู้ป่วยรับไว้รักษาแรกรับ', form: 4, formName: 'Form 4', category: 'แรกรับ รพ.กระบี่', type: 'select', options: [
+            { value: 'ccu', label: 'CCU (Coronary Care Unit)' },
+            { value: 'stroke', label: 'Stroke Unit' },
+            { value: 'sicu', label: 'Trauma ICU / SICU' },
+            { value: 'general', label: 'หอผู้ป่วยสามัญ (General Ward)' }
+        ]},
+        { key: 'f4_sbp', label: 'SBP แรกรับ รพ.กระบี่', form: 4, formName: 'Form 4', category: 'สัญญาณชีพแรกรับกระบี่', type: 'number', unit: 'mmHg' },
+        { key: 'f4_dbp', label: 'DBP แรกรับ รพ.กระบี่', form: 4, formName: 'Form 4', category: 'สัญญาณชีพแรกรับกระบี่', type: 'number', unit: 'mmHg' },
+        { key: 'f4_hr', label: 'ชีพจรแรกรับกระบี่ (Heart Rate)', form: 4, formName: 'Form 4', category: 'สัญญาณชีพแรกรับกระบี่', type: 'number', unit: 'bpm' },
+        { key: 'f4_rr', label: 'อัตราหายใจแรกรับกระบี่ (Resp Rate)', form: 4, formName: 'Form 4', category: 'สัญญาณชีพแรกรับกระบี่', type: 'number', unit: '/min' },
+        { key: 'f4_spo2', label: 'ออกซิเจนในเลือดแรกรับกระบี่ (SpO2)', form: 4, formName: 'Form 4', category: 'สัญญาณชีพแรกรับกระบี่', type: 'number', unit: '%' },
+        { key: 'f4_bt', label: 'อุณหภูมิกายแรกรับกระบี่ (Body Temp)', form: 4, formName: 'Form 4', category: 'สัญญาณชีพแรกรับกระบี่', type: 'number', unit: '°C' },
+        { key: 'f4_gcs_total', label: 'คะแนน GCS แรกรับกระบี่', form: 4, formName: 'Form 4', category: 'สัญญาณชีพแรกรับกระบี่', type: 'number', unit: 'คะแนน', min: 3, max: 15 },
+        // Form 4: Disease Specific (T5)
+        { key: 'f4_pci_wire_time', label: 'เวลาลวดผ่านรอยโรค Primary PCI (T5 Time)', form: 4, formName: 'Form 4', category: 'หัตถการจำเพาะ (T5)', type: 'time', condition: isCaseStemi },
+        { key: 'f4_eval_pci', label: 'การบรรลุเกณฑ์ Remote Primary PCI (≤ 180 น.)', form: 4, formName: 'Form 4', category: 'หัตถการจำเพาะ (T5)', type: 'select', condition: isCaseStemi, options: [
+            { value: 'achieved', label: 'บรรลุเกณฑ์ Remote Primary PCI (≤ 180 นาที)' },
+            { value: 'missed', label: 'หลุดกรอบเวลา (PCI > 180 นาที)' }
+        ]},
+        { key: 'f4_rtpa_time', label: 'เวลาเริ่มฉีดยา rtPA Bolus (T5 Time)', form: 4, formName: 'Form 4', category: 'หัตถการจำเพาะ (T5)', type: 'time', condition: isCaseStroke },
+        { key: 'f4_eval_stroke', label: 'การบรรลุเกณฑ์ Golden Window rtPA (≤ 4.5 ชม.)', form: 4, formName: 'Form 4', category: 'หัตถการจำเพาะ (T5)', type: 'select', condition: isCaseStroke, options: [
+            { value: 'achieved', label: 'บรรลุเกณฑ์ IV rtPA (≤ 4.5 ชั่วโมง)' },
+            { value: 'missed', label: 'หลุดกรอบเวลา (rtPA > 4.5 ชั่วโมง)' }
+        ]},
+        { key: 'f4_trauma_ct_time', label: 'เวลาทำ CT Scan บาดเจ็บเสร็จสิ้น', form: 4, formName: 'Form 4', category: 'หัตถการจำเพาะ (T5)', type: 'time', condition: isCaseTrauma },
+        // Form 4: Outcomes
+        { key: 'f4_mort_er', label: 'การเสียชีวิตทันที ณ ห้องฉุกเฉิน รพ.กระบี่', form: 4, formName: 'Form 4', category: 'ผลลัพธ์การรักษาและรอดชีวิต', type: 'select', options: [
+            { value: '0', label: '0 = รอดชีวิตผ่านพ้นห้องฉุกเฉิน' },
+            { value: '1', label: '1 = เสียชีวิตทันที ณ ห้องฉุกเฉิน' }
+        ]},
+        { key: 'f4_mort_24h', label: 'ผลลัพธ์การรอดชีวิตที่ 24 ชม. หลังรับไว้รักษา', form: 4, formName: 'Form 4', category: 'ผลลัพธ์การรักษาและรอดชีวิต', type: 'select', options: [
+            { value: '0', label: '0 = รอดชีวิตเกิน 24 ชั่วโมงแรก' },
+            { value: '1', label: '1 = เสียชีวิตภายใน 24 ชั่วโมงแรก' }
+        ]}
+    ];
+
+    function getCaseMissingFields(data) {
+        if (!data) return [];
+        const isExcluded = (data.f1_eligible === 'excluded');
+        const missing = [];
+        CRF_AUDIT_FIELDS.forEach(field => {
+            if (isExcluded && field.form > 1) return;
+            if (field.condition && !field.condition(data)) return;
+            if (!isFieldFilled(data, field.key)) {
+                missing.push(field);
+            }
+        });
+        return missing;
+    }
+
+    function getCaseCompleteness(data) {
+        if (!data) return { totalExpected: 0, filledCount: 0, missingCount: 0, pct: 100, missingFields: [], byForm: { 1: { expected: 0, missing: [] }, 2: { expected: 0, missing: [] }, 3: { expected: 0, missing: [] }, 4: { expected: 0, missing: [] } } };
+        const isExcluded = (data.f1_eligible === 'excluded');
+        let totalExpected = 0;
+        const missingFields = [];
+        const byForm = { 1: { expected: 0, missing: [] }, 2: { expected: 0, missing: [] }, 3: { expected: 0, missing: [] }, 4: { expected: 0, missing: [] } };
+
+        CRF_AUDIT_FIELDS.forEach(field => {
+            if (isExcluded && field.form > 1) return;
+            if (field.condition && !field.condition(data)) return;
+
+            totalExpected++;
+            if (byForm[field.form]) byForm[field.form].expected++;
+
+            if (!isFieldFilled(data, field.key)) {
+                missingFields.push(field);
+                if (byForm[field.form]) byForm[field.form].missing.push(field);
+            }
+        });
+
+        const missingCount = missingFields.length;
+        const filledCount = totalExpected - missingCount;
+        const pct = totalExpected > 0 ? Math.round((filledCount / totalExpected) * 100) : 100;
+
+        return {
+            totalExpected,
+            filledCount,
+            missingCount,
+            pct,
+            missingFields,
+            byForm,
+            isExcluded
+        };
     }
 
     // Main Render Function for Research Admin Dashboard
@@ -8173,6 +8695,7 @@
                     t3Dur: isNaN(t3Dur) ? null : t3Dur,
                     t4Dur: isNaN(t4Dur) ? null : t4Dur,
                     t4ToT5: isNaN(t4ToT5) ? null : t4ToT5,
+                    completeness: getCaseCompleteness(data),
                     data: data
                 });
             } catch(e) {}
@@ -8205,6 +8728,29 @@
         if (badgeCount) badgeCount.textContent = filtered.length;
         if (badgeTotal) badgeTotal.textContent = allCases.length;
 
+        // Completeness & Missing Fields Statistics
+        let totalAuditExpected = 0;
+        let totalAuditFilled = 0;
+        let totalAuditMissing = 0;
+        let missingByForm = { 1: 0, 2: 0, 3: 0, 4: 0 };
+        let expectedByForm = { 1: 0, 2: 0, 3: 0, 4: 0 };
+
+        filtered.forEach(c => {
+            const comp = c.completeness;
+            if (comp) {
+                totalAuditExpected += comp.totalExpected;
+                totalAuditFilled += comp.filledCount;
+                totalAuditMissing += comp.missingCount;
+                for (let f = 1; f <= 4; f++) {
+                    if (comp.byForm && comp.byForm[f]) {
+                        expectedByForm[f] += comp.byForm[f].expected;
+                        missingByForm[f] += comp.byForm[f].missing.length;
+                    }
+                }
+            }
+        });
+        const overallCompletenessPct = totalAuditExpected > 0 ? Math.round((totalAuditFilled / totalAuditExpected) * 100) : 100;
+
         // =====================================================================
         // TAB 1: OVERVIEW & CASE DIRECTORY
         // =====================================================================
@@ -8223,7 +8769,7 @@
         let rowsHtml = '';
 
         if (filtered.length === 0) {
-            tbody.innerHTML = '<tr><td colspan="9" style="text-align: center; padding: 25px; color: #64748b; font-size: 14px;">ไม่พบข้อมูลเคสที่ตรงกับเงื่อนไขตัวกรอง (หรือยังไม่มีข้อมูลในระบบ)</td></tr>';
+            tbody.innerHTML = '<tr><td colspan="10" style="text-align: center; padding: 25px; color: #64748b; font-size: 14px;">ไม่พบข้อมูลเคสที่ตรงกับเงื่อนไขตัวกรอง (หรือยังไม่มีข้อมูลในระบบ)</td></tr>';
         } else {
             filtered.forEach(c => {
                 const data = c.data;
@@ -8300,6 +8846,27 @@
 
                 const ineligBadge = (data.f1_eligible === 'excluded') ? '<div style="font-size: 10px; color: #dc2626; font-weight: 700; background: #fee2e2; border-radius: 4px; padding: 1px 4px; margin-top: 3px; display: inline-block;">⛔ Excluded</div>' : '';
 
+                const comp = c.completeness;
+                let compHtml = '';
+                if (comp.isExcluded) {
+                    compHtml = '<span style="background: #f1f5f9; color: #64748b; font-size: 11px; padding: 2px 6px; border-radius: 4px; font-weight: 600;">Excluded</span>';
+                } else if (comp.missingCount === 0) {
+                    compHtml = '<span style="background: #dcfce7; color: #15803d; font-size: 11px; padding: 2px 8px; border-radius: 999px; font-weight: 700;">✓ ครบ 100%</span>';
+                } else {
+                    const compColor = comp.pct >= 80 ? '#d97706' : '#dc2626';
+                    compHtml = `
+                        <div style="cursor: pointer;" onclick="openFillBlanksModal('${c.studyId}')" title="คลิกเพื่อเติมช่องว่าง (${comp.missingCount} ช่อง)">
+                            <div style="display: flex; justify-content: space-between; align-items: center; font-size: 11px; margin-bottom: 2px;">
+                                <span style="font-weight: 700; color: ${compColor};">${comp.pct}%</span>
+                                <span style="font-size: 10px; color: #b91c1c; font-weight: 600;">ขาด ${comp.missingCount}</span>
+                            </div>
+                            <div style="height: 5px; background: #e2e8f0; border-radius: 999px; overflow: hidden;">
+                                <div style="width: ${comp.pct}%; background: ${compColor}; height: 100%;"></div>
+                            </div>
+                        </div>
+                    `;
+                }
+
                 rowsHtml += `
                     <tr class="admin-case-row" data-id="${c.studyId}">
                         <td style="text-align: center; font-weight: 700; color: #1e40af;">
@@ -8316,8 +8883,10 @@
                         <td style="text-align: center;">${transferHtml}</td>
                         <td style="text-align: center; font-size: 12.5px;">${rtsHtml}</td>
                         <td style="text-align: center;">${outcomeHtml}</td>
+                        <td style="text-align: center;">${compHtml}</td>
                         <td style="text-align: center;">
-                            <div style="display: flex; gap: 4px; justify-content: center;">
+                            <div style="display: flex; gap: 4px; justify-content: center; flex-wrap: wrap;">
+                                <button type="button" class="btn btn-outline" style="padding: 3px 7px; font-size: 11.5px; color: #d97706; border-color: #fcd34d; font-weight: 600;" onclick="openFillBlanksModal('${c.studyId}')" title="เปิดหน้าต่างเติมช่องว่างที่ยังไม่ได้กรอก">📝 เติมช่องว่าง</button>
                                 <button type="button" class="btn btn-outline" style="padding: 3px 7px; font-size: 11.5px;" onclick="adminViewCase('${c.studyId}')" title="เปิดดูหรือแก้ไขเคสนี้">✏️ ดู/แก้ไข</button>
                                 <button type="button" class="btn btn-outline" style="padding: 3px 7px; font-size: 11.5px; color: #1e40af; border-color: #93c5fd;" onclick="adminExportPDF('${c.studyId}')" title="ส่งออกรายงาน PDF">📄 PDF</button>
                                 <button type="button" class="btn btn-outline" style="padding: 3px 7px; font-size: 11.5px; color: #b91c1c; border-color: #fca5a5;" onclick="adminDeleteCase('${c.studyId}')" title="ลบเคสนี้">🗑️ ลบ</button>
@@ -8365,6 +8934,14 @@
             const dpct = totalPatients > 0 ? ((totalDeterAll / totalPatients) * 100).toFixed(1) : '0';
             statDeterPct.textContent = dpct + '% เกิด AE หรือสรีรวิทยาแย่ลง';
         }
+
+        const statCompleteness = document.getElementById('stat-data-completeness');
+        const statMissingDetail = document.getElementById('stat-missing-cases-detail');
+        if (statCompleteness) statCompleteness.textContent = overallCompletenessPct + '%';
+        if (statMissingDetail) statMissingDetail.textContent = totalAuditMissing + ' ช่องว่างในระบบ (' + filtered.length + ' เคส)';
+
+        const navMissingBadge = document.getElementById('admin-nav-missing-badge');
+        if (navMissingBadge) navMissingBadge.textContent = totalAuditMissing;
 
         // Render Overview Donut Charts
         renderDonutChart('pie-chart-disease', 'pie-center-disease', 'pie-legend-disease', [
@@ -9223,6 +9800,11 @@
                 • ผู้ป่วยวิกฤตระดับ <b>ESI 1</b> มีอัตราการทรุดลง (${esi1All.length > 0 ? ((esi1Deter / esi1All.length) * 100).toFixed(1) : '0'}%) สูงกว่ากลุ่ม ESI 2 อย่างมีนัยสำคัญ บ่งชี้ความจำเป็นเร่งด่วนในการพัฒนาระบบ <i>Maritime Fast-Track</i> และทีมบริบาลช่วยฟื้นคืนชีพระดับสูงบนเรือ/แพขนานยนต์
             `;
         }
+
+        // =====================================================================
+        // TAB 7: MISSING DATA & COMPLETENESS AUDIT
+        // =====================================================================
+        renderMissingDataAudit(allCases, filtered, missingByForm, expectedByForm, totalAuditMissing, overallCompletenessPct);
     }
 
     function renderDonutChart(chartId, centerId, legendId, slices, centerText, centerLabel) {
@@ -9303,6 +9885,357 @@
         loadCaseIndex();
         renderAdminDashboard();
         alert('✓ ลบข้อมูลเคส LANTA_' + studyId + ' เรียบร้อยแล้ว');
+    }
+
+    // =========================================================================
+    // MISSING DATA AUDIT & POPUP FILL BLANKS MODAL ENGINE
+    // =========================================================================
+    function renderMissingDataAudit(allCases, filtered, missingByForm, expectedByForm, totalAuditMissing, overallCompletenessPct) {
+        // 1. Top Banner
+        const rateEl = document.getElementById('audit-overall-rate');
+        const detailEl = document.getElementById('audit-overall-detail');
+        if (rateEl) rateEl.textContent = overallCompletenessPct + '%';
+        if (detailEl) {
+            detailEl.textContent = totalAuditMissing + ' ช่องว่าง จาก ' + filtered.length + ' เคส';
+        }
+
+        // 2. 4 Form KPI Cards
+        for (let f = 1; f <= 4; f++) {
+            const exp = expectedByForm[f] || 0;
+            const mis = missingByForm[f] || 0;
+            const filled = exp - mis;
+            const pct = exp > 0 ? Math.round((filled / exp) * 100) : 100;
+
+            const badgeEl = document.getElementById('audit-f' + f + '-badge');
+            const pctEl = document.getElementById('audit-f' + f + '-pct');
+            const subEl = document.getElementById('audit-f' + f + '-sub');
+
+            if (badgeEl) badgeEl.textContent = mis + ' ช่อง';
+            if (pctEl) pctEl.textContent = pct + '%';
+            if (subEl) subEl.textContent = 'กรอกแล้ว ' + filled + '/' + exp + ' ตัวแปร';
+        }
+
+        // 3. Audit Cases Table
+        const tbody = document.getElementById('audit-cases-tbody');
+        if (!tbody) return;
+
+        const incompleteOnly = document.getElementById('audit-filter-incomplete-only')?.checked ?? true;
+        const auditCases = incompleteOnly ? filtered.filter(c => c.completeness && c.completeness.missingCount > 0) : filtered;
+
+        if (auditCases.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="9" style="text-align: center; padding: 25px; color: #16a34a; font-size: 13.5px; font-weight: 600;">🎉 ยอดเยี่ยม! ไม่พบเคสที่มีข้อมูลตกหล่นตามเงื่อนไขตัวกรอง</td></tr>';
+            return;
+        }
+
+        function renderChipsForForm(c, formNum) {
+            if (c.completeness.isExcluded && formNum > 1) {
+                return '<span style="color: #94a3b8; font-size: 11px; font-style: italic;">(Excluded)</span>';
+            }
+            const formInfo = c.completeness.byForm[formNum];
+            const missingList = formInfo ? formInfo.missing : [];
+            if (!missingList || missingList.length === 0) {
+                return '<span style="color: #16a34a; font-size: 11px; font-weight: 700;">✓ ครบถ้วน</span>';
+            }
+
+            const maxVisible = 2;
+            const visible = missingList.slice(0, maxVisible);
+            const remainder = missingList.length - maxVisible;
+
+            let html = '<div style="display: flex; flex-wrap: wrap; gap: 4px;">';
+            visible.forEach(f => {
+                html += `<span class="missing-chip" onclick="openFillBlanksModal('${c.studyId}', '${f.key}')" title="คลิกเพื่อเติม: ${f.label}">${f.label}</span>`;
+            });
+            if (remainder > 0) {
+                html += `<span class="missing-chip" style="background: #e2e8f0; color: #334155;" onclick="openFillBlanksModal('${c.studyId}')" title="คลิกเพื่อดูช่องว่างทั้งหมด">+ อีก ${remainder} ช่อง</span>`;
+            }
+            html += '</div>';
+            return html;
+        }
+
+        let rowsHtml = '';
+        auditCases.forEach(c => {
+            const comp = c.completeness;
+            const disBadge = c.isStemi ? '<span style="background:#fee2e2; color:#991b1b; padding:2px 6px; border-radius:4px; font-weight:700; font-size:11px;">STEMI</span>'
+                : (c.isStroke ? '<span style="background:#fef3c7; color:#92400e; padding:2px 6px; border-radius:4px; font-weight:700; font-size:11px;">Stroke</span>'
+                : (c.isTrauma ? '<span style="background:#ede9fe; color:#5b21b6; padding:2px 6px; border-radius:4px; font-weight:700; font-size:11px;">Trauma</span>'
+                : '<span style="color:#64748b; font-size:11px;">อื่นๆ</span>'));
+
+            const compColor = comp.pct >= 80 ? '#d97706' : (comp.pct === 100 ? '#16a34a' : '#dc2626');
+            const compHtml = `
+                <div>
+                    <div style="display:flex; justify-content:space-between; font-size:11px; margin-bottom:2px; font-weight:700; color:${compColor};">
+                        <span>${comp.pct}%</span>
+                        <span style="font-size:10px; color:#b91c1c;">ขาด ${comp.missingCount}</span>
+                    </div>
+                    <div style="height:5px; background:#e2e8f0; border-radius:999px; overflow:hidden;">
+                        <div style="width:${comp.pct}%; background:${compColor}; height:100%;"></div>
+                    </div>
+                </div>
+            `;
+
+            rowsHtml += `
+                <tr>
+                    <td style="text-align: center; font-weight: 700; color: #1e40af;">
+                        LANTA_${c.studyId}
+                    </td>
+                    <td>
+                        <div><b>HN:</b> ${c.hn}</div>
+                        <div style="font-size: 11px; color: #64748b;"><b>Ref:</b> ${c.referId}</div>
+                    </td>
+                    <td style="text-align: center;">${disBadge}</td>
+                    <td>${renderChipsForForm(c, 1)}</td>
+                    <td>${renderChipsForForm(c, 2)}</td>
+                    <td>${renderChipsForForm(c, 3)}</td>
+                    <td>${renderChipsForForm(c, 4)}</td>
+                    <td style="text-align: center;">${compHtml}</td>
+                    <td style="text-align: center;">
+                        <button type="button" class="btn btn-warning" style="padding: 3px 8px; font-size: 11.5px; font-weight: 700; white-space: nowrap;" onclick="openFillBlanksModal('${c.studyId}')">
+                            📝 เติมช่องว่าง
+                        </button>
+                    </td>
+                </tr>
+            `;
+        });
+        tbody.innerHTML = rowsHtml;
+    }
+
+    let currentBlanksStudyId = null;
+    let currentBlanksShowAll = false;
+
+    function openFillBlanksModal(studyId, focusKey = null) {
+        currentBlanksStudyId = studyId;
+        currentBlanksShowAll = false;
+
+        const toggleBtn = document.getElementById('blanks-toggle-all-btn');
+        if (toggleBtn) toggleBtn.innerHTML = '👁️ แสดงทุกช่อง';
+
+        const feedbackEl = document.getElementById('blanks-save-feedback');
+        if (feedbackEl) feedbackEl.style.display = 'none';
+
+        renderBlanksModalBody(studyId, false, focusKey);
+
+        const modalEl = document.getElementById('fill-blanks-modal');
+        if (modalEl) modalEl.style.display = 'flex';
+    }
+
+    function toggleBlanksFilterAll() {
+        if (!currentBlanksStudyId) return;
+        currentBlanksShowAll = !currentBlanksShowAll;
+        const toggleBtn = document.getElementById('blanks-toggle-all-btn');
+        if (toggleBtn) {
+            toggleBtn.innerHTML = currentBlanksShowAll ? '⚡ แสดงเฉพาะช่องว่าง' : '👁️ แสดงทุกช่อง';
+        }
+        renderBlanksModalBody(currentBlanksStudyId, currentBlanksShowAll);
+    }
+
+    function closeFillBlanksModal() {
+        const modalEl = document.getElementById('fill-blanks-modal');
+        if (modalEl) modalEl.style.display = 'none';
+        currentBlanksStudyId = null;
+    }
+
+    function renderBlanksModalBody(studyId, showAll = false, focusKey = null) {
+        const raw = localStorage.getItem('online_crf_case_' + studyId);
+        if (!raw) return;
+        const data = JSON.parse(raw);
+
+        // Subtitle
+        const subEl = document.getElementById('blanks-modal-subtitle');
+        if (subEl) {
+            const diseaseName = isCaseStemi(data) ? 'STEMI' : (isCaseStroke(data) ? 'Acute Stroke' : (isCaseTrauma(data) ? 'Severe Trauma' : 'ทั่วไป'));
+            subEl.innerHTML = `ผู้ป่วย: <b>LANTA_${studyId}</b> | HN: <b>${data.f1_hn || '-'}</b> | Refer: <b>${data.f1_refer_id || '-'}</b> | กลุ่มโรค: <span style="background:rgba(255,255,255,0.25); padding:1px 6px; border-radius:4px; font-weight:700;">${diseaseName}</span>`;
+        }
+
+        // Completeness calculation
+        const comp = getCaseCompleteness(data);
+        const countText = document.getElementById('blanks-modal-count-text');
+        const pctText = document.getElementById('blanks-modal-pct-text');
+        const progressBar = document.getElementById('blanks-modal-progress-bar');
+
+        if (countText) {
+            countText.textContent = comp.missingCount === 0 ? '✓ ข้อมูลสมบูรณ์ครบถ้วน 100%' : `พบช่องว่างที่ยังไม่ได้บันทึก ${comp.missingCount} ช่อง`;
+            countText.style.color = comp.missingCount === 0 ? '#15803d' : '#b45309';
+        }
+        if (pctText) pctText.textContent = `${comp.pct}% สมบูรณ์`;
+        if (progressBar) {
+            progressBar.style.width = comp.pct + '%';
+            progressBar.style.background = comp.pct === 100 ? '#16a34a' : (comp.pct >= 80 ? '#f59e0b' : '#ef4444');
+        }
+
+        const bodyEl = document.getElementById('blanks-modal-body');
+        if (!bodyEl) return;
+
+        const isExcluded = (data.f1_eligible === 'excluded');
+        const formNames = {
+            1: 'Form 1: ข้อมูลแรกรับและคัดกรอง ณ รพ.เกาะลันตา',
+            2: 'Form 2: ไทม์ไลน์และเหตุการณ์ระหว่างส่งต่อทางทะเลและบก',
+            3: 'Form 3: สภาพอากาศ คลื่นลม และตารางน้ำขึ้นน้ำลง',
+            4: 'Form 4: การรักษา ณ รพ.กระบี่ และผลลัพธ์การรอดชีวิต 24 ชม.'
+        };
+        const formBadges = {
+            1: { color: '#b45309', bg: '#fef3c7' },
+            2: { color: '#1e40af', bg: '#dbeafe' },
+            3: { color: '#0e7490', bg: '#cffafe' },
+            4: { color: '#6d28d9', bg: '#ede9fe' }
+        };
+
+        let formsHtml = '';
+        let totalRenderedFields = 0;
+
+        for (let f = 1; f <= 4; f++) {
+            if (isExcluded && f > 1) continue;
+
+            const fieldsForForm = CRF_AUDIT_FIELDS.filter(item => {
+                if (item.form !== f) return false;
+                if (item.condition && !item.condition(data)) return false;
+                if (!showAll && isFieldFilled(data, item.key) && focusKey !== item.key) return false;
+                return true;
+            });
+
+            if (fieldsForForm.length === 0) continue;
+
+            totalRenderedFields += fieldsForForm.length;
+            const fb = formBadges[f];
+
+            formsHtml += `
+                <div style="margin-bottom: 20px;">
+                    <div style="display: flex; justify-content: space-between; align-items: center; background: #f8fafc; border-left: 4px solid ${fb.color}; padding: 6px 12px; border-radius: 4px; margin-bottom: 10px;">
+                        <span style="font-weight: 700; color: #1e293b; font-size: 13px;">${formNames[f]}</span>
+                        <span style="background: ${fb.bg}; color: ${fb.color}; font-size: 11px; font-weight: 700; padding: 2px 7px; border-radius: 999px;">
+                            ${fieldsForForm.length} รายการ
+                        </span>
+                    </div>
+                    <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(360px, 1fr)); gap: 12px;">
+            `;
+
+            fieldsForForm.forEach(item => {
+                const filled = isFieldFilled(data, item.key);
+                const val = (data[item.key] !== undefined && data[item.key] !== null) ? data[item.key] : '';
+                const isFocused = (focusKey === item.key);
+
+                let statusBadge = filled ?
+                    '<span style="background:#dcfce7; color:#15803d; font-size:10.5px; font-weight:700; padding:1px 6px; border-radius:4px;">✓ บันทึกแล้ว</span>' :
+                    '<span style="background:#fee2e2; color:#b91c1c; font-size:10.5px; font-weight:700; padding:1px 6px; border-radius:4px;">⚠️ ช่องว่าง</span>';
+
+                let inputHtml = '';
+                if (item.type === 'select') {
+                    inputHtml = `
+                        <select class="blank-field-input" data-field-key="${item.key}" id="blank-input-${item.key}">
+                            <option value="">-- กรุณาเลือก --</option>
+                            ${item.options.map(opt => `<option value="${opt.value}" ${String(val) === String(opt.value) ? 'selected' : ''}>${opt.label}</option>`).join('')}
+                        </select>
+                    `;
+                } else if (item.type === 'number') {
+                    inputHtml = `
+                        <div style="display: flex; align-items: center; gap: 6px;">
+                            <input type="number" class="blank-field-input" data-field-key="${item.key}" id="blank-input-${item.key}" value="${val}" ${item.min !== undefined ? `min="${item.min}"` : ''} ${item.max !== undefined ? `max="${item.max}"` : ''} ${item.step ? `step="${item.step}"` : 'step="any"'} placeholder="${item.placeholder || 'กรอกตัวเลข'}" style="flex: 1;">
+                            ${item.unit ? `<span style="font-size: 11.5px; color: #64748b; font-weight: 600; white-space: nowrap;">${item.unit}</span>` : ''}
+                        </div>
+                    `;
+                } else if (item.type === 'date') {
+                    inputHtml = `
+                        <input type="date" class="blank-field-input" data-field-key="${item.key}" id="blank-input-${item.key}" value="${val}">
+                    `;
+                } else if (item.type === 'time') {
+                    inputHtml = `
+                        <input type="time" class="blank-field-input" data-field-key="${item.key}" id="blank-input-${item.key}" value="${val}">
+                    `;
+                } else {
+                    inputHtml = `
+                        <input type="text" class="blank-field-input" data-field-key="${item.key}" id="blank-input-${item.key}" value="${val}" placeholder="${item.placeholder || 'กรอกข้อมูล...'}">
+                    `;
+                }
+
+                formsHtml += `
+                    <div class="blank-field-card ${isFocused ? 'pulse-focus' : ''}" style="border: 1px solid #cbd5e1; border-radius: 6px; padding: 10px 12px; background: #ffffff;">
+                        <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 6px; gap: 6px;">
+                            <div>
+                                <div style="font-size: 10.5px; color: #64748b; font-weight: 600;">${item.category || item.formName}</div>
+                                <div style="font-size: 12.5px; font-weight: 700; color: #1e293b; line-height: 1.3;">${item.label}</div>
+                            </div>
+                            <div>${statusBadge}</div>
+                        </div>
+                        <div style="margin-top: 4px;">
+                            ${inputHtml}
+                        </div>
+                    </div>
+                `;
+            });
+
+            formsHtml += `
+                    </div>
+                </div>
+            `;
+        }
+
+        if (totalRenderedFields === 0) {
+            formsHtml = `
+                <div style="text-align: center; padding: 40px 20px; background: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 8px;">
+                    <div style="font-size: 36px; margin-bottom: 8px;">🎉</div>
+                    <div style="font-size: 16px; font-weight: 700; color: #15803d;">ข้อมูลเคสนี้ครบถ้วน 100% แล้ว!</div>
+                    <div style="font-size: 13px; color: #166534; margin-top: 4px;">
+                        ไม่มีตัวแปรที่ว่างอยู่ตามเกณฑ์วิจัย หากต้องการตรวจสอบหรือแก้ไขข้อมูลทั้งหมด ให้คลิกปุ่ม <b>"👁️ แสดงทุกช่อง"</b> ด้านบน
+                    </div>
+                </div>
+            `;
+        }
+
+        bodyEl.innerHTML = formsHtml;
+
+        if (focusKey) {
+            setTimeout(() => {
+                const targetInput = document.getElementById('blank-input-' + focusKey);
+                if (targetInput) {
+                    targetInput.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                    targetInput.focus();
+                }
+            }, 200);
+        }
+    }
+
+    function saveBlanksModalData() {
+        if (!currentBlanksStudyId) return;
+        const raw = localStorage.getItem('online_crf_case_' + currentBlanksStudyId);
+        if (!raw) return;
+        let data = JSON.parse(raw);
+
+        const inputs = document.querySelectorAll('#fill-blanks-modal .blank-field-input');
+        let savedCount = 0;
+
+        inputs.forEach(inp => {
+            const key = inp.getAttribute('data-field-key');
+            if (!key) return;
+            const val = inp.value.trim();
+            if (data[key] !== val) {
+                data[key] = val;
+                savedCount++;
+            }
+        });
+
+        localStorage.setItem('online_crf_case_' + currentBlanksStudyId, JSON.stringify(data));
+
+        // If active case in background form is this same case, update via setFormData and calcAll
+        const activeId = localStorage.getItem('online_crf_last_active_id');
+        if (activeId === currentBlanksStudyId) {
+            setFormData(data);
+            if (typeof calcAll === 'function') {
+                calcAll();
+            }
+        }
+
+        // Show feedback message
+        const feedbackEl = document.getElementById('blanks-save-feedback');
+        if (feedbackEl) {
+            feedbackEl.textContent = '✓ บันทึกข้อมูลสำเร็จเรียบร้อย (' + savedCount + ' ช่อง)';
+            feedbackEl.style.display = 'block';
+            setTimeout(() => { if (feedbackEl) feedbackEl.style.display = 'none'; }, 3000);
+        }
+
+        // Re-render admin dashboard live
+        renderAdminDashboard();
+
+        // Re-render blanks modal body to reflect new filled state
+        renderBlanksModalBody(currentBlanksStudyId, currentBlanksShowAll);
     }
     
     </script>

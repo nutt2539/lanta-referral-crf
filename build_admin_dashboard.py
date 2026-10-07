@@ -107,6 +107,107 @@ def get_admin_dashboard_css():
             border-radius: 999px;
             transition: width 0.4s ease;
         }
+
+        /* Missing Data Audit & Fill Blanks Modal Styles */
+        .missing-chip {
+            display: inline-flex;
+            align-items: center;
+            gap: 3px;
+            padding: 2px 7px;
+            border-radius: 4px;
+            font-size: 11px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.15s ease;
+            text-decoration: none;
+            white-space: nowrap;
+            user-select: none;
+        }
+        .missing-chip:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 2px 5px rgba(0,0,0,0.12);
+            filter: brightness(0.95);
+        }
+        .missing-chip-f1 {
+            background: #fffbeb;
+            color: #b45309;
+            border: 1px solid #fde68a;
+        }
+        .missing-chip-f2 {
+            background: #eff6ff;
+            color: #1e40af;
+            border: 1px solid #bfdbfe;
+        }
+        .missing-chip-f3 {
+            background: #ecfeff;
+            color: #0e7490;
+            border: 1px solid #a5f3fc;
+        }
+        .missing-chip-f4 {
+            background: #f5f3ff;
+            color: #6d28d9;
+            border: 1px solid #ddd6fe;
+        }
+        .blank-field-card {
+            background: #ffffff;
+            border: 1px solid #e2e8f0;
+            border-radius: 8px;
+            margin-bottom: 14px;
+            overflow: hidden;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.03);
+        }
+        .blank-field-card-header {
+            padding: 8px 14px;
+            font-size: 13px;
+            font-weight: 700;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+        .blank-field-item {
+            padding: 10px 14px;
+            border-top: 1px solid #f1f5f9;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 14px;
+            flex-wrap: wrap;
+            transition: background 0.15s ease;
+        }
+        .blank-field-item:hover {
+            background: #fafafa;
+        }
+        .blank-field-item.pulse-focus {
+            animation: pulseAmber 1.5s 2;
+            background: #fffbeb !important;
+        }
+        @keyframes pulseAmber {
+            0% { box-shadow: 0 0 0 0 rgba(245, 158, 11, 0.7); }
+            70% { box-shadow: 0 0 0 8px rgba(245, 158, 11, 0); }
+            100% { box-shadow: 0 0 0 0 rgba(245, 158, 11, 0); }
+        }
+        .blank-field-input {
+            padding: 5px 8px;
+            border: 1.5px solid #cbd5e1;
+            border-radius: 5px;
+            font-size: 13px;
+            transition: all 0.15s ease;
+            background: #ffffff;
+            font-family: inherit;
+        }
+        .blank-field-input:focus {
+            outline: none;
+            border-color: #2563eb;
+            box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.15);
+        }
+        .blank-field-input.is-empty {
+            border-color: #f59e0b;
+            background: #fffdf5;
+        }
+        .blank-field-input.is-filled {
+            border-color: #10b981;
+            background: #f0fdf4;
+        }
     """
 
 def get_admin_dashboard_html():
@@ -158,6 +259,10 @@ def get_admin_dashboard_html():
                 </button>
                 <button type="button" class="admin-tab-btn" id="admin-tab-btn-deterioration" onclick="switchAdminSubTab('deterioration')">
                     <span>🚨 รายงาน Deterioration</span>
+                </button>
+                <button type="button" class="admin-tab-btn" id="admin-tab-btn-missing" onclick="switchAdminSubTab('missing')">
+                    <span>📝 ตรวจสอบช่องว่าง (Missing Audit)</span>
+                    <span id="admin-nav-missing-badge" style="background: #f59e0b; color: #ffffff; padding: 1px 6px; border-radius: 999px; font-size: 10.5px; font-weight: 700; margin-left: 4px;">0</span>
                 </button>
             </div>
 
@@ -240,6 +345,14 @@ def get_admin_dashboard_html():
                             </div>
                             <div id="stat-deter-count" style="font-size: 26px; font-weight: 700; color: #e11d48; line-height: 1.2; margin-top: 2px;">0</div>
                             <div id="stat-deter-pct" style="font-size: 11.5px; color: #94a3b8;">0% เกิด AE หรือสรีรวิทยาแย่ลง</div>
+                        </div>
+                        <div style="background: #ffffff; border: 1px solid #cbd5e1; border-left: 4px solid #f59e0b; border-radius: 6px; padding: 10px 14px; box-shadow: 0 1px 3px rgba(0,0,0,0.03); cursor: pointer;" onclick="switchAdminSubTab('missing')" title="คลิกเพื่อดูรายงานช่องว่างและเติมข้อมูล">
+                            <div style="display: flex; justify-content: space-between; align-items: center;">
+                                <div style="font-size: 12.5px; color: #64748b; font-weight: 600;">ความสมบูรณ์ข้อมูล (Completeness)</div>
+                                <span style="font-size: 10.5px; color: #b45309; font-weight: 700;">ตรวจสอบ ➔</span>
+                            </div>
+                            <div id="stat-data-completeness" style="font-size: 26px; font-weight: 700; color: #d97706; line-height: 1.2; margin-top: 2px;">100%</div>
+                            <div id="stat-missing-cases-detail" style="font-size: 11.5px; color: #94a3b8;">0 ช่องว่างในระบบ</div>
                         </div>
                     </div>
 
@@ -334,7 +447,8 @@ def get_admin_dashboard_html():
                                         <th style="width: 130px; text-align: center;">เวลาส่งต่อรวม</th>
                                         <th style="width: 90px; text-align: center;">RTS (เกาะ/กระบี่)</th>
                                         <th style="width: 100px; text-align: center;">ผลลัพธ์ 24 ชม.</th>
-                                        <th style="width: 200px; text-align: center;">จัดการข้อมูล</th>
+                                        <th style="width: 140px; text-align: center;">ความสมบูรณ์ข้อมูล</th>
+                                        <th style="width: 220px; text-align: center;">จัดการข้อมูล</th>
                                     </tr>
                                 </thead>
                                 <tbody id="admin-cases-tbody">
@@ -870,6 +984,106 @@ def get_admin_dashboard_html():
                     </div>
                 </div>
 
+                <!-- ========================================== -->
+                <!-- TAB 7: MISSING DATA AUDIT                  -->
+                <!-- ========================================== -->
+                <div id="admin-tab-content-missing" class="admin-tab-pane" style="display:none;">
+                    <div class="research-banner" style="background: linear-gradient(135deg, #fffbeb 0%, #fef3c7 100%); border: 1px solid #fde68a; border-left: 5px solid #d97706;">
+                        <div>
+                            <div style="font-size: 11.5px; font-weight: 800; color: #b45309; letter-spacing: 0.5px; text-transform: uppercase;">
+                                📋 DATA QUALITY & COMPLETENESS AUDIT • "Missing Fields"
+                            </div>
+                            <div style="font-size: 16px; font-weight: 700; color: #78350f; margin-top: 2px;">
+                                การตรวจสอบความสมบูรณ์ของข้อมูลและรายงานช่องว่างรายฟอร์ม
+                            </div>
+                            <div style="font-size: 12.5px; color: #92400e; opacity: 0.9; margin-top: 2px;">
+                                ตรวจสอบตัวแปรที่ยังไม่ได้บันทึก แยกตาม Form 1 (แรกรับ), Form 2 (นำส่ง), Form 3 (ทะเล), Form 4 (รพ.กระบี่) พร้อมคลิกเพื่อเติมข้อมูลทันที
+                            </div>
+                        </div>
+                        <div style="background: #ffffff; border: 1px solid #fde68a; border-radius: 8px; padding: 8px 16px; text-align: right; box-shadow: 0 1px 3px rgba(0,0,0,0.05);">
+                            <div style="font-size: 11.5px; color: #64748b; font-weight: 600;">ความสมบูรณ์เฉลี่ยรวม</div>
+                            <div id="audit-overall-rate" style="font-size: 26px; font-weight: 800; color: #d97706; line-height: 1.1;">100%</div>
+                            <div id="audit-overall-detail" style="font-size: 11px; color: #94a3b8;">0 ช่องว่าง จาก 0 เคส</div>
+                        </div>
+                    </div>
+
+                    <!-- 4 Form KPI Cards -->
+                    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); gap: 12px; margin-bottom: 16px;">
+                        <div class="research-card" style="border-left: 4px solid #b45309;">
+                            <div style="display:flex; justify-content:space-between; align-items:center;">
+                                <div style="font-size: 12px; font-weight: 700; color: #1e293b;">📋 Form 1: ข้อมูลแรกรับ</div>
+                                <span id="audit-f1-badge" style="font-size: 11px; background: #fef3c7; color: #92400e; font-weight: 700; padding: 1px 6px; border-radius: 4px;">0 ช่อง</span>
+                            </div>
+                            <div id="audit-f1-pct" style="font-size: 22px; font-weight: 800; color: #b45309; margin-top: 4px;">100%</div>
+                            <div id="audit-f1-sub" style="font-size: 11px; color: #64748b; margin-top: 2px;">แรกรับ, สัญญาณชีพ, DIDO</div>
+                        </div>
+                        <div class="research-card" style="border-left: 4px solid #1e40af;">
+                            <div style="display:flex; justify-content:space-between; align-items:center;">
+                                <div style="font-size: 12px; font-weight: 700; color: #1e293b;">🚑 Form 2: การนำส่ง & แพ</div>
+                                <span id="audit-f2-badge" style="font-size: 11px; background: #dbeafe; color: #1e40af; font-weight: 700; padding: 1px 6px; border-radius: 4px;">0 ช่อง</span>
+                            </div>
+                            <div id="audit-f2-pct" style="font-size: 22px; font-weight: 800; color: #1e40af; margin-top: 4px;">100%</div>
+                            <div id="audit-f2-sub" style="font-size: 11px; color: #64748b; margin-top: 2px;">ไทม์ไลน์ T0–T4, AE ระหว่างทาง</div>
+                        </div>
+                        <div class="research-card" style="border-left: 4px solid #0e7490;">
+                            <div style="display:flex; justify-content:space-between; align-items:center;">
+                                <div style="font-size: 12px; font-weight: 700; color: #1e293b;">🌊 Form 3: ทะเล & อากาศ</div>
+                                <span id="audit-f3-badge" style="font-size: 11px; background: #cffafe; color: #0e7490; font-weight: 700; padding: 1px 6px; border-radius: 4px;">0 ช่อง</span>
+                            </div>
+                            <div id="audit-f3-pct" style="font-size: 22px; font-weight: 800; color: #0e7490; margin-top: 4px;">100%</div>
+                            <div id="audit-f3-sub" style="font-size: 11px; color: #64748b; margin-top: 2px;">น้ำขึ้นน้ำลง, คลื่นลม, ฝน</div>
+                        </div>
+                        <div class="research-card" style="border-left: 4px solid #6d28d9;">
+                            <div style="display:flex; justify-content:space-between; align-items:center;">
+                                <div style="font-size: 12px; font-weight: 700; color: #1e293b;">🏥 Form 4: รพ.กระบี่</div>
+                                <span id="audit-f4-badge" style="font-size: 11px; background: #ede9fe; color: #6d28d9; font-weight: 700; padding: 1px 6px; border-radius: 4px;">0 ช่อง</span>
+                            </div>
+                            <div id="audit-f4-pct" style="font-size: 22px; font-weight: 800; color: #6d28d9; margin-top: 4px;">100%</div>
+                            <div id="audit-f4-sub" style="font-size: 11px; color: #64748b; margin-top: 2px;">หัตถการ T5, ผลลัพธ์ 24 ชม.</div>
+                        </div>
+                    </div>
+
+                    <!-- Audit Cases Table Card -->
+                    <div class="research-card" style="margin-bottom: 16px;">
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; flex-wrap: wrap; gap: 8px;">
+                            <div>
+                                <div style="font-size: 14px; font-weight: 700; color: #1e3a8a;">
+                                    📝 รายการเคสและช่องว่างที่ต้องบันทึกเพิ่มเติม (Cases with Missing CRF Items)
+                                </div>
+                                <div style="font-size: 12px; color: #64748b; margin-top: 1px;">
+                                    คลิกที่ <b>ชิปตัวแปร</b> หรือกดปุ่ม <b>"เติมช่องว่าง"</b> เพื่อเปิดหน้าต่างกรอกข้อมูลและบันทึกได้ทันที
+                                </div>
+                            </div>
+                            <div style="display: flex; gap: 8px; align-items: center;">
+                                <label class="form-check" style="font-size: 12px; font-weight: 600; cursor: pointer;">
+                                    <input type="checkbox" id="audit-filter-incomplete-only" checked onchange="renderAdminDashboard()"> แสดงเฉพาะเคสที่มีช่องว่าง
+                                </label>
+                            </div>
+                        </div>
+
+                        <div class="table-responsive" style="margin-bottom: 0;">
+                            <table class="crf-table" style="margin-bottom: 0; font-size: 12.5px; width: 100%;">
+                                <thead>
+                                    <tr style="background: #f8fafc;">
+                                        <th style="width: 90px; text-align: center;">STUDY_ID</th>
+                                        <th style="width: 110px;">HN / Refer</th>
+                                        <th style="width: 100px; text-align: center;">กลุ่มโรค</th>
+                                        <th>📋 Form 1 (แรกรับ)</th>
+                                        <th>🚑 Form 2 (นำส่ง)</th>
+                                        <th>🌊 Form 3 (ทะเล)</th>
+                                        <th>🏥 Form 4 (รพ.กระบี่)</th>
+                                        <th style="width: 110px; text-align: center;">ความสมบูรณ์</th>
+                                        <th style="width: 110px; text-align: center;">ดำเนินการ</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="audit-cases-tbody">
+                                    <!-- Populated dynamically by JS -->
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+
             </div>
 
             <!-- Modal Footer -->
@@ -880,6 +1094,62 @@ def get_admin_dashboard_html():
                 <button type="button" class="btn btn-outline" onclick="closeAdminDashboard()" style="padding: 4px 12px; font-size: 13px;">
                     ปิดหน้าต่าง
                 </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Fill Blanks Modal Popup -->
+    <div id="fill-blanks-modal" class="modal-overlay" style="display:none; z-index: 2500;">
+        <div class="modal-box modal-box-large" style="max-width: 860px; max-height: 90vh; display: flex; flex-direction: column;">
+            <!-- Modal Header -->
+            <div class="modal-header" style="background: linear-gradient(135deg, #1e3a8a 0%, #0369a1 100%); color: #ffffff; padding: 12px 20px; border-radius: 8px 8px 0 0;">
+                <div>
+                    <h3 style="font-size: 16px; font-weight: 700; color: #ffffff; display: flex; align-items: center; gap: 8px; margin: 0;">
+                        <span>📝 เติมข้อมูลช่องว่างในแบบบันทึก (Fill Missing CRF Data)</span>
+                    </h3>
+                    <div id="blanks-modal-subtitle" style="font-size: 12px; opacity: 0.9; margin-top: 2px; color: #e0f2fe;">
+                        ผู้ป่วย: LANTA_... | HN: ...
+                    </div>
+                </div>
+                <button type="button" class="modal-close-btn" onclick="closeFillBlanksModal()" style="color: #ffffff; font-size: 18px;" title="ปิดหน้าต่าง">✕</button>
+            </div>
+
+            <!-- Completeness Toolbar inside Modal -->
+            <div style="background: #f8fafc; border-bottom: 1px solid #e2e8f0; padding: 10px 20px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px;">
+                <div style="flex: 1; min-width: 220px;">
+                    <div style="display: flex; justify-content: space-between; font-size: 12px; margin-bottom: 4px;">
+                        <span id="blanks-modal-count-text" style="font-weight: 700; color: #1e3a8a;">พบช่องว่าง N รายการ</span>
+                        <span id="blanks-modal-pct-text" style="font-weight: 700; color: #0284c7;">85% สมบูรณ์</span>
+                    </div>
+                    <div style="height: 6px; background: #e2e8f0; border-radius: 999px; overflow: hidden;">
+                        <div id="blanks-modal-progress-bar" style="height: 100%; background: #0284c7; width: 85%; transition: width 0.3s ease;"></div>
+                    </div>
+                </div>
+                <div style="display: flex; gap: 6px; align-items: center;">
+                    <button type="button" class="btn btn-outline" id="blanks-toggle-all-btn" onclick="toggleBlanksFilterAll()" style="font-size: 11.5px; padding: 3px 10px;">
+                        👁️ แสดงทุกช่อง
+                    </button>
+                </div>
+            </div>
+
+            <!-- Scrollable Field Content -->
+            <div id="blanks-modal-body" style="padding: 16px 20px; overflow-y: auto; flex: 1; background: #ffffff;">
+                <!-- Populated dynamically by JS -->
+            </div>
+
+            <!-- Modal Footer -->
+            <div style="padding: 10px 20px; background: #f8fafc; border-top: 1px solid #e2e8f0; border-radius: 0 0 8px 8px; display: flex; justify-content: space-between; align-items: center;">
+                <div id="blanks-save-feedback" style="font-size: 12.5px; font-weight: 700; color: #16a34a; display: none;">
+                    ✓ บันทึกข้อมูลสำเร็จ
+                </div>
+                <div style="display: flex; gap: 8px; margin-left: auto;">
+                    <button type="button" class="btn btn-outline" onclick="closeFillBlanksModal()" style="font-size: 13px; padding: 5px 14px;">
+                        ปิดหน้าต่าง
+                    </button>
+                    <button type="button" class="btn btn-success" onclick="saveBlanksModalData()" style="font-size: 13px; padding: 5px 16px; font-weight: 700;">
+                        💾 บันทึกข้อมูล (Save)
+                    </button>
+                </div>
             </div>
         </div>
     </div>
