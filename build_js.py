@@ -94,6 +94,20 @@ def get_js():
             updateDiseaseVisuals(null);
             calcAll();
         }
+        toggleIntubationDetails();
+        toggleInotropesDetails();
+
+        // Listen for pre-transfer interventions change events
+        document.addEventListener('change', function(e) {
+            if (e.target && e.target.name === 'f1_intubation') {
+                toggleIntubationDetails();
+                scheduleAutoSave();
+            }
+            if (e.target && e.target.name === 'f1_inotropes') {
+                toggleInotropesDetails();
+                scheduleAutoSave();
+            }
+        });
     });
 
     // --- Automatic Responsive Screen Adaptation (Auto-Fit) ---
@@ -773,6 +787,85 @@ def get_js():
             updateFerryBadges(val);
             scheduleAutoSave();
         }
+    }
+
+    // --- Pre-Transfer Intubation ETT Gating ---
+    function toggleIntubationDetails() {
+        const rad = document.querySelector('input[name="f1_intubation"]:checked');
+        const isIntub = (rad && rad.value === '1');
+        const box = document.getElementById('f1_ett_details_box');
+        const ettNo = document.getElementById('f1_ett_no');
+        const ettTime = document.getElementById('f1_ett_time');
+
+        if (box) {
+            if (isIntub) {
+                box.style.opacity = '1';
+                box.style.pointerEvents = 'auto';
+                if (ettNo) {
+                    ettNo.disabled = false;
+                    ettNo.style.backgroundColor = '#ffffff';
+                }
+                if (ettTime) {
+                    ettTime.disabled = false;
+                    ettTime.style.backgroundColor = '#ffffff';
+                }
+            } else {
+                box.style.opacity = '0.35';
+                box.style.pointerEvents = 'none';
+                if (ettNo) {
+                    ettNo.disabled = true;
+                    ettNo.value = '';
+                    ettNo.style.backgroundColor = '#f1f5f9';
+                }
+                if (ettTime) {
+                    ettTime.disabled = true;
+                    ettTime.value = '';
+                    ettTime.style.backgroundColor = '#f1f5f9';
+                }
+            }
+        }
+    }
+
+    // --- Pre-Transfer Inotropes Gating ---
+    function toggleInotropesDetails() {
+        const rad = document.querySelector('input[name="f1_inotropes"]:checked');
+        const isInot = (rad && rad.value === '1');
+        const box = document.getElementById('f1_inotropes_details_box');
+        const inotName = document.getElementById('f1_inotropes_name');
+        const inotDose = document.getElementById('f1_inotropes_dose');
+
+        if (box) {
+            if (isInot) {
+                box.style.opacity = '1';
+                box.style.pointerEvents = 'auto';
+                if (inotName) {
+                    inotName.disabled = false;
+                    inotName.style.backgroundColor = '#ffffff';
+                }
+                if (inotDose) {
+                    inotDose.disabled = false;
+                    inotDose.style.backgroundColor = '#ffffff';
+                }
+            } else {
+                box.style.opacity = '0.35';
+                box.style.pointerEvents = 'none';
+                if (inotName) {
+                    inotName.disabled = true;
+                    inotName.value = '';
+                    inotName.style.backgroundColor = '#f1f5f9';
+                }
+                if (inotDose) {
+                    inotDose.disabled = true;
+                    inotDose.value = '';
+                    inotDose.style.backgroundColor = '#f1f5f9';
+                }
+            }
+        }
+    }
+
+    if (typeof window !== 'undefined') {
+        window.toggleIntubationDetails = toggleIntubationDetails;
+        window.toggleInotropesDetails = toggleInotropesDetails;
     }
 
     // --- En-route CPR Outcome & Duration Gating ---
@@ -2756,6 +2849,8 @@ def get_js():
         calcForm4Timelines();
         toggleCprDetails();
         toggleMortalityDetails();
+        toggleIntubationDetails();
+        toggleInotropesDetails();
         autoDetectFerryOperate();
         if (typeof updateEpidemiologicalAssessment === 'function') updateEpidemiologicalAssessment();
     }
@@ -2819,7 +2914,15 @@ def get_js():
         delayedSummaryLi.forEach(li => delayedList.push(li.innerText.trim()));
         data['timeline_delayed_intervals'] = delayedList.join('; ');
         data['timeline_delay_count'] = delayedList.length;
-        data['timeline_overall_status'] = delayedList.length > 0 ? 'Delayed' : (document.getElementById('delay_count_badge')?.innerText.includes('ตรงเวลา') ? 'On-time' : 'Pending');
+        // Reset inactive conditional pre-transfer sub-fields
+        if (data.f1_intubation !== '1') {
+            data.f1_ett_no = '';
+            data.f1_ett_time = '';
+        }
+        if (data.f1_inotropes !== '1') {
+            data.f1_inotropes_name = '';
+            data.f1_inotropes_dose = '';
+        }
 
         return data;
     }
@@ -2859,6 +2962,8 @@ def get_js():
         toggleCprDetails();
         toggleMortalityDetails();
         toggleRainDetails();
+        toggleIntubationDetails();
+        toggleInotropesDetails();
         autoDetectFerryOperate();
 
         calcAll();
@@ -2954,6 +3059,8 @@ def get_js():
             toggleCprDetails();
             toggleMortalityDetails();
             toggleRainDetails();
+            toggleIntubationDetails();
+            toggleInotropesDetails();
 
             calcAll();
             saveCurrentCase(true);
@@ -5868,6 +5975,16 @@ const CRF_AUDIT_FIELDS = [
                 }
             }
         });
+
+        // Clean up conditional sub-fields if parent toggle is inactive
+        if (data.f1_intubation !== '1') {
+            delete data.f1_ett_no;
+            delete data.f1_ett_time;
+        }
+        if (data.f1_inotropes !== '1') {
+            delete data.f1_inotropes_name;
+            delete data.f1_inotropes_dose;
+        }
 
         localStorage.setItem('online_crf_case_' + currentBlanksStudyId, JSON.stringify(data));
 

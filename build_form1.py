@@ -585,12 +585,12 @@ def get_form1_html():
                 <td style="width: 32%; font-weight: 700; background: #f8fafc;">การใส่ท่อช่วยหายใจ (Pre-Transfer Intubation)</td>
                 <td style="width: 68%;">
                     <div class="check-row">
-                        <label class="form-check"><input type="radio" name="f1_intubation" value="0"> ไม่ได้ใส่</label>
-                        <label class="form-check"><input type="radio" name="f1_intubation" value="1"> ใส่ท่อช่วยหายใจตั้งแต่ รพ.เกาะลันตา</label>
+                        <label class="form-check"><input type="radio" name="f1_intubation" value="0" onchange="toggleIntubationDetails()"> ไม่ได้ใส่</label>
+                        <label class="form-check"><input type="radio" name="f1_intubation" value="1" onchange="toggleIntubationDetails()"> ใส่ท่อช่วยหายใจตั้งแต่ รพ.เกาะลันตา</label>
                     </div>
-                    <div style="margin-left: 20px; margin-top: 4px; display: flex; align-items: center; gap: 8px;">
-                        <span>(ETT No.</span><input type="text" id="f1_ett_no" style="width: 60px;">
-                        <span>, เวลาใส่:</span><input type="time" id="f1_ett_time"><span>น.)</span>
+                    <div id="f1_ett_details_box" style="margin-left: 20px; margin-top: 6px; display: flex; align-items: center; gap: 8px; opacity: 0.35; pointer-events: none; transition: all 0.2s ease;">
+                        <span>(ETT No.</span><input type="text" id="f1_ett_no" style="width: 65px; background-color: #f1f5f9;" placeholder="เช่น 7.5" disabled>
+                        <span>, เวลาใส่:</span><input type="time" id="f1_ett_time" style="background-color: #f1f5f9;" disabled><span>น.)</span>
                     </div>
                 </td>
             </tr>
@@ -598,12 +598,12 @@ def get_form1_html():
                 <td style="font-weight: 700; background: #f8fafc;">การให้ยากระตุ้นความดัน (Pre-Transfer Inotropes)</td>
                 <td>
                     <div class="check-row">
-                        <label class="form-check"><input type="radio" name="f1_inotropes" value="0"> ไม่ได้รับ</label>
-                        <label class="form-check"><input type="radio" name="f1_inotropes" value="1"> ได้รับยากระตุ้นความดัน</label>
+                        <label class="form-check"><input type="radio" name="f1_inotropes" value="0" onchange="toggleInotropesDetails()"> ไม่ได้รับ</label>
+                        <label class="form-check"><input type="radio" name="f1_inotropes" value="1" onchange="toggleInotropesDetails()"> ได้รับยากระตุ้นความดัน</label>
                     </div>
-                    <div style="margin-left: 20px; margin-top: 4px; display: flex; align-items: center; gap: 8px;">
-                        <span>(ระบุยา:</span><input type="text" id="f1_inotropes_name" style="width: 140px;">
-                        <span>, ขนาดยา:</span><input type="text" id="f1_inotropes_dose" style="width: 140px;"><span>)</span>
+                    <div id="f1_inotropes_details_box" style="margin-left: 20px; margin-top: 6px; display: flex; align-items: center; gap: 8px; opacity: 0.35; pointer-events: none; transition: all 0.2s ease;">
+                        <span>(ระบุยา:</span><input type="text" id="f1_inotropes_name" style="width: 140px; background-color: #f1f5f9;" placeholder="เช่น Norepinephrine" disabled>
+                        <span>, ขนาดยา:</span><input type="text" id="f1_inotropes_dose" style="width: 140px; background-color: #f1f5f9;" placeholder="เช่น 0.1 mcg/kg/min" disabled><span>)</span>
                     </div>
                 </td>
             </tr>
