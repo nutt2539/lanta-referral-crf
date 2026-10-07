@@ -253,6 +253,10 @@ def get_admin_dashboard_html():
                     </p>
                 </div>
                 <div style="display: flex; gap: 8px; align-items: center;">
+                    <button type="button" class="btn btn-secondary" onclick="document.getElementById('admin-import-file-input').click()" style="font-size: 13px; padding: 4px 10px; background: #334155; color: #ffffff; border: 1px solid #475569;" title="นำเข้าข้อมูลเคสจากไฟล์ JSON">
+                        📂 นำเข้า JSON
+                    </button>
+                    <input type="file" id="admin-import-file-input" accept=".json" style="display: none;" onchange="handleAdminImportJson(event)">
                     <button type="button" class="btn btn-success" onclick="exportToExcel()" style="font-size: 13px; padding: 4px 10px;" title="ดาวน์โหลดฐานข้อมูลทุกเคสเป็นไฟล์ Excel (.xlsx)">
                         📥 Export Excel
                     </button>

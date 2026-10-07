@@ -3304,6 +3304,73 @@ def get_js():
         XLSX.writeFile(wb, 'Emergency_Transfer_CRF_Master_Database_' + nowStr + '.xlsx');
     }
 
+    // --- JSON IMPORT ENGINE ---
+    function handleAdminImportJson(event) {
+        const file = event.target.files && event.target.files[0];
+        if (!file) return;
+
+        const reader = new FileReader();
+        reader.onload = function(e) {
+            try {
+                const parsed = JSON.parse(e.target.result);
+                let casesList = [];
+                if (Array.isArray(parsed)) {
+                    casesList = parsed;
+                } else if (parsed && typeof parsed === 'object' && parsed.cases) {
+                    casesList = Object.values(parsed.cases);
+                } else if (parsed && typeof parsed === 'object' && parsed.studyId) {
+                    casesList = [parsed];
+                } else {
+                    alert('รูปแบบไฟล์ JSON ไม่ถูกต้อง กรุณาใช้ไฟล์ที่ส่งออกจากระบบหรือไฟล์ mock cases');
+                    return;
+                }
+
+                if (casesList.length === 0) {
+                    alert('ไม่พบข้อมูลเคสในไฟล์ JSON');
+                    return;
+                }
+
+                let index = JSON.parse(localStorage.getItem('online_crf_case_index') || '[]');
+                let importedCount = 0;
+
+                casesList.forEach(c => {
+                    const sid = c.studyId || c.f1_study_id;
+                    if (!sid) return;
+                    if (!index.includes(sid)) {
+                        index.push(sid);
+                    }
+                    localStorage.setItem('online_crf_case_' + sid, JSON.stringify(c));
+                    importedCount++;
+                });
+
+                localStorage.setItem('online_crf_case_index', JSON.stringify(index));
+
+                // If no active case, set first imported case
+                if (!localStorage.getItem('online_crf_last_active_id') && casesList[0]) {
+                    const firstId = casesList[0].studyId || casesList[0].f1_study_id;
+                    if (firstId) localStorage.setItem('online_crf_last_active_id', firstId);
+                }
+
+                // Reset file input
+                event.target.value = '';
+
+                // Re-render admin dashboard
+                if (typeof renderAdminDashboard === 'function') {
+                    renderAdminDashboard();
+                }
+
+                alert('✓ นำเข้าข้อมูลสำเร็จเรียบร้อยแล้ว จำนวน ' + importedCount + ' เคส');
+            } catch (err) {
+                console.error('Import JSON Error:', err);
+                alert('เกิดข้อผิดพลาดในการอ่านไฟล์ JSON: ' + err.message);
+            }
+        };
+        reader.readAsText(file, 'utf-8');
+    }
+    if (typeof window !== 'undefined') {
+        window.handleAdminImportJson = handleAdminImportJson;
+    }
+
     // --- INDIVIDUAL PATIENT PDF EXPORT ENGINE ---
     let currentPdfTargetId = null;
 
@@ -3321,7 +3388,7 @@ def get_js():
                 hn = data.f1_hn || '';
                 referId = data.f1_refer_id || '';
                 const age = data.f1_age ? data.f1_age + ' ปี' : '';
-                const sex = data.f1_sex === '1' ? 'ชาย' : data.f1_sex === '2' ? 'หญิง' : '';
+                const sex = (data.f1_sex === '1' || data.f1_sex === 'male') ? 'ชาย' : ((data.f1_sex === '2' || data.f1_sex === 'female') ? 'หญิง' : '');
                 if (age || sex) nameDetail = ' [' + [age, sex].filter(Boolean).join(', ') + ']';
             } catch (e) {}
         }
@@ -4363,7 +4430,7 @@ const CRF_AUDIT_FIELDS = [
 
                 // Table row generation
                 const ageStr = c.age ? c.age + ' ปี' : '-';
-                const sexStr = c.sex === '1' ? 'ชาย' : c.sex === '2' ? 'หญิง' : '-';
+                const sexStr = (c.sex === '1' || c.sex === 'male') ? 'ชาย' : ((c.sex === '2' || c.sex === 'female') ? 'หญิง' : '-');
 
                 let esiBadge = '-';
                 if (esi === '1') esiBadge = '<span class="badge-evaluated" style="background:#fee2e2; color:#b91c1c; font-size:11px;">ESI 1</span>';
