@@ -3558,15 +3558,41 @@ def get_js():
         return (val !== undefined && val !== null && String(val).trim() !== '');
     }
 
-    const CRF_AUDIT_FIELDS = [
-        // Form 1: Demographics & Context
+const CRF_AUDIT_FIELDS = [
+        // ==========================================
+        // Form 1: ข้อมูลแรกรับและคัดกรอง ณ รพ.เกาะลันตา
+        // ==========================================
+        // ข้อมูลทั่วไปและผู้สกัด
+        { key: 'f1_refer_id', label: 'เลขที่ใบส่งต่อ (Refer_ID)', form: 1, formName: 'Form 1', category: 'ข้อมูลทั่วไปและผู้สกัด', type: 'text', placeholder: 'ระบุเลขที่ใบส่งต่อ' },
+        { key: 'f1_hn', label: 'เลขประจำตัวผู้ป่วย (HN เกาะลันตา)', form: 1, formName: 'Form 1', category: 'ข้อมูลทั่วไปและผู้สกัด', type: 'text', placeholder: 'HN รพ.เกาะลันตา' },
+        { key: 'f1_vn', label: 'เลข VN เกาะลันตา', form: 1, formName: 'Form 1', category: 'ข้อมูลทั่วไปและผู้สกัด', type: 'text', placeholder: 'VN รพ.เกาะลันตา' },
+        { key: 'f1_abs_date', label: 'วันที่สกัดข้อมูล (Abstract Date)', form: 1, formName: 'Form 1', category: 'ข้อมูลทั่วไปและผู้สกัด', type: 'date' },
+        { key: 'f1_abstractor', label: 'ชื่อผู้สกัดข้อมูล (Abstractor)', form: 1, formName: 'Form 1', category: 'ข้อมูลทั่วไปและผู้สกัด', type: 'text', placeholder: 'ชื่อผู้สกัดข้อมูล' },
+
+        // เกณฑ์การคัดกรองวิจัย
+        { key: 'f1_target_disease', label: 'กลุ่มโรคเป้าหมาย (Target Disease)', form: 1, formName: 'Form 1', category: 'เกณฑ์การคัดกรองวิจัย', type: 'select', options: [
+            { value: 'stemi', label: '1. STEMI / Acute Coronary Syndrome (ACS)' },
+            { value: 'ais', label: '2. Acute Stroke' },
+            { value: 'trauma', label: '3. Severe Trauma (อุบัติเหตุบาดเจ็บรุนแรง)' }
+        ]},
+        { key: 'f1_inc1', label: 'เกณฑ์คัดเข้า: อายุ ≥ 18 ปี', form: 1, formName: 'Form 1', category: 'เกณฑ์การคัดกรองวิจัย', type: 'select', options: [{ value: 'yes', label: 'ใช่' }, { value: 'no', label: 'ไม่ใช่' }] },
+        { key: 'f1_inc2', label: 'เกณฑ์คัดเข้า: รับไว้รักษา ณ ER เกาะลันตา', form: 1, formName: 'Form 1', category: 'เกณฑ์การคัดกรองวิจัย', type: 'select', options: [{ value: 'yes', label: 'ใช่' }, { value: 'no', label: 'ไม่ใช่' }] },
+        { key: 'f1_inc3', label: 'เกณฑ์คัดเข้า: ส่งต่อเร่งด่วนสู่ รพ.กระบี่', form: 1, formName: 'Form 1', category: 'เกณฑ์การคัดกรองวิจัย', type: 'select', options: [{ value: 'yes', label: 'ใช่' }, { value: 'no', label: 'ไม่ใช่' }] },
+        { key: 'f1_inc4', label: 'เกณฑ์คัดเข้า: เข้าเกณฑ์วินิจฉัยกลุ่มโรคเป้าหมาย', form: 1, formName: 'Form 1', category: 'เกณฑ์การคัดกรองวิจัย', type: 'select', options: [{ value: 'yes', label: 'ใช่' }, { value: 'no', label: 'ไม่ใช่' }] },
+        { key: 'f1_exc1', label: 'เกณฑ์คัดออก: ผู้ป่วย/ญาติปฏิเสธการส่งต่อ', form: 1, formName: 'Form 1', category: 'เกณฑ์การคัดกรองวิจัย', type: 'select', options: [{ value: 'no', label: 'ไม่ใช่' }, { value: 'yes', label: 'ใช่ (คัดออก)' }] },
+        { key: 'f1_exc2', label: 'เกณฑ์คัดออก: ส่งต่อไปยัง รพ.เอกชนหรือนอกระบบ', form: 1, formName: 'Form 1', category: 'เกณฑ์การคัดกรองวิจัย', type: 'select', options: [{ value: 'no', label: 'ไม่ใช่' }, { value: 'yes', label: 'ใช่ (คัดออก)' }] },
+        { key: 'f1_exc3', label: 'เกณฑ์คัดออก: เวชระเบียนสูญหายเกิน 50%', form: 1, formName: 'Form 1', category: 'เกณฑ์การคัดกรองวิจัย', type: 'select', options: [{ value: 'no', label: 'ไม่ใช่' }, { value: 'yes', label: 'ใช่ (คัดออก)' }] },
+        { key: 'f1_exc4', label: 'เกณฑ์คัดออก: เสียชีวิตก่อนถึงห้องฉุกเฉิน (DOA)', form: 1, formName: 'Form 1', category: 'เกณฑ์การคัดกรองวิจัย', type: 'select', options: [{ value: 'no', label: 'ไม่ใช่' }, { value: 'yes', label: 'ใช่ (คัดออก)' }] },
+
+        // ประชากรศาสตร์
         { key: 'f1_age', label: 'อายุ (Age)', form: 1, formName: 'Form 1', category: 'ประชากรศาสตร์', type: 'number', unit: 'ปี', min: 0, max: 120 },
-        { key: 'f1_sex', label: 'เพศ (Sex)', form: 1, formName: 'Form 1', category: 'ประชากรศาสตร์', type: 'select', options: [{ value: 'male', label: 'ชาย (Male)' }, { value: 'female', label: 'หญิง (Female)' }] },
+        { key: 'f1_sex', label: 'เพศกำเนิด (Sex)', form: 1, formName: 'Form 1', category: 'ประชากรศาสตร์', type: 'select', options: [{ value: 'male', label: 'ชาย (Male)' }, { value: 'female', label: 'หญิง (Female)' }] },
+        { key: 'f1_nationality', label: 'สัญชาติ (Nationality)', form: 1, formName: 'Form 1', category: 'ประชากรศาสตร์', type: 'text', placeholder: 'เช่น ไทย, อังกฤษ, สวีเดน' },
         { key: 'f1_residency', label: 'สถานะประชากร (Residency)', form: 1, formName: 'Form 1', category: 'ประชากรศาสตร์', type: 'select', options: [
-            { value: '1', label: 'ชาวเกาะในพื้นที่ (Islander)' },
-            { value: '2', label: 'นักท่องเที่ยวไทย (Thai tourist)' },
-            { value: '3', label: 'นักท่องเที่ยวต่างชาติ (Foreigner)' },
-            { value: '4', label: 'แรงงานข้ามชาติ (Migrant)' }
+            { value: '1', label: '1 = ชาวเกาะในพื้นที่ (Islander)' },
+            { value: '2', label: '2 = นักท่องเที่ยวไทย (Thai tourist)' },
+            { value: '3', label: '3 = นักท่องเที่ยวต่างชาติ (Foreigner)' },
+            { value: '4', label: '4 = แรงงานข้ามชาติ (Migrant worker)' }
         ]},
         { key: 'f1_premrs', label: 'ระดับความพิการเดิม (Pre-morbid mRS)', form: 1, formName: 'Form 1', category: 'ประชากรศาสตร์', type: 'select', options: [
             { value: '0', label: '0 = ปกติ ไม่มีอาการ' },
@@ -3574,9 +3600,25 @@ def get_js():
             { value: '2', label: '2 = เล็กน้อย ดูแลตนเองได้' },
             { value: '3', label: '3 = ปานกลาง เดินได้เอง' },
             { value: '4', label: '4 = มาก ช่วยตนเองไม่ได้' },
-            { value: '5', label: '5 = นอนติดเตียง' }
+            { value: '5', label: '5 = นอนติดเตียง ต้องการดูแลตลอดเวลา' }
         ]},
-        // Form 1: Arrival & Triage
+
+        // ภาวะโรคร่วมจำเพาะ (CCI Subtypes)
+        { key: 'f1_cci_dm_type', label: 'ชนิดโรคเบาหวาน (DM Subtype)', form: 1, formName: 'Form 1', category: 'ประชากรศาสตร์และโรคร่วม', type: 'select', condition: d => Boolean(d.f1_cci_dm_chk), options: [
+            { value: '1', label: 'ไม่มีภาวะแทรกซ้อน (+1)' },
+            { value: '2', label: 'มีภาวะแทรกซ้อน (+2)' }
+        ]},
+        { key: 'f1_cci_liver_type', label: 'ความรุนแรงโรคตับ (Liver Disease Severity)', form: 1, formName: 'Form 1', category: 'ประชากรศาสตร์และโรคร่วม', type: 'select', condition: d => Boolean(d.f1_cci_liver_chk), options: [
+            { value: '1', label: 'ไม่รุนแรง (+1)' },
+            { value: '3', label: 'ปานกลางถึงรุนแรงมาก (+3)' }
+        ]},
+        { key: 'f1_cci_tumor_type', label: 'ระยะมะเร็งก้อน (Solid Tumor Staging)', form: 1, formName: 'Form 1', category: 'ประชากรศาสตร์และโรคร่วม', type: 'select', condition: d => Boolean(d.f1_cci_tumor_chk), options: [
+            { value: '2', label: 'ไม่แพร่กระจาย (+2)' },
+            { value: '6', label: 'ระยะแพร่กระจาย (+6)' }
+        ]},
+
+
+        // แรกรับ ER เกาะลันตา
         { key: 'f1_onset_date', label: 'วันที่เริ่มมีอาการ (Onset Date)', form: 1, formName: 'Form 1', category: 'แรกรับ ER เกาะลันตา', type: 'date' },
         { key: 'f1_onset_time', label: 'เวลาเริ่มมีอาการ (Onset Time)', form: 1, formName: 'Form 1', category: 'แรกรับ ER เกาะลันตา', type: 'time' },
         { key: 'f1_t0_date', label: 'วันที่ถึง ER เกาะลันตา (T0 Date)', form: 1, formName: 'Form 1', category: 'แรกรับ ER เกาะลันตา', type: 'date' },
@@ -3594,15 +3636,21 @@ def get_js():
             { value: 'afternoon', label: 'เวรบ่าย (16:00–24:00 น.)' },
             { value: 'night', label: 'เวรดึก (00:00–08:00 น.)' }
         ]},
-        // Form 1: Vitals
+
+        // สัญญาณชีพแรกรับ
         { key: 'f1_sbp', label: 'SBP แรกรับเกาะลันตา', form: 1, formName: 'Form 1', category: 'สัญญาณชีพแรกรับ', type: 'number', unit: 'mmHg' },
         { key: 'f1_dbp', label: 'DBP แรกรับเกาะลันตา', form: 1, formName: 'Form 1', category: 'สัญญาณชีพแรกรับ', type: 'number', unit: 'mmHg' },
         { key: 'f1_hr', label: 'ชีพจรแรกรับ (Heart Rate)', form: 1, formName: 'Form 1', category: 'สัญญาณชีพแรกรับ', type: 'number', unit: 'bpm' },
         { key: 'f1_rr', label: 'อัตราหายใจแรกรับ (Resp Rate)', form: 1, formName: 'Form 1', category: 'สัญญาณชีพแรกรับ', type: 'number', unit: '/min' },
         { key: 'f1_spo2', label: 'ออกซิเจนในเลือด (SpO2)', form: 1, formName: 'Form 1', category: 'สัญญาณชีพแรกรับ', type: 'number', unit: '%' },
-        { key: 'f1_bt', label: 'อุณหภูมิกายแรกรับ (Body Temp)', form: 1, formName: 'Form 1', category: 'สัญญาณชีพแรกรับ', type: 'number', unit: '°C' },
+        { key: 'f1_o2support', label: 'การใช้ออกซิเจนแรกรับ (O2 Support)', form: 1, formName: 'Form 1', category: 'สัญญาณชีพแรกรับ', type: 'select', options: [
+            { value: 'ra', label: 'Room Air (หายใจอากาศปกติ)' },
+            { value: 'o2', label: 'O2 Support (ได้รับออกซิเจนเสริม)' }
+        ]},
+        { key: 'f1_bt', label: 'อุณหภูมิกายแรกรับ (Body Temp)', form: 1, formName: 'Form 1', category: 'สัญญาณชีพแรกรับ', type: 'number', unit: '°C', step: '0.1' },
         { key: 'f1_gcs_total', label: 'คะแนนความรู้สึกตัว (GCS Total)', form: 1, formName: 'Form 1', category: 'สัญญาณชีพแรกรับ', type: 'number', unit: 'คะแนน', min: 3, max: 15 },
-        // Form 1: Disease-specific
+
+        // ความรุนแรงจำเพาะโรค
         { key: 'f1_killip', label: 'ระดับความรุนแรง Killip (STEMI)', form: 1, formName: 'Form 1', category: 'ความรุนแรงจำเพาะโรค', type: 'select', condition: isCaseStemi, options: [
             { value: '1', label: 'Killip I (ไม่มีหัวใจล้มเหลว)' },
             { value: '2', label: 'Killip II (มี Rales / S3)' },
@@ -3618,22 +3666,80 @@ def get_js():
             { value: 'critical', label: 'RTS ≤ 6: Critical (วิกฤต)' },
             { value: 'moderate', label: 'RTS > 6: Moderate (ปานกลาง)' }
         ]},
-        // Form 1: DIDO
+
+        // การช่วยกู้ชีพ ณ เกาะลันตา
+        { key: 'f1_intubation', label: 'การใส่ท่อช่วยหายใจ ณ รพ.เกาะลันตา', form: 1, formName: 'Form 1', category: 'การช่วยกู้ชีพ ณ เกาะลันตา', type: 'select', options: [
+            { value: '0', label: '0 = ไม่ได้ใส่' },
+            { value: '1', label: '1 = ใส่ท่อช่วยหายใจตั้งแต่ รพ.เกาะลันตา' }
+        ]},
+        { key: 'f1_ett_no', label: 'ขนาดท่อช่วยหายใจ (ETT No.)', form: 1, formName: 'Form 1', category: 'การช่วยกู้ชีพ ณ เกาะลันตา', type: 'text', condition: d => d.f1_intubation === '1', placeholder: 'เช่น 7.0, 7.5, 8.0' },
+        { key: 'f1_ett_time', label: 'เวลาใส่ท่อช่วยหายใจ ณ เกาะลันตา', form: 1, formName: 'Form 1', category: 'การช่วยกู้ชีพ ณ เกาะลันตา', type: 'time', condition: d => d.f1_intubation === '1' },
+        { key: 'f1_inotropes', label: 'การให้ยากระตุ้นความดัน ณ เกาะลันตา', form: 1, formName: 'Form 1', category: 'การช่วยกู้ชีพ ณ เกาะลันตา', type: 'select', options: [
+            { value: '0', label: '0 = ไม่ได้รับ' },
+            { value: '1', label: '1 = ได้รับยากระตุ้นความดัน' }
+        ]},
+        { key: 'f1_inotropes_name', label: 'ชื่อยากระตุ้นความดัน ณ เกาะลันตา', form: 1, formName: 'Form 1', category: 'การช่วยกู้ชีพ ณ เกาะลันตา', type: 'text', condition: d => d.f1_inotropes === '1', placeholder: 'เช่น Norepinephrine, Dopamine' },
+        { key: 'f1_inotropes_dose', label: 'ขนาดยากระตุ้นความดัน ณ เกาะลันตา', form: 1, formName: 'Form 1', category: 'การช่วยกู้ชีพ ณ เกาะลันตา', type: 'text', condition: d => d.f1_inotropes === '1', placeholder: 'เช่น 0.1 mcg/kg/min' },
+
+        // ส่งต่อออกจากเกาะ (DIDO)
         { key: 'f1_t1_date', label: 'วันที่ออกจาก ER เกาะลันตา (T1 Date)', form: 1, formName: 'Form 1', category: 'ส่งต่อออกจากเกาะ (DIDO)', type: 'date' },
         { key: 'f1_t1_time', label: 'เวลาออกจาก ER เกาะลันตา (T1 Time)', form: 1, formName: 'Form 1', category: 'ส่งต่อออกจากเกาะ (DIDO)', type: 'time' },
+        { key: 'f1_dido_eval', label: 'การประเมินกรอบเวลา DIDO เกาะลันตา', form: 1, formName: 'Form 1', category: 'ส่งต่อออกจากเกาะ (DIDO)', type: 'select', options: [
+            { value: 'ontime', label: 'ทันเกณฑ์ (≤ 45m / ≤ 60m)' },
+            { value: 'delay', label: 'ล่าช้า (DIDO Delay Breach)' }
+        ]},
 
-        // Form 2: Transport & Timeline
+        // ==========================================
+        // Form 2: ไทม์ไลน์และเหตุการณ์ระหว่างส่งต่อทางทะเลและบก
+        // ==========================================
+        // ทีมส่งต่อ
         { key: 'f2_amb_plate', label: 'ทะเบียนรถพยาบาล (Ambulance Plate)', form: 2, formName: 'Form 2', category: 'ทีมส่งต่อ', type: 'text', placeholder: 'เช่น กข-1234 กระบี่' },
         { key: 'f2_escort_rn', label: 'ชื่อพยาบาลนำส่ง (Escort RN)', form: 2, formName: 'Form 2', category: 'ทีมส่งต่อ', type: 'text', placeholder: 'ชื่อ-สกุล พยาบาล' },
         { key: 'f2_driver', label: 'พนักงานขับรถพยาบาล', form: 2, formName: 'Form 2', category: 'ทีมส่งต่อ', type: 'text', placeholder: 'ชื่อ-สกุล พนักงานขับรถ' },
-        { key: 'f2_t2_date', label: 'วันที่ถึงท่าเรือคลองหมาก (T2 Date)', form: 2, formName: 'Form 2', category: 'หมุดเวลา T2 ท่าเรือ', type: 'date' },
-        { key: 'f2_t2_time', label: 'เวลาถึงท่าเรือคลองหมาก (T2 Time)', form: 2, formName: 'Form 2', category: 'หมุดเวลา T2 ท่าเรือ', type: 'time' },
-        { key: 'f2_t3_embark_date', label: 'วันที่รถขึ้นแพขนานยนต์ (T3 Embark Date)', form: 2, formName: 'Form 2', category: 'หมุดเวลา T3 ข้ามแพ', type: 'date' },
-        { key: 'f2_t3_embark_time', label: 'เวลารถขึ้นแพขนานยนต์ (T3 Embark Time)', form: 2, formName: 'Form 2', category: 'หมุดเวลา T3 ข้ามแพ', type: 'time' },
-        { key: 'f2_t3_disembark_date', label: 'วันที่รถลงแพถึงท่าหัวหิน (T3 Disembark Date)', form: 2, formName: 'Form 2', category: 'หมุดเวลา T3 ข้ามแพ', type: 'date' },
-        { key: 'f2_t3_disembark_time', label: 'เวลารถลงแพถึงท่าหัวหิน (T3 Disembark Time)', form: 2, formName: 'Form 2', category: 'หมุดเวลา T3 ข้ามแพ', type: 'time' },
-        { key: 'f2_t4_date', label: 'วันที่ถึง ER รพ.กระบี่ (T4 Date)', form: 2, formName: 'Form 2', category: 'หมุดเวลา T4 รพ.กระบี่', type: 'date' },
-        { key: 'f2_t4_time', label: 'เวลาถึง ER รพ.กระบี่ (T4 Time)', form: 2, formName: 'Form 2', category: 'หมุดเวลา T4 รพ.กระบี่', type: 'time' },
+
+        // หมุดเวลาการนำส่ง
+        { key: 'f2_t2_date', label: 'วันที่ถึงท่าเรือคลองหมาก (T2 Date)', form: 2, formName: 'Form 2', category: 'หมุดเวลาการนำส่ง', type: 'date' },
+        { key: 'f2_t2_time', label: 'เวลาถึงท่าเรือคลองหมาก (T2 Time)', form: 2, formName: 'Form 2', category: 'หมุดเวลาการนำส่ง', type: 'time' },
+        { key: 'f2_t3_embark_date', label: 'วันที่รถขึ้นแพขนานยนต์ (T3 Embark Date)', form: 2, formName: 'Form 2', category: 'หมุดเวลาการนำส่ง', type: 'date' },
+        { key: 'f2_t3_embark_time', label: 'เวลารถขึ้นแพขนานยนต์ (T3 Embark Time)', form: 2, formName: 'Form 2', category: 'หมุดเวลาการนำส่ง', type: 'time' },
+        { key: 'f2_t3_disembark_date', label: 'วันที่รถลงแพถึงท่าหัวหิน (T3 Disembark Date)', form: 2, formName: 'Form 2', category: 'หมุดเวลาการนำส่ง', type: 'date' },
+        { key: 'f2_t3_disembark_time', label: 'เวลารถลงแพถึงท่าหัวหิน (T3 Disembark Time)', form: 2, formName: 'Form 2', category: 'หมุดเวลาการนำส่ง', type: 'time' },
+        { key: 'f2_t4_date', label: 'วันที่ถึง ER รพ.กระบี่ (T4 Date)', form: 2, formName: 'Form 2', category: 'หมุดเวลาการนำส่ง', type: 'date' },
+        { key: 'f2_t4_time', label: 'เวลาถึง ER รพ.กระบี่ (T4 Time)', form: 2, formName: 'Form 2', category: 'หมุดเวลาการนำส่ง', type: 'time' },
+        { key: 'f2_t5_date', label: 'วันที่เริ่ม Definitive Care (T5 Date)', form: 2, formName: 'Form 2', category: 'หมุดเวลาการนำส่ง', type: 'date' },
+        { key: 'f2_t5_time', label: 'เวลาเริ่ม Definitive Care (T5 Time)', form: 2, formName: 'Form 2', category: 'หมุดเวลาการนำส่ง', type: 'time' },
+
+        // การประเมินช่วงเวลาส่งต่อ
+        { key: 'f2_eval_dido', label: 'ผลประเมิน T0-1 Island DIDO', form: 2, formName: 'Form 2', category: 'การประเมินช่วงเวลาส่งต่อ', type: 'select', options: [
+            { value: 'ontime', label: 'ทันเกณฑ์ (≤ 45m / ≤ 60m)' },
+            { value: 'delay', label: 'ล่าช้า (> 45m / > 60m)' }
+        ]},
+        { key: 'f2_eval_road', label: 'ผลประเมิน T2 Island Road', form: 2, formName: 'Form 2', category: 'การประเมินช่วงเวลาส่งต่อ', type: 'select', options: [
+            { value: 'ontime', label: 'ทันเกณฑ์ (≤ 12 นาที)' },
+            { value: 'delay', label: 'ล่าช้า (> 12 นาที)' }
+        ]},
+        { key: 'f2_eval_water', label: 'ผลประเมิน T3 Water Crossing', form: 2, formName: 'Form 2', category: 'การประเมินช่วงเวลาส่งต่อ', type: 'select', options: [
+            { value: 'ontime', label: 'ทันเกณฑ์ (≤ 24 นาที)' },
+            { value: 'delay', label: 'ล่าช้า (> 24 นาที)' }
+        ]},
+        { key: 'f2_eval_wait', label: 'ผลประเมินเวลารอขึ้นแพขนานยนต์', form: 2, formName: 'Form 2', category: 'การประเมินช่วงเวลาส่งต่อ', type: 'select', options: [
+            { value: 'ontime', label: 'ปกติ (≤ 5 นาที)' },
+            { value: 'delay', label: 'รอคิวนาน (> 5 นาที)' }
+        ]},
+        { key: 'f2_eval_hwy', label: 'ผลประเมิน T4 Mainland Highway', form: 2, formName: 'Form 2', category: 'การประเมินช่วงเวลาส่งต่อ', type: 'select', options: [
+            { value: 'ontime', label: 'ทันเกณฑ์ (≤ 60 นาที)' },
+            { value: 'delay', label: 'ล่าช้า (> 60 นาที)' }
+        ]},
+        { key: 'f2_eval_total', label: 'ผลประเมิน T_Total System Time รวม', form: 2, formName: 'Form 2', category: 'การประเมินช่วงเวลาส่งต่อ', type: 'select', options: [
+            { value: 'ontime', label: 'ทันเกณฑ์ (≤ 141m / ≤ 156m)' },
+            { value: 'delay', label: 'ล่าช้า (> 141m / > 156m)' }
+        ]},
+        { key: 'f2_eval_t5', label: 'ผลประเมิน T5 Definitive Management', form: 2, formName: 'Form 2', category: 'การประเมินช่วงเวลาส่งต่อ', type: 'select', options: [
+            { value: 'ontime', label: 'ทันเกณฑ์ (≤ 156m / ≤ 180m)' },
+            { value: 'delay', label: 'ล่าช้า (> 156m / > 180m)' }
+        ]},
+
+        // บริบทแพขนานยนต์
         { key: 'f2_ferry_operate', label: 'ช่วงเวลาเดินแพขนานยนต์ (Ferry Period)', form: 2, formName: 'Form 2', category: 'บริบทแพขนานยนต์', type: 'select', options: [
             { value: '0', label: '0 = Scheduled Daytime (05:00–24:00 น.) เดินแพปกติ' },
             { value: '1', label: '1 = Standby Off-Hour (24:00–05:00 น.) โทรตามแพพิเศษ' }
@@ -3647,28 +3753,82 @@ def get_js():
             { value: '2', label: '2 ลำ' },
             { value: '3', label: '3 ลำ' }
         ]},
+
+        // สัญญาณชีพระหว่างทาง (จุดสังเกตการณ์ 1 - ทางหลวงบนเกาะ)
+        { key: 'f2_mon1_time', label: 'เวลาจุดที่ 1 ทางหลวงบนเกาะ', form: 2, formName: 'Form 2', category: 'สัญญาณชีพระหว่างทาง (จุดที่ 1)', type: 'time' },
+        { key: 'f2_mon1_sbp', label: 'SBP จุดที่ 1 ทางหลวงบนเกาะ', form: 2, formName: 'Form 2', category: 'สัญญาณชีพระหว่างทาง (จุดที่ 1)', type: 'number', unit: 'mmHg' },
+        { key: 'f2_mon1_dbp', label: 'DBP จุดที่ 1 ทางหลวงบนเกาะ', form: 2, formName: 'Form 2', category: 'สัญญาณชีพระหว่างทาง (จุดที่ 1)', type: 'number', unit: 'mmHg' },
+        { key: 'f2_mon1_hr', label: 'ชีพจร จุดที่ 1 ทางหลวงบนเกาะ', form: 2, formName: 'Form 2', category: 'สัญญาณชีพระหว่างทาง (จุดที่ 1)', type: 'number', unit: 'bpm' },
+        { key: 'f2_mon1_rr', label: 'อัตราหายใจ จุดที่ 1 ทางหลวงบนเกาะ', form: 2, formName: 'Form 2', category: 'สัญญาณชีพระหว่างทาง (จุดที่ 1)', type: 'number', unit: '/min' },
+        { key: 'f2_mon1_spo2', label: 'SpO2 จุดที่ 1 ทางหลวงบนเกาะ', form: 2, formName: 'Form 2', category: 'สัญญาณชีพระหว่างทาง (จุดที่ 1)', type: 'number', unit: '%' },
+        { key: 'f2_mon1_gcs', label: 'GCS จุดที่ 1 ทางหลวงบนเกาะ', form: 2, formName: 'Form 2', category: 'สัญญาณชีพระหว่างทาง (จุดที่ 1)', type: 'number', unit: 'คะแนน', min: 3, max: 15 },
+
+        // สัญญาณชีพระหว่างทาง (จุดสังเกตการณ์ 2 - บนแพขนานยนต์)
+        { key: 'f2_mon2_time', label: 'เวลาจุดที่ 2 บนแพขนานยนต์', form: 2, formName: 'Form 2', category: 'สัญญาณชีพระหว่างทาง (จุดที่ 2)', type: 'time' },
+        { key: 'f2_mon2_sbp', label: 'SBP จุดที่ 2 บนแพขนานยนต์', form: 2, formName: 'Form 2', category: 'สัญญาณชีพระหว่างทาง (จุดที่ 2)', type: 'number', unit: 'mmHg' },
+        { key: 'f2_mon2_dbp', label: 'DBP จุดที่ 2 บนแพขนานยนต์', form: 2, formName: 'Form 2', category: 'สัญญาณชีพระหว่างทาง (จุดที่ 2)', type: 'number', unit: 'mmHg' },
+        { key: 'f2_mon2_hr', label: 'ชีพจร จุดที่ 2 บนแพขนานยนต์', form: 2, formName: 'Form 2', category: 'สัญญาณชีพระหว่างทาง (จุดที่ 2)', type: 'number', unit: 'bpm' },
+        { key: 'f2_mon2_rr', label: 'อัตราหายใจ จุดที่ 2 บนแพขนานยนต์', form: 2, formName: 'Form 2', category: 'สัญญาณชีพระหว่างทาง (จุดที่ 2)', type: 'number', unit: '/min' },
+        { key: 'f2_mon2_spo2', label: 'SpO2 จุดที่ 2 บนแพขนานยนต์', form: 2, formName: 'Form 2', category: 'สัญญาณชีพระหว่างทาง (จุดที่ 2)', type: 'number', unit: '%' },
+        { key: 'f2_mon2_gcs', label: 'GCS จุดที่ 2 บนแพขนานยนต์', form: 2, formName: 'Form 2', category: 'สัญญาณชีพระหว่างทาง (จุดที่ 2)', type: 'number', unit: 'คะแนน', min: 3, max: 15 },
+
+        // สัญญาณชีพระหว่างทาง (จุดสังเกตการณ์ 3 - ทางหลวงแผ่นดิน กม.35)
+        { key: 'f2_mon3_time', label: 'เวลาจุดที่ 3 ทางหลวงแผ่นดิน', form: 2, formName: 'Form 2', category: 'สัญญาณชีพระหว่างทาง (จุดที่ 3)', type: 'time' },
+        { key: 'f2_mon3_sbp', label: 'SBP จุดที่ 3 ทางหลวงแผ่นดิน', form: 2, formName: 'Form 2', category: 'สัญญาณชีพระหว่างทาง (จุดที่ 3)', type: 'number', unit: 'mmHg' },
+        { key: 'f2_mon3_dbp', label: 'DBP จุดที่ 3 ทางหลวงแผ่นดิน', form: 2, formName: 'Form 2', category: 'สัญญาณชีพระหว่างทาง (จุดที่ 3)', type: 'number', unit: 'mmHg' },
+        { key: 'f2_mon3_hr', label: 'ชีพจร จุดที่ 3 ทางหลวงแผ่นดิน', form: 2, formName: 'Form 2', category: 'สัญญาณชีพระหว่างทาง (จุดที่ 3)', type: 'number', unit: 'bpm' },
+        { key: 'f2_mon3_rr', label: 'อัตราหายใจ จุดที่ 3 ทางหลวงแผ่นดิน', form: 2, formName: 'Form 2', category: 'สัญญาณชีพระหว่างทาง (จุดที่ 3)', type: 'number', unit: '/min' },
+        { key: 'f2_mon3_spo2', label: 'SpO2 จุดที่ 3 ทางหลวงแผ่นดิน', form: 2, formName: 'Form 2', category: 'สัญญาณชีพระหว่างทาง (จุดที่ 3)', type: 'number', unit: '%' },
+        { key: 'f2_mon3_gcs', label: 'GCS จุดที่ 3 ทางหลวงแผ่นดิน', form: 2, formName: 'Form 2', category: 'สัญญาณชีพระหว่างทาง (จุดที่ 3)', type: 'number', unit: 'คะแนน', min: 3, max: 15 },
+
+        // สัญญาณชีพระหว่างทาง (จุดสังเกตการณ์ 4 - หน้า ER รพ.กระบี่)
+        { key: 'f2_mon4_time', label: 'เวลาจุดที่ 4 หน้า ER รพ.กระบี่', form: 2, formName: 'Form 2', category: 'สัญญาณชีพระหว่างทาง (จุดที่ 4)', type: 'time' },
+        { key: 'f2_mon4_sbp', label: 'SBP จุดที่ 4 หน้า ER รพ.กระบี่', form: 2, formName: 'Form 2', category: 'สัญญาณชีพระหว่างทาง (จุดที่ 4)', type: 'number', unit: 'mmHg' },
+        { key: 'f2_mon4_dbp', label: 'DBP จุดที่ 4 หน้า ER รพ.กระบี่', form: 2, formName: 'Form 2', category: 'สัญญาณชีพระหว่างทาง (จุดที่ 4)', type: 'number', unit: 'mmHg' },
+        { key: 'f2_mon4_hr', label: 'ชีพจร จุดที่ 4 หน้า ER รพ.กระบี่', form: 2, formName: 'Form 2', category: 'สัญญาณชีพระหว่างทาง (จุดที่ 4)', type: 'number', unit: 'bpm' },
+        { key: 'f2_mon4_rr', label: 'อัตราหายใจ จุดที่ 4 หน้า ER รพ.กระบี่', form: 2, formName: 'Form 2', category: 'สัญญาณชีพระหว่างทาง (จุดที่ 4)', type: 'number', unit: '/min' },
+        { key: 'f2_mon4_spo2', label: 'SpO2 จุดที่ 4 หน้า ER รพ.กระบี่', form: 2, formName: 'Form 2', category: 'สัญญาณชีพระหว่างทาง (จุดที่ 4)', type: 'number', unit: '%' },
+        { key: 'f2_mon4_gcs', label: 'GCS จุดที่ 4 หน้า ER รพ.กระบี่', form: 2, formName: 'Form 2', category: 'สัญญาณชีพระหว่างทาง (จุดที่ 4)', type: 'number', unit: 'คะแนน', min: 3, max: 15 },
+
+        // เหตุการณ์ไม่พึงประสงค์ (AE)
         { key: 'f2_ae_cpr', label: 'มี CPR ระหว่างนำส่ง', form: 2, formName: 'Form 2', category: 'เหตุการณ์ไม่พึงประสงค์ (AE)', type: 'select', options: [
-            { value: '0', label: '0 = ไม่มี' },
+            { value: '0', label: '0 = ไม่มีภาวะหัวใจหยุดเต้น' },
             { value: '1', label: '1 = มีการทำ CPR ระหว่างทาง' }
         ]},
+        { key: 'f2_cpr_duration', label: 'ระยะเวลาทำ CPR รวม (นาที)', form: 2, formName: 'Form 2', category: 'เหตุการณ์ไม่พึงประสงค์ (AE)', type: 'number', unit: 'นาที', condition: d => d.f2_ae_cpr === '1' },
+        { key: 'f2_cpr_outcome', label: 'ผลลัพธ์การทำ CPR', form: 2, formName: 'Form 2', category: 'เหตุการณ์ไม่พึงประสงค์ (AE)', type: 'select', condition: d => d.f2_ae_cpr === '1', options: [
+            { value: 'rosc', label: 'ROSC ก่อนถึง ER' },
+            { value: 'ongoing', label: 'ทำ CPR ต่อเนื่องจนถึง ER' }
+        ]},
         { key: 'f2_ae_intub', label: 'มีใส่ท่อช่วยหายใจระหว่างทาง', form: 2, formName: 'Form 2', category: 'เหตุการณ์ไม่พึงประสงค์ (AE)', type: 'select', options: [
-            { value: '0', label: '0 = ไม่มี' },
+            { value: '0', label: '0 = ไม่ได้ใส่ระหว่างทาง' },
             { value: '1', label: '1 = มีการใส่ท่อช่วยหายใจฉุกเฉิน' }
         ]},
         { key: 'f2_ae_inotropes', label: 'เริ่ม/ปรับยากระตุ้นความดันระหว่างทาง', form: 2, formName: 'Form 2', category: 'เหตุการณ์ไม่พึงประสงค์ (AE)', type: 'select', options: [
-            { value: '0', label: '0 = ไม่มี' },
-            { value: '1', label: '1 = มีการให้/ปรับขนาดยา' }
+            { value: '0', label: '0 = ขนาดยาคงที่ / ไม่ต้องเริ่มยาใหม่' },
+            { value: '1', label: '1 = เริ่มยาใหม่ หรือปรับเพิ่มขนาดยา ≥ 50%' }
         ]},
         { key: 'f2_ae_dislodge', label: 'ท่อช่วยหายใจเลื่อนหลุดระหว่างทาง (ETT Dislodgement)', form: 2, formName: 'Form 2', category: 'เหตุการณ์ไม่พึงประสงค์ (AE)', type: 'select', options: [
             { value: '0', label: '0 = ไม่มี' },
             { value: '1', label: '1 = เกิดท่อช่วยหายใจเลื่อนหลุด' }
         ]},
         { key: 'f2_ae_death', label: 'เสียชีวิตระหว่างนำส่ง (Transit Death)', form: 2, formName: 'Form 2', category: 'เหตุการณ์ไม่พึงประสงค์ (AE)', type: 'select', options: [
-            { value: '0', label: '0 = ไม่มี (รอดชีวิตถึง รพ.กระบี่)' },
+            { value: '0', label: '0 = รอดชีวิตจนถึง ER' },
             { value: '1', label: '1 = เสียชีวิตระหว่างนำส่ง' }
         ]},
+        { key: 'f2_composite_ae', label: 'สรุปภาวะทรุดหนักระหว่างทางรวม', form: 2, formName: 'Form 2', category: 'เหตุการณ์ไม่พึงประสงค์ (AE)', type: 'select', options: [
+            { value: '0', label: '0 = สัญญาณชีพคงที่ตลอดการเดินทาง (Stable)' },
+            { value: '1', label: '1 = เกิดภาวะทรุดหนักวิกฤตระหว่างทาง (Critical AE)' }
+        ]},
 
-        // Form 3: Maritime & Weather
+        // ==========================================
+        // Form 3: สภาพแวดล้อม อุทกศาสตร์ทางทะเล และอุตุนิยมวิทยา
+        // ==========================================
+        // วันเวลาข้ามฟาก T3
+        { key: 'f3_t3_date', label: 'วันที่ข้ามฟาก T3 (Form 3)', form: 3, formName: 'Form 3', category: 'วันเวลาข้ามฟาก T3', type: 'date' },
+        { key: 'f3_t3_time', label: 'เวลาข้ามฟาก T3 (Form 3)', form: 3, formName: 'Form 3', category: 'วันเวลาข้ามฟาก T3', type: 'time' },
+
+        // อุทกศาสตร์ทางทะเล
         { key: 'f3_tide_height', label: 'ระดับความสูงน้ำทะเล ณ เวลา T3', form: 3, formName: 'Form 3', category: 'อุทกศาสตร์ทางทะเล', type: 'number', unit: 'เมตร', step: '0.01' },
         { key: 'f3_tide_phase', label: 'ช่วงเวลาน้ำขึ้น-น้ำลง (Tide Phase)', form: 3, formName: 'Form 3', category: 'อุทกศาสตร์ทางทะเล', type: 'select', options: [
             { value: '1', label: '1 = น้ำขึ้น (High / Flood tide)' },
@@ -3683,6 +3843,8 @@ def get_js():
             { value: '0', label: '0 = ไม่มีสันทรายขวางร่องน้ำ' },
             { value: '1', label: '1 = มีความเสี่ยงติดสันทราย' }
         ]},
+
+        // สภาพอากาศและคลื่นลม
         { key: 'f3_season', label: 'ฤดูกาลมรสุม (Monsoon Season)', form: 3, formName: 'Form 3', category: 'สภาพอากาศและคลื่นลม', type: 'select', options: [
             { value: '0', label: '0 = ฤดูมรสุมตะวันตกเฉียงใต้ (พ.ค.–ต.ค.)' },
             { value: '1', label: '1 = นอกฤดูมรสุม / ไฮซีซั่น (พ.ย.–เม.ย.)' }
@@ -3693,54 +3855,141 @@ def get_js():
             { value: '2', label: '2 = Rough (คลื่นลมแรงมรสุม > 2.0 ม.)' }
         ]},
         { key: 'f3_precipitation', label: 'สภาพฝนตก (Precipitation)', form: 3, formName: 'Form 3', category: 'สภาพอากาศและคลื่นลม', type: 'select', options: [
-            { value: '0', label: '0 = ไม่มีฝนตก' },
-            { value: '1', label: '1 = มีฝนตก' }
+            { value: '0', label: '0 = อากาศแจ่มใส / ไม่มีฝน หรือฝนเล็กน้อย' },
+            { value: '1', label: '1 = ฝนตกหนัก / พายุฝน' }
+        ]},
+        { key: 'f3_rainfall_mm', label: 'ปริมาณน้ำฝนสะสมรายชั่วโมง (mm/hr)', form: 3, formName: 'Form 3', category: 'สภาพอากาศและคลื่นลม', type: 'number', unit: 'มม./ชม.', step: '0.1', condition: d => d.f3_precipitation === '1' },
+        { key: 'f3_torrential_rain', label: 'เกณฑ์พายุฝนตกหนักวิกฤต', form: 3, formName: 'Form 3', category: 'สภาพอากาศและคลื่นลม', type: 'select', condition: d => d.f3_precipitation === '1', options: [
+            { value: '0', label: '0 = ไม่เข้าเกณฑ์พายุฝนหนัก' },
+            { value: '1', label: '1 = พายุฝนตกหนักวิกฤต (≥ 10 มม./ชม. หรือ ≥ 35 มม./วัน)' }
         ]},
         { key: 'f3_holiday', label: 'ช่วงวันหยุดยาว / เทศกาลท่องเที่ยว', form: 3, formName: 'Form 3', category: 'สภาพอากาศและคลื่นลม', type: 'select', options: [
-            { value: '0', label: '0 = วันธรรมดาปกติ' },
-            { value: '1', label: '1 = วันหยุดยาว / เทศกาล' }
+            { value: '0', label: '0 = วันธรรมดา (จันทร์–ศุกร์)' },
+            { value: '1', label: '1 = วันหยุดยาวราชการ ≥ 3 วัน / เทศกาล' }
+        ]},
+        { key: 'f3_ferry_shift', label: 'กะการเดินแพขนานยนต์ (Ferry Shift)', form: 3, formName: 'Form 3', category: 'สภาพอากาศและคลื่นลม', type: 'select', options: [
+            { value: '0', label: '0 = Scheduled Daytime (05:00–24:00 น.) เดินแพปกติ' },
+            { value: '1', label: '1 = Standby Off-Hour (24:00–05:00 น.) โทรตามแพพิเศษ' }
+        ]},
+        { key: 'f3_ed_shift', label: 'ช่วงเวรการทำงานห้องฉุกเฉิน (Form 3)', form: 3, formName: 'Form 3', category: 'สภาพอากาศและคลื่นลม', type: 'select', options: [
+            { value: 'morning', label: 'เวรเช้า (08:00–16:00 น.)' },
+            { value: 'afternoon', label: 'เวรบ่าย (16:00–24:00 น.)' },
+            { value: 'night', label: 'เวรดึก (00:00–08:00 น.)' }
         ]},
 
-        // Form 4: Mainland ER & Outcomes
+        // การตรวจสอบแหล่งอ้างอิง
+        { key: 'f3_ref_rtn_date', label: 'วันที่สืบค้นข้อมูล RTN', form: 3, formName: 'Form 3', category: 'การตรวจสอบแหล่งอ้างอิง', type: 'date' },
+        { key: 'f3_ref_tmd_date', label: 'วันที่สืบค้นข้อมูล TMD', form: 3, formName: 'Form 3', category: 'การตรวจสอบแหล่งอ้างอิง', type: 'date' },
+
+        // ==========================================
+        // Form 4: การรักษา ณ รพ.กระบี่ และผลลัพธ์ 24 ชม.
+        // ==========================================
+        // แรกรับ รพ.กระบี่
         { key: 'f4_krabi_hn', label: 'เลข HN รพ.กระบี่', form: 4, formName: 'Form 4', category: 'แรกรับ รพ.กระบี่', type: 'text', placeholder: 'HN รพ.กระบี่' },
+        { key: 'f4_physician', label: 'ชื่อแพทย์เจ้าของไข้ รพ.กระบี่', form: 4, formName: 'Form 4', category: 'แรกรับ รพ.กระบี่', type: 'text', placeholder: 'ชื่อ-สกุล แพทย์เจ้าของไข้' },
         { key: 'f4_ward', label: 'หอผู้ป่วยรับไว้รักษาแรกรับ', form: 4, formName: 'Form 4', category: 'แรกรับ รพ.กระบี่', type: 'select', options: [
             { value: 'ccu', label: 'CCU (Coronary Care Unit)' },
             { value: 'stroke', label: 'Stroke Unit' },
             { value: 'sicu', label: 'Trauma ICU / SICU' },
             { value: 'general', label: 'หอผู้ป่วยสามัญ (General Ward)' }
         ]},
+
+        // สัญญาณชีพแรกรับกระบี่
         { key: 'f4_sbp', label: 'SBP แรกรับ รพ.กระบี่', form: 4, formName: 'Form 4', category: 'สัญญาณชีพแรกรับกระบี่', type: 'number', unit: 'mmHg' },
         { key: 'f4_dbp', label: 'DBP แรกรับ รพ.กระบี่', form: 4, formName: 'Form 4', category: 'สัญญาณชีพแรกรับกระบี่', type: 'number', unit: 'mmHg' },
         { key: 'f4_hr', label: 'ชีพจรแรกรับกระบี่ (Heart Rate)', form: 4, formName: 'Form 4', category: 'สัญญาณชีพแรกรับกระบี่', type: 'number', unit: 'bpm' },
         { key: 'f4_rr', label: 'อัตราหายใจแรกรับกระบี่ (Resp Rate)', form: 4, formName: 'Form 4', category: 'สัญญาณชีพแรกรับกระบี่', type: 'number', unit: '/min' },
         { key: 'f4_spo2', label: 'ออกซิเจนในเลือดแรกรับกระบี่ (SpO2)', form: 4, formName: 'Form 4', category: 'สัญญาณชีพแรกรับกระบี่', type: 'number', unit: '%' },
-        { key: 'f4_bt', label: 'อุณหภูมิกายแรกรับกระบี่ (Body Temp)', form: 4, formName: 'Form 4', category: 'สัญญาณชีพแรกรับกระบี่', type: 'number', unit: '°C' },
+        { key: 'f4_bt', label: 'อุณหภูมิกายแรกรับกระบี่ (Body Temp)', form: 4, formName: 'Form 4', category: 'สัญญาณชีพแรกรับกระบี่', type: 'number', unit: '°C', step: '0.1' },
+        { key: 'f4_hct', label: 'ความเข้มข้นเลือด (Hct แรกรับกระบี่)', form: 4, formName: 'Form 4', category: 'สัญญาณชีพแรกรับกระบี่', type: 'number', unit: '%', step: '0.1' },
         { key: 'f4_gcs_total', label: 'คะแนน GCS แรกรับกระบี่', form: 4, formName: 'Form 4', category: 'สัญญาณชีพแรกรับกระบี่', type: 'number', unit: 'คะแนน', min: 3, max: 15 },
-        // Form 4: Disease Specific (T5)
-        { key: 'f4_pci_wire_time', label: 'เวลาลวดผ่านรอยโรค Primary PCI (T5 Time)', form: 4, formName: 'Form 4', category: 'หัตถการจำเพาะ (T5)', type: 'time', condition: isCaseStemi },
-        { key: 'f4_eval_pci', label: 'การบรรลุเกณฑ์ Remote Primary PCI (≤ 180 น.)', form: 4, formName: 'Form 4', category: 'หัตถการจำเพาะ (T5)', type: 'select', condition: isCaseStemi, options: [
+
+        // ความรุนแรงแรกรับกระบี่ (จำเพาะโรค)
+        { key: 'f4_killip', label: 'STEMI Killip Class ณ รพ.กระบี่', form: 4, formName: 'Form 4', category: 'ความรุนแรงแรกรับกระบี่', type: 'select', condition: isCaseStemi, options: [
+            { value: '1_2', label: 'Killip Class I, II' },
+            { value: '3', label: 'Killip Class III' },
+            { value: '4', label: 'Killip Class IV' }
+        ]},
+        { key: 'f4_stroke_gcs', label: 'Stroke GCS ณ รพ.กระบี่', form: 4, formName: 'Form 4', category: 'ความรุนแรงแรกรับกระบี่', type: 'select', condition: isCaseStroke, options: [
+            { value: 'severe', label: 'GCS 3–8 (Severe Coma)' },
+            { value: 'moderate', label: 'GCS 9–12 (Moderate)' },
+            { value: 'mild', label: 'GCS 13–15 (Mild)' }
+        ]},
+        { key: 'f4_trauma_acuity', label: 'Trauma Acuity ณ รพ.กระบี่', form: 4, formName: 'Form 4', category: 'ความรุนแรงแรกรับกระบี่', type: 'select', condition: isCaseTrauma, options: [
+            { value: 'critical', label: 'RTS ≤ 6 (Critical)' },
+            { value: 'moderate', label: 'RTS > 6 (Moderate)' }
+        ]},
+
+        // การประเมินภาวะทรุดหนักสรีรวิทยา
+        { key: 'f4_eval_killip', label: 'การประเมิน ΔKillip (STEMI)', form: 4, formName: 'Form 4', category: 'การประเมินภาวะทรุดหนักสรีรวิทยา', type: 'select', condition: isCaseStemi, options: [
+            { value: 'stable', label: 'คงที่ / ดีขึ้น' },
+            { value: 'deter', label: 'ทรุดหนัก (ΔKillip ≥ +1 หรือดำเนินสู่ Class IV)' }
+        ]},
+        { key: 'f4_eval_gcs', label: 'การประเมิน ΔGCS (Neurological)', form: 4, formName: 'Form 4', category: 'การประเมินภาวะทรุดหนักสรีรวิทยา', type: 'select', options: [
+            { value: 'stable', label: 'คงที่ / ดีขึ้น' },
+            { value: 'deter', label: 'ทรุดหนัก (ΔGCS ≤ -2)' }
+        ]},
+        { key: 'f4_eval_rts', label: 'การประเมิน ΔRTS (Trauma)', form: 4, formName: 'Form 4', category: 'การประเมินภาวะทรุดหนักสรีรวิทยา', type: 'select', condition: isCaseTrauma, options: [
+            { value: 'stable', label: 'คงที่ / ดีขึ้น' },
+            { value: 'deter', label: 'ทรุดหนัก (ΔRTS ≤ -1.0)' }
+        ]},
+        { key: 'f4_eval_msi', label: 'การประเมิน ΔMSI (STEMI)', form: 4, formName: 'Form 4', category: 'การประเมินภาวะทรุดหนักสรีรวิทยา', type: 'select', condition: isCaseStemi, options: [
+            { value: 'stable', label: 'คงที่ / ปกติ' },
+            { value: 'deter', label: 'ทรุดหนัก (ΔMSI ≥ +0.15)' }
+        ]},
+        { key: 'f4_eval_map', label: 'การประเมิน ΔMAP (Hemodynamic)', form: 4, formName: 'Form 4', category: 'การประเมินภาวะทรุดหนักสรีรวิทยา', type: 'select', options: [
+            { value: 'stable', label: 'คงที่ (MAP เพิ่มขึ้นหรือ ≥ 65 mmHg)' },
+            { value: 'deter', label: 'ทรุดหนัก (MAP ลดลง และ < 65 mmHg)' }
+        ]},
+        { key: 'f4_eval_bt', label: 'การประเมิน ΔBT (Temperature)', form: 4, formName: 'Form 4', category: 'การประเมินภาวะทรุดหนักสรีรวิทยา', type: 'select', options: [
+            { value: 'normal', label: 'ปกติ' },
+            { value: 'hypothermia', label: 'เกิด Hypothermia (< 35 °C)' }
+        ]},
+        { key: 'f4_composite_deter', label: 'สรุปภาวะทรุดหนักสรีรวิทยารวม', form: 4, formName: 'Form 4', category: 'การประเมินภาวะทรุดหนักสรีรวิทยา', type: 'select', options: [
+            { value: '0', label: '0 = สัญญาณชีพคงที่ตลอดการส่งต่อ (Stable)' },
+            { value: '1', label: '1 = เกิดภาวะทรุด (Deteriorated)' }
+        ]},
+
+        // หัตถการจำเพาะและกรอบเวลา (T5)
+        { key: 'f4_t5_date', label: 'วันที่เริ่มทำหัตถการรักษาจำเพาะ T5', form: 4, formName: 'Form 4', category: 'หัตถการจำเพาะและกรอบเวลา (T5)', type: 'date' },
+        { key: 'f4_t5_time', label: 'เวลาเริ่มทำหัตถการรักษาจำเพาะ T5', form: 4, formName: 'Form 4', category: 'หัตถการจำเพาะและกรอบเวลา (T5)', type: 'time' },
+        { key: 'f4_pci_wire_time', label: 'เวลาลวดผ่านรอยโรค Primary PCI (T5 Time)', form: 4, formName: 'Form 4', category: 'หัตถการจำเพาะและกรอบเวลา (T5)', type: 'time', condition: isCaseStemi },
+        { key: 'f4_eval_pci', label: 'การบรรลุเกณฑ์ Remote Primary PCI', form: 4, formName: 'Form 4', category: 'หัตถการจำเพาะและกรอบเวลา (T5)', type: 'select', condition: isCaseStemi, options: [
             { value: 'achieved', label: 'บรรลุเกณฑ์ Remote Primary PCI (≤ 180 นาที)' },
-            { value: 'missed', label: 'หลุดกรอบเวลา (PCI > 180 นาที)' }
+            { value: 'missed', label: 'หลุดกรอบเวลา (STEMI PCI > 180 นาที)' }
         ]},
-        { key: 'f4_rtpa_time', label: 'เวลาเริ่มฉีดยา rtPA Bolus (T5 Time)', form: 4, formName: 'Form 4', category: 'หัตถการจำเพาะ (T5)', type: 'time', condition: isCaseStroke },
-        { key: 'f4_eval_stroke', label: 'การบรรลุเกณฑ์ Golden Window rtPA (≤ 4.5 ชม.)', form: 4, formName: 'Form 4', category: 'หัตถการจำเพาะ (T5)', type: 'select', condition: isCaseStroke, options: [
+        { key: 'f4_rtpa_time', label: 'เวลาเริ่มฉีดยา rtPA Bolus (T5 Time)', form: 4, formName: 'Form 4', category: 'หัตถการจำเพาะและกรอบเวลา (T5)', type: 'time', condition: isCaseStroke },
+        { key: 'f4_ct_brain_time', label: 'เวลาทำ CT Brain เสร็จสิ้น', form: 4, formName: 'Form 4', category: 'หัตถการจำเพาะและกรอบเวลา (T5)', type: 'time', condition: isCaseStroke },
+        { key: 'f4_eval_stroke', label: 'การบรรลุเกณฑ์ IV rtPA', form: 4, formName: 'Form 4', category: 'หัตถการจำเพาะและกรอบเวลา (T5)', type: 'select', condition: isCaseStroke, options: [
             { value: 'achieved', label: 'บรรลุเกณฑ์ IV rtPA (≤ 4.5 ชั่วโมง)' },
-            { value: 'missed', label: 'หลุดกรอบเวลา (rtPA > 4.5 ชั่วโมง)' }
+            { value: 'missed', label: 'หลุดกรอบเวลา (Stroke rtPA > 4.5 ชั่วโมง)' }
         ]},
-        { key: 'f4_trauma_ct_time', label: 'เวลาทำ CT Scan บาดเจ็บเสร็จสิ้น', form: 4, formName: 'Form 4', category: 'หัตถการจำเพาะ (T5)', type: 'time', condition: isCaseTrauma },
-        { key: 'f4_eval_trauma', label: 'การบรรลุเกณฑ์ Trauma Golden Window', form: 4, formName: 'Form 4', category: 'หัตถการจำเพาะ (T5)', type: 'select', condition: isCaseTrauma, options: [
+        { key: 'f4_trauma_ct_time', label: 'เวลาทำ CT Scan บาดเจ็บเสร็จสิ้น', form: 4, formName: 'Form 4', category: 'หัตถการจำเพาะและกรอบเวลา (T5)', type: 'time', condition: isCaseTrauma },
+        { key: 'f4_or_time', label: 'เวลาลงมีดผ่าตัดฉุกเฉิน (Damage Control OR)', form: 4, formName: 'Form 4', category: 'หัตถการจำเพาะและกรอบเวลา (T5)', type: 'time', condition: isCaseTrauma },
+        { key: 'f4_eval_trauma', label: 'การบรรลุเกณฑ์ Trauma Golden Window', form: 4, formName: 'Form 4', category: 'หัตถการจำเพาะและกรอบเวลา (T5)', type: 'select', condition: isCaseTrauma, options: [
             { value: 'achieved', label: 'บรรลุเกณฑ์ตามเวลา (OR ≤ 180 น. หรือ CT ≤ 150 น.)' },
             { value: 'missed', label: 'หลุดกรอบเวลา (OR > 180 น. หรือ CT > 150 น.)' }
         ]},
-        // Form 4: Outcomes
+
+        // ผลลัพธ์การรักษาและรอดชีวิต
         { key: 'f4_mort_er', label: 'การเสียชีวิตทันที ณ ห้องฉุกเฉิน รพ.กระบี่', form: 4, formName: 'Form 4', category: 'ผลลัพธ์การรักษาและรอดชีวิต', type: 'select', options: [
             { value: '0', label: '0 = รอดชีวิตผ่านพ้นห้องฉุกเฉิน' },
             { value: '1', label: '1 = เสียชีวิตทันที ณ ห้องฉุกเฉิน' }
         ]},
+        { key: 'f4_mort_er_time', label: 'เวลาเสียชีวิต ณ ห้องฉุกเฉิน รพ.กระบี่', form: 4, formName: 'Form 4', category: 'ผลลัพธ์การรักษาและรอดชีวิต', type: 'time', condition: d => d.f4_mort_er === '1' },
         { key: 'f4_mort_24h', label: 'ผลลัพธ์การรอดชีวิตที่ 24 ชม. หลังรับไว้รักษา', form: 4, formName: 'Form 4', category: 'ผลลัพธ์การรักษาและรอดชีวิต', type: 'select', options: [
             { value: '0', label: '0 = รอดชีวิตเกิน 24 ชั่วโมงแรก' },
             { value: '1', label: '1 = เสียชีวิตภายใน 24 ชั่วโมงแรก' }
-        ]}
+        ]},
+        { key: 'f4_mort_24h_date', label: 'วันที่เสียชีวิตภายใน 24 ชม.', form: 4, formName: 'Form 4', category: 'ผลลัพธ์การรักษาและรอดชีวิต', type: 'date', condition: d => d.f4_mort_24h === '1' },
+        { key: 'f4_mort_24h_time', label: 'เวลาเสียชีวิตภายใน 24 ชม.', form: 4, formName: 'Form 4', category: 'ผลลัพธ์การรักษาและรอดชีวิต', type: 'time', condition: d => d.f4_mort_24h === '1' },
+        { key: 'f4_mort_cause', label: 'สาเหตุการเสียชีวิตหลัก', form: 4, formName: 'Form 4', category: 'ผลลัพธ์การรักษาและรอดชีวิต', type: 'select', condition: d => d.f4_mort_er === '1' || d.f4_mort_24h === '1', options: [
+            { value: 'stemi', label: 'Cardiogenic shock / Malignant ventricular arrhythmia (STEMI)' },
+            { value: 'stroke', label: 'Massive cerebral infarction / Intracranial hemorrhage / Herniation (Acute Stroke)' },
+            { value: 'trauma', label: 'Exsanguinating hemorrhagic shock / Coagulopathy (Severe Trauma)' },
+            { value: 'other', label: 'อื่นๆ ระบุ (ICD-10)' }
+        ]},
+        { key: 'f4_mort_cause_icd', label: 'ระบุสาเหตุการเสียชีวิต (ICD-10)', form: 4, formName: 'Form 4', category: 'ผลลัพธ์การรักษาและรอดชีวิต', type: 'text', condition: d => (d.f4_mort_er === '1' || d.f4_mort_24h === '1') && d.f4_mort_cause === 'other', placeholder: 'รหัส ICD-10 หรือคำวินิจฉัย' }
     ];
 
     function getCaseMissingFields(data) {
@@ -3748,7 +3997,7 @@ def get_js():
         const isExcluded = (data.f1_eligible === 'excluded');
         const missing = [];
         CRF_AUDIT_FIELDS.forEach(field => {
-            if (isExcluded && field.form > 1) return;
+            if (isExcluded && (field.form > 1 || (field.category !== 'ข้อมูลทั่วไปและผู้สกัด' && field.category !== 'เกณฑ์การคัดกรองวิจัย'))) return;
             if (field.condition && !field.condition(data)) return;
             if (!isFieldFilled(data, field.key)) {
                 missing.push(field);
@@ -3765,7 +4014,7 @@ def get_js():
         const byForm = { 1: { expected: 0, missing: [] }, 2: { expected: 0, missing: [] }, 3: { expected: 0, missing: [] }, 4: { expected: 0, missing: [] } };
 
         CRF_AUDIT_FIELDS.forEach(field => {
-            if (isExcluded && field.form > 1) return;
+            if (isExcluded && (field.form > 1 || (field.category !== 'ข้อมูลทั่วไปและผู้สกัด' && field.category !== 'เกณฑ์การคัดกรองวิจัย'))) return;
             if (field.condition && !field.condition(data)) return;
 
             totalExpected++;
@@ -5268,6 +5517,7 @@ def get_js():
 
             const fieldsForForm = CRF_AUDIT_FIELDS.filter(item => {
                 if (item.form !== f) return false;
+                if (isExcluded && (item.category !== ข้อมูลทั่วไปและผู้สกัด && item.category !== เกณฑ์การคัดกรองวิจัย)) return false;
                 if (item.condition && !item.condition(data)) return false;
                 if (!showAll && isFieldFilled(data, item.key) && focusKey !== item.key) return false;
                 return true;
