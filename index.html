@@ -6284,7 +6284,21 @@
                 const r3 = document.getElementById('f1_stroke_gcs_3'); if (r3) r3.checked = false;
             }
         } else {
-            document.getElementById('f1_gcs_total').value = '';
+            const curTot = parseInt(document.getElementById('f1_gcs_total')?.value, 10);
+            if (!isNaN(curTot)) {
+                const isStroke = document.getElementById('f1_inc4_ais')?.checked;
+                if (isStroke) {
+                    if (curTot >= 3 && curTot <= 8) {
+                        const r1 = document.getElementById('f1_stroke_gcs_1'); if (r1) r1.checked = true;
+                    } else if (curTot >= 9 && curTot <= 12) {
+                        const r2 = document.getElementById('f1_stroke_gcs_2'); if (r2) r2.checked = true;
+                    } else if (curTot >= 13 && curTot <= 15) {
+                        const r3 = document.getElementById('f1_stroke_gcs_3'); if (r3) r3.checked = true;
+                    }
+                }
+            } else {
+                document.getElementById('f1_gcs_total').value = '';
+            }
         }
 
         calcRTS();
@@ -8375,6 +8389,16 @@
 
     function isFieldFilled(data, key) {
         if (!data) return false;
+        if (key === 'f1_gcs_total') {
+            if (data.f1_gcs_total !== undefined && data.f1_gcs_total !== null && String(data.f1_gcs_total).trim() !== '') return true;
+            if (data.f1_gcs_e && data.f1_gcs_v && data.f1_gcs_m) return true;
+            return false;
+        }
+        if (key === 'f4_gcs_total') {
+            if (data.f4_gcs_total !== undefined && data.f4_gcs_total !== null && String(data.f4_gcs_total).trim() !== '') return true;
+            if (data.f4_gcs_e && data.f4_gcs_v && data.f4_gcs_m) return true;
+            return false;
+        }
         const val = data[key];
         return (val !== undefined && val !== null && String(val).trim() !== '');
     }
@@ -8403,21 +8427,17 @@
         { key: 'f1_t0_date', label: 'วันที่ถึง ER เกาะลันตา (T0 Date)', form: 1, formName: 'Form 1', category: 'แรกรับ ER เกาะลันตา', type: 'date' },
         { key: 'f1_t0_time', label: 'เวลาถึง ER เกาะลันตา (T0 Time)', form: 1, formName: 'Form 1', category: 'แรกรับ ER เกาะลันตา', type: 'time' },
         { key: 'f1_arrival_mode', label: 'รูปแบบการมา ER (Arrival Mode)', form: 1, formName: 'Form 1', category: 'แรกรับ ER เกาะลันตา', type: 'select', options: [
-            { value: 'ems', label: 'EMS 1669 (ระบบการแพทย์ฉุกเฉิน)' },
-            { value: 'refer', label: 'ส่งต่อจาก รพ.สต./คลินิก' },
-            { value: 'walkin', label: 'มาเอง / ญาติส่ง' }
+            { value: '1', label: '1 = รถพยาบาล 1669 / กู้ภัย (EMS)' },
+            { value: '2', label: '2 = มาเอง / ญาติพามา (Walk-in)' }
         ]},
         { key: 'f1_esi', label: 'ระดับความเร่งด่วน Triage ESI', form: 1, formName: 'Form 1', category: 'แรกรับ ER เกาะลันตา', type: 'select', options: [
             { value: '1', label: 'ESI 1 (Resuscitation)' },
-            { value: '2', label: 'ESI 2 (Emergent)' },
-            { value: '3', label: 'ESI 3 (Urgent)' },
-            { value: '4', label: 'ESI 4 (Semi-urgent)' },
-            { value: '5', label: 'ESI 5 (Non-urgent)' }
+            { value: '2', label: 'ESI 2 (Emergent)' }
         ]},
         { key: 'f1_shift', label: 'เวรแรกรับ ER (ED Shift)', form: 1, formName: 'Form 1', category: 'แรกรับ ER เกาะลันตา', type: 'select', options: [
-            { value: 'morning', label: 'เวรเช้า (08:30–16:30 น.)' },
-            { value: 'evening', label: 'เวรบ่าย (16:30–00:30 น.)' },
-            { value: 'night', label: 'เวรดึก (00:30–08:30 น.)' }
+            { value: 'morning', label: 'เวรเช้า (08:00–16:00 น.)' },
+            { value: 'afternoon', label: 'เวรบ่าย (16:00–24:00 น.)' },
+            { value: 'night', label: 'เวรดึก (00:00–08:00 น.)' }
         ]},
         // Form 1: Vitals
         { key: 'f1_sbp', label: 'SBP แรกรับเกาะลันตา', form: 1, formName: 'Form 1', category: 'สัญญาณชีพแรกรับ', type: 'number', unit: 'mmHg' },
@@ -8434,16 +8454,14 @@
             { value: '3', label: 'Killip III (Pulmonary edema)' },
             { value: '4', label: 'Killip IV (Cardiogenic shock)' }
         ]},
-        { key: 'f1_stroke_gcs', label: 'ระดับความรู้สึกตัว Stroke Consciousness', form: 1, formName: 'Form 1', category: 'ความรุนแรงจำเพาะโรค', type: 'select', condition: isCaseStroke, options: [
-            { value: '1', label: '1 = รู้สึกตัวดี (Alert: GCS 15)' },
-            { value: '2', label: '2 = ซึมเล็กน้อย (Drowsy: GCS 13–14)' },
-            { value: '3', label: '3 = ซึมมาก (Stupor: GCS 9–12)' },
-            { value: '4', label: '4 = หมดสติ (Coma: GCS 3–8)' }
+        { key: 'f1_stroke_gcs', label: 'ระดับความรู้สึกตัว Stroke GCS', form: 1, formName: 'Form 1', category: 'ความรุนแรงจำเพาะโรค', type: 'select', condition: isCaseStroke, options: [
+            { value: 'severe', label: 'GCS 3–8: Severe Coma (โคม่ารุนแรง)' },
+            { value: 'moderate', label: 'GCS 9–12: Moderate (ความรู้สึกตัวลดลงปานกลาง)' },
+            { value: 'mild', label: 'GCS 13–15: Mild (สับสนเล็กน้อยหรือรู้สึกตัวดี)' }
         ]},
         { key: 'f1_trauma_acuity', label: 'ระดับความรุนแรงบาดเจ็บ Trauma Acuity', form: 1, formName: 'Form 1', category: 'ความรุนแรงจำเพาะโรค', type: 'select', condition: isCaseTrauma, options: [
-            { value: 'critical', label: 'Critical: GCS ≤ 8 / SBP < 90 / Shock' },
-            { value: 'urgent', label: 'Urgent: GCS 9–12 / Stable SBP' },
-            { value: 'non_urgent', label: 'Stable: GCS 13–15 / บาดเจ็บเฉพาะที่' }
+            { value: 'critical', label: 'RTS ≤ 6: Critical (วิกฤต)' },
+            { value: 'moderate', label: 'RTS > 6: Moderate (ปานกลาง)' }
         ]},
         // Form 1: DIDO
         { key: 'f1_t1_date', label: 'วันที่ออกจาก ER เกาะลันตา (T1 Date)', form: 1, formName: 'Form 1', category: 'ส่งต่อออกจากเกาะ (DIDO)', type: 'date' },
@@ -8469,9 +8487,10 @@
             { value: '0', label: '0 = ไม่มีคิวสะสม รถพยาบาลลงแพได้ทันที' },
             { value: '1', label: '1 = มีคิวรถสะสมหน้าท่าข้ามแพ' }
         ]},
-        { key: 'f2_ferry_count', label: 'จำนวนเที่ยวแพขนานยนต์ที่รอ', form: 2, formName: 'Form 2', category: 'บริบทแพขนานยนต์', type: 'select', options: [
-            { value: '1', label: '1 เที่ยว (ลงแพเที่ยวที่จอดรอทันที)' },
-            { value: '2', label: '2 เที่ยวขึ้นไป (ต้องรอแพเที่ยวถัดไป)' }
+        { key: 'f2_ferry_count', label: 'จำนวนแพขนานยนต์ที่พร้อมให้บริการ', form: 2, formName: 'Form 2', category: 'บริบทแพขนานยนต์', type: 'select', options: [
+            { value: '1', label: '1 ลำ' },
+            { value: '2', label: '2 ลำ' },
+            { value: '3', label: '3 ลำ' }
         ]},
         { key: 'f2_ae_cpr', label: 'มี CPR ระหว่างนำส่ง', form: 2, formName: 'Form 2', category: 'เหตุการณ์ไม่พึงประสงค์ (AE)', type: 'select', options: [
             { value: '0', label: '0 = ไม่มี' },
@@ -8485,13 +8504,17 @@
             { value: '0', label: '0 = ไม่มี' },
             { value: '1', label: '1 = มีการให้/ปรับขนาดยา' }
         ]},
+        { key: 'f2_ae_dislodge', label: 'ท่อช่วยหายใจเลื่อนหลุดระหว่างทาง (ETT Dislodgement)', form: 2, formName: 'Form 2', category: 'เหตุการณ์ไม่พึงประสงค์ (AE)', type: 'select', options: [
+            { value: '0', label: '0 = ไม่มี' },
+            { value: '1', label: '1 = เกิดท่อช่วยหายใจเลื่อนหลุด' }
+        ]},
         { key: 'f2_ae_death', label: 'เสียชีวิตระหว่างนำส่ง (Transit Death)', form: 2, formName: 'Form 2', category: 'เหตุการณ์ไม่พึงประสงค์ (AE)', type: 'select', options: [
             { value: '0', label: '0 = ไม่มี (รอดชีวิตถึง รพ.กระบี่)' },
             { value: '1', label: '1 = เสียชีวิตระหว่างนำส่ง' }
         ]},
 
         // Form 3: Maritime & Weather
-        { key: 'f3_tide_height', label: 'ระดับความสูงน้ำทะเล ณ เวลา T3', form: 3, formName: 'Form 3', category: 'อุทกศาสตร์ทางทะเล', type: 'number', unit: 'เมตร', step: '0.1' },
+        { key: 'f3_tide_height', label: 'ระดับความสูงน้ำทะเล ณ เวลา T3', form: 3, formName: 'Form 3', category: 'อุทกศาสตร์ทางทะเล', type: 'number', unit: 'เมตร', step: '0.01' },
         { key: 'f3_tide_phase', label: 'ช่วงเวลาน้ำขึ้น-น้ำลง (Tide Phase)', form: 3, formName: 'Form 3', category: 'อุทกศาสตร์ทางทะเล', type: 'select', options: [
             { value: '1', label: '1 = น้ำขึ้น (High / Flood tide)' },
             { value: '2', label: '2 = น้ำลง (Low / Ebb tide)' },
@@ -8514,7 +8537,6 @@
             { value: '1', label: '1 = Moderate (คลื่นปานกลาง 1.0–2.0 ม.)' },
             { value: '2', label: '2 = Rough (คลื่นลมแรงมรสุม > 2.0 ม.)' }
         ]},
-        { key: 'f3_wind_speed', label: 'ความเร็วลม (Wind Speed)', form: 3, formName: 'Form 3', category: 'สภาพอากาศและคลื่นลม', type: 'number', unit: 'น็อต (knots)' },
         { key: 'f3_precipitation', label: 'สภาพฝนตก (Precipitation)', form: 3, formName: 'Form 3', category: 'สภาพอากาศและคลื่นลม', type: 'select', options: [
             { value: '0', label: '0 = ไม่มีฝนตก' },
             { value: '1', label: '1 = มีฝนตก' }
@@ -8551,6 +8573,10 @@
             { value: 'missed', label: 'หลุดกรอบเวลา (rtPA > 4.5 ชั่วโมง)' }
         ]},
         { key: 'f4_trauma_ct_time', label: 'เวลาทำ CT Scan บาดเจ็บเสร็จสิ้น', form: 4, formName: 'Form 4', category: 'หัตถการจำเพาะ (T5)', type: 'time', condition: isCaseTrauma },
+        { key: 'f4_eval_trauma', label: 'การบรรลุเกณฑ์ Trauma Golden Window', form: 4, formName: 'Form 4', category: 'หัตถการจำเพาะ (T5)', type: 'select', condition: isCaseTrauma, options: [
+            { value: 'achieved', label: 'บรรลุเกณฑ์ตามเวลา (OR ≤ 180 น. หรือ CT ≤ 150 น.)' },
+            { value: 'missed', label: 'หลุดกรอบเวลา (OR > 180 น. หรือ CT > 150 น.)' }
+        ]},
         // Form 4: Outcomes
         { key: 'f4_mort_er', label: 'การเสียชีวิตทันที ณ ห้องฉุกเฉิน รพ.กระบี่', form: 4, formName: 'Form 4', category: 'ผลลัพธ์การรักษาและรอดชีวิต', type: 'select', options: [
             { value: '0', label: '0 = รอดชีวิตผ่านพ้นห้องฉุกเฉิน' },
@@ -10110,7 +10136,13 @@
 
             fieldsForForm.forEach(item => {
                 const filled = isFieldFilled(data, item.key);
-                const val = (data[item.key] !== undefined && data[item.key] !== null) ? data[item.key] : '';
+                let val = (data[item.key] !== undefined && data[item.key] !== null) ? data[item.key] : '';
+                if (item.key === 'f1_gcs_total' && !val && data.f1_gcs_e && data.f1_gcs_v && data.f1_gcs_m) {
+                    val = parseInt(data.f1_gcs_e, 10) + parseInt(data.f1_gcs_v, 10) + parseInt(data.f1_gcs_m, 10);
+                }
+                if (item.key === 'f4_gcs_total' && !val && data.f4_gcs_e && data.f4_gcs_v && data.f4_gcs_m) {
+                    val = parseInt(data.f4_gcs_e, 10) + parseInt(data.f4_gcs_v, 10) + parseInt(data.f4_gcs_m, 10);
+                }
                 const isFocused = (focusKey === item.key);
 
                 let statusBadge = filled ?
@@ -10209,6 +10241,33 @@
             if (data[key] !== val) {
                 data[key] = val;
                 savedCount++;
+            }
+            // Sync radio element IDs and remove stale sibling radio IDs
+            const matchedRadio = document.querySelector(`input[type="radio"][name="${key}"][value="${val}"]`);
+            if (matchedRadio && matchedRadio.id) {
+                data[matchedRadio.id] = true;
+            }
+            document.querySelectorAll(`input[type="radio"][name="${key}"]`).forEach(r => {
+                if (r.id && r.value !== val) {
+                    delete data[r.id];
+                }
+            });
+            // Auto calculate GCS components if GCS total entered
+            if (key === 'f1_gcs_total' && val) {
+                const tot = parseInt(val, 10);
+                if (!isNaN(tot)) {
+                    if (tot === 15 && (!data.f1_gcs_e || !data.f1_gcs_v || !data.f1_gcs_m)) {
+                        data.f1_gcs_e = '4'; data.f1_gcs_v = '5'; data.f1_gcs_m = '6';
+                    }
+                }
+            }
+            if (key === 'f4_gcs_total' && val) {
+                const tot = parseInt(val, 10);
+                if (!isNaN(tot)) {
+                    if (tot === 15 && (!data.f4_gcs_e || !data.f4_gcs_v || !data.f4_gcs_m)) {
+                        data.f4_gcs_e = '4'; data.f4_gcs_v = '5'; data.f4_gcs_m = '6';
+                    }
+                }
             }
         });
 
