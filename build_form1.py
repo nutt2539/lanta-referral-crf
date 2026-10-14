@@ -165,6 +165,9 @@ def get_form1_html():
                 </tr>
             </tbody>
         </table>
+        <div style="font-size: 11.5px; color: #64748b; margin-top: -6px; margin-bottom: 12px; line-height: 1.4; padding-left: 4px;">
+            ℹ️ <i>หมายเหตุ: เกณฑ์การคัดออก "Acute Hemorrhagic Stroke" จะได้รับการตรวจแยกโรคและคัดออกภายหลัง (Secondary Exclusion) ณ รพ.กระบี่ เมื่อทราบผลตรวจ CT Brain ใน Form 4 (เนื่องจาก รพ.เกาะลันตา ไม่มีเครื่อง CT Scan)</i>
+        </div>
 
         <!-- สรุปผลการคัดกรอง (Compact 2-Line Automated Screening Banner) -->
         <div id="screening_summary_card" style="padding: 9px 16px; border-radius: 8px; margin-bottom: 18px; transition: all 0.25s ease; border: 2px solid #cbd5e1; background: #f8fafc; display: flex; flex-direction: column; gap: 4px; box-shadow: 0 1px 4px rgba(0,0,0,0.04);">

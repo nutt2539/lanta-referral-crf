@@ -428,29 +428,90 @@ def get_form4_html():
             <tr id="f4_row_golden_ais" class="disease-specific-row" data-disease="ais">
                 <td style="font-weight: 700; background: #f8fafc; vertical-align: top;">2. Acute Stroke: Reperfusion & Specific Therapy</td>
                 <td>
-                    <div class="check-group">
-                        <div style="display: flex; align-items: center; gap: 6px;">
-                            <span>• เวลาเริ่มฉีดยาละลายลิ่มเลือด (IV rtPA Bolus):</span>
-                            <input type="time" id="f4_rtpa_time" onchange="syncT5_fromIntervention('ais'); calcGoldenWindows();" oninput="syncT5_fromIntervention('ais'); calcGoldenWindows();"><span>น.</span>
+                    <div class="check-group" style="display: flex; flex-direction: column; gap: 8px;">
+                        <!-- CT Brain Scan Section -->
+                        <div style="background: #f8fafc; border: 1px solid #cbd5e1; border-radius: 6px; padding: 8px 12px;">
+                            <div style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 6px; margin-bottom: 6px;">
+                                <div style="font-weight: 700; color: #1e3a8a; font-size: 13.5px;">
+                                    🧠 การตรวจเอกซเรย์คอมพิวเตอร์สมอง (CT Brain Scan @ รพ.กระบี่)
+                                </div>
+                                <span style="font-size: 11px; background: #dbeafe; color: #1e40af; padding: 2px 8px; border-radius: 12px; font-weight: 600;">เกณฑ์วินิจฉัยแยกโรค AIS vs Hemorrhagic Stroke</span>
+                            </div>
+                            <div style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
+                                <span style="font-weight: 600; color: #1e293b;">• เวลาทำ CT Brain เสร็จสิ้น (CT Brain Completion Time):</span>
+                                <input type="time" id="f4_ct_brain_time" onchange="toggleStrokeCTDetails(); syncT5_fromIntervention('ais');" oninput="toggleStrokeCTDetails(); syncT5_fromIntervention('ais');">
+                                <span>น.</span>
+                            </div>
+                            <div style="margin-top: 8px;">
+                                <div style="font-weight: 600; color: #1e293b; margin-bottom: 4px;">• ผลการตรวจ CT Brain (CT Brain Diagnostic Findings):</div>
+                                <div class="check-group" style="margin-left: 12px; display: flex; flex-direction: column; gap: 5px;">
+                                    <label class="form-check" style="cursor: pointer;">
+                                        <input type="radio" name="f4_ct_stroke_type" id="f4_ct_type_ais" value="ais" onchange="toggleStrokeCTDetails();">
+                                        <span><b>1. Acute Ischemic Stroke (AIS)</b> — สมองขาดเลือดเฉียบพลัน (ไม่พบเลือดออก / เข้าเกณฑ์พิจารณาให้ rtPA)</span>
+                                    </label>
+                                    <label class="form-check" style="cursor: pointer; color: #991b1b;">
+                                        <input type="radio" name="f4_ct_stroke_type" id="f4_ct_type_ich" value="hemorrhagic" onchange="toggleStrokeCTDetails();">
+                                        <span><b>2. Acute Hemorrhagic Stroke</b> — พบเลือดออกในสมอง (ICH / SAH) 
+                                            <span style="font-size: 11px; background: #fee2e2; color: #b91c1c; padding: 1px 6px; border-radius: 4px; font-weight: 700; margin-left: 4px;">⛔ ข้อห้ามเด็ดขาด rtPA</span>
+                                            <span style="font-size: 11px; background: #fef2f2; color: #dc2626; border: 1px solid #fca5a5; padding: 1px 6px; border-radius: 4px; font-weight: 700; margin-left: 4px;">⚠️ เกณฑ์คัดออกจากการศึกษา (คัดออกภายหลัง)</span>
+                                        </span>
+                                    </label>
+                                    <label class="form-check" style="cursor: pointer; color: #475569;">
+                                        <input type="radio" name="f4_ct_stroke_type" id="f4_ct_type_other" value="other" onchange="toggleStrokeCTDetails();">
+                                        <span><b>3. Normal / Other Findings</b> — ไม่พบความผิดปกติเฉียบพลันชัดเจน / ผลตรวจอื่น</span>
+                                    </label>
+                                </div>
+                            </div>
                         </div>
-                        <div style="display: flex; align-items: center; gap: 6px; margin-top: 3px;">
-                            <span>• เวลาทำ CT Brain เสร็จสิ้น (CT Brain Completion):</span>
-                            <input type="time" id="f4_ct_brain_time"><span>น.</span>
-                        </div>
-                        <div style="display: flex; align-items: center; gap: 6px; margin-top: 3px;">
-                            <span>• เวลารวม Onset-to-Needle (นับจากเริ่มมีอาการจนถึงเริ่มฉีด rtPA):</span>
-                            <input type="text" id="f4_stroke_o2n_min" class="input-calc" style="width: 80px; text-align: center;" readonly placeholder="--">
-                            <span>นาที</span>
-                        </div>
-                        <div style="margin-top: 5px;">
-                            <div style="font-weight: 600;">• การบรรลุเกณฑ์ Golden Window IV rtPA:</div>
-                            <div class="check-group" style="margin-left: 15px; margin-top: 3px;">
-                                <label class="form-check" style="color: #166534; font-weight: 600;">
-                                    <input type="radio" name="f4_eval_stroke" id="f4_stroke_achieved" value="achieved"> บรรลุเกณฑ์ IV rtPA (&lt;= 4.5 ชั่วโมง)
-                                </label>
-                                <label class="form-check" style="color: #991b1b; font-weight: 600;">
-                                    <input type="radio" name="f4_eval_stroke" id="f4_stroke_missed" value="missed"> หลุดกรอบเวลา (Stroke rtPA &gt; 4.5 ชั่วโมง)
-                                </label>
+
+                        <!-- IV rtPA Reperfusion Therapy Section -->
+                        <div id="f4_stroke_rtpa_section" style="background: #ffffff; border: 1px solid #e2e8f0; border-radius: 6px; padding: 8px 12px;">
+                            <div style="font-weight: 700; color: #1e293b; margin-bottom: 6px; display: flex; align-items: center; justify-content: space-between;">
+                                <span>💉 การให้ยาละลายลิ่มเลือด (IV rtPA Reperfusion Therapy)</span>
+                                <span id="f4_stroke_rtpa_badge" style="font-size: 11px; background: #fef3c7; color: #92400e; padding: 2px 8px; border-radius: 12px; font-weight: 600;">เป้าหมาย Onset-to-Needle ≤ 270 นาที</span>
+                            </div>
+
+                            <!-- Hemorrhagic Alert Banner -->
+                            <div id="f4_stroke_hemorrhagic_alert" style="display: none; background: #fef2f2; border: 1.5px solid #f87171; border-radius: 6px; padding: 10px 14px; margin-bottom: 10px; font-size: 12.5px; color: #991b1b; line-height: 1.5;">
+                                <div style="font-weight: 700; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 4px;">
+                                    <span style="font-size: 13px;">⛔ ข้อห้ามเด็ดขาด rtPA & จัดเป็นเกณฑ์คัดออกจากการศึกษา (Exclusion Criterion #1)</span>
+                                    <span style="font-size: 11px; background: #fee2e2; color: #991b1b; padding: 2px 8px; border-radius: 4px; font-weight: 700; border: 1px solid #f87171;">สถานะ: คัดออกจากการศึกษา (คัดออกภายหลัง)</span>
+                                </div>
+                                <div style="margin-top: 4px; color: #7f1d1d;">
+                                    ผล CT Brain พบ <b>Acute Hemorrhagic Stroke (เลือดออกในสมอง)</b> ห้ามฉีดยา rtPA เด็ดขาด — ระบบจัดเคสนี้เป็น <b>"Excluded Case (คัดออกภายหลัง)"</b> ตามเกณฑ์การคัดออกข้อที่ 1 และคัดแยกออกจากตัวหาร Reperfusion Window โดยอัตโนมัติ โดยยังสามารถบันทึกข้อมูลการส่งต่อ สัญญาณชีพ และผลลัพธ์ของเคสได้ครบถ้วนตามปกติ (ไม่ปิดกั้นการกรอกข้อมูล เพื่อนำไปรายงานใน Study Flow Diagram ตามมาตรฐาน CONSORT)
+                                </div>
+                                <input type="hidden" id="f4_study_eligibility" name="f4_study_eligibility" value="">
+                                <input type="hidden" id="f4_exclusion_reason" name="f4_exclusion_reason" value="">
+                            </div>
+
+                            <div id="f4_stroke_rtpa_inputs">
+                                <div style="display: flex; align-items: center; gap: 6px;">
+                                    <span>• เวลาเริ่มฉีดยาละลายลิ่มเลือด (IV rtPA Bolus Time):</span>
+                                    <input type="time" id="f4_rtpa_time" onchange="syncT5_fromIntervention('ais'); calcGoldenWindows();" oninput="syncT5_fromIntervention('ais'); calcGoldenWindows();"><span>น.</span>
+                                </div>
+                                <div style="display: flex; align-items: center; gap: 6px; margin-top: 4px;">
+                                    <span>• เวลารวม Onset-to-Needle (นับจากเริ่มมีอาการจนถึงเริ่มฉีด rtPA):</span>
+                                    <input type="text" id="f4_stroke_o2n_min" class="input-calc" style="width: 80px; text-align: center;" readonly placeholder="--">
+                                    <span>นาที</span>
+                                </div>
+                            </div>
+
+                            <div style="margin-top: 6px;">
+                                <div style="font-weight: 600; color: #1e293b;">• การบรรลุเกณฑ์ Golden Window IV rtPA:</div>
+                                <div class="check-group" style="margin-left: 15px; margin-top: 4px; display: flex; flex-direction: column; gap: 4px;">
+                                    <label class="form-check" style="color: #166534; font-weight: 600;">
+                                        <input type="radio" name="f4_eval_stroke" id="f4_stroke_achieved" value="achieved"> บรรลุเกณฑ์ IV rtPA (≤ 4.5 ชั่วโมง / ≤ 270 นาที)
+                                    </label>
+                                    <label class="form-check" style="color: #991b1b; font-weight: 600;">
+                                        <input type="radio" name="f4_eval_stroke" id="f4_stroke_missed" value="missed"> หลุดกรอบเวลา (Stroke rtPA > 4.5 ชั่วโมง)
+                                    </label>
+                                    <label class="form-check" style="color: #b45309; font-weight: 600;">
+                                        <input type="radio" name="f4_eval_stroke" id="f4_stroke_contraindicated" value="contraindicated"> ไม่ได้ให้ยา rtPA (มีข้อห้าม: พบเลือดออกในสมอง Hemorrhagic Stroke)
+                                    </label>
+                                    <label class="form-check" style="color: #475569; font-weight: 600;">
+                                        <input type="radio" name="f4_eval_stroke" id="f4_stroke_not_given_other" value="not_given_other"> ไม่ได้ให้ยา rtPA ด้วยเหตุผลอื่น (เช่น อาการดีขึ้นเร็ว / มีข้อห้ามอื่น)
+                                    </label>
+                                </div>
                             </div>
                         </div>
                     </div>

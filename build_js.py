@@ -482,6 +482,8 @@ def get_js():
             const orAch = document.getElementById('f4_trauma_achieved'); if (orAch) orAch.checked = false;
             const orMis = document.getElementById('f4_trauma_missed'); if (orMis) orMis.checked = false;
 
+            toggleStrokeCTDetails();
+
         } else if (disease === 'stemi') {
             // STEMI selected -> Clear Stroke & Trauma specific scores/fields
             const rts1 = document.getElementById('f1_rts_total'); if (rts1) rts1.value = '';
@@ -509,6 +511,12 @@ def get_js():
                 const el = document.getElementById(id);
                 if (el) { el.checked = false; el.disabled = true; }
             });
+
+            document.querySelectorAll('input[name="f4_ct_stroke_type"]').forEach(r => r.checked = false);
+            const ctBr1 = document.getElementById('f4_ct_brain_time'); if (ctBr1) ctBr1.value = '';
+            const sContra1 = document.getElementById('f4_stroke_contraindicated'); if (sContra1) sContra1.checked = false;
+            const sNotG1 = document.getElementById('f4_stroke_not_given_other'); if (sNotG1) sNotG1.checked = false;
+            const hemAlert1 = document.getElementById('f4_stroke_hemorrhagic_alert'); if (hemAlert1) hemAlert1.style.display = 'none';
 
             const rtpa = document.getElementById('f4_rtpa_time'); if (rtpa) rtpa.value = '';
             const o2n = document.getElementById('f4_stroke_o2n_min'); if (o2n) o2n.value = '';
@@ -561,6 +569,12 @@ def get_js():
             const pciAch = document.getElementById('f4_pci_achieved'); if (pciAch) pciAch.checked = false;
             const pciMis = document.getElementById('f4_pci_missed'); if (pciMis) pciMis.checked = false;
 
+            document.querySelectorAll('input[name="f4_ct_stroke_type"]').forEach(r => r.checked = false);
+            const ctBr2 = document.getElementById('f4_ct_brain_time'); if (ctBr2) ctBr2.value = '';
+            const sContra2 = document.getElementById('f4_stroke_contraindicated'); if (sContra2) sContra2.checked = false;
+            const sNotG2 = document.getElementById('f4_stroke_not_given_other'); if (sNotG2) sNotG2.checked = false;
+            const hemAlert2 = document.getElementById('f4_stroke_hemorrhagic_alert'); if (hemAlert2) hemAlert2.style.display = 'none';
+
             const rtpa = document.getElementById('f4_rtpa_time'); if (rtpa) rtpa.value = '';
             const o2n = document.getElementById('f4_stroke_o2n_min'); if (o2n) o2n.value = '';
             const sAch = document.getElementById('f4_stroke_achieved'); if (sAch) sAch.checked = false;
@@ -608,6 +622,12 @@ def get_js():
             const d2b = document.getElementById('f4_pci_d2b_min'); if (d2b) d2b.value = '';
             const pciAch = document.getElementById('f4_pci_achieved'); if (pciAch) pciAch.checked = false;
             const pciMis = document.getElementById('f4_pci_missed'); if (pciMis) pciMis.checked = false;
+
+            document.querySelectorAll('input[name="f4_ct_stroke_type"]').forEach(r => r.checked = false);
+            const ctBr3 = document.getElementById('f4_ct_brain_time'); if (ctBr3) ctBr3.value = '';
+            const sContra3 = document.getElementById('f4_stroke_contraindicated'); if (sContra3) sContra3.checked = false;
+            const sNotG3 = document.getElementById('f4_stroke_not_given_other'); if (sNotG3) sNotG3.checked = false;
+            const hemAlert3 = document.getElementById('f4_stroke_hemorrhagic_alert'); if (hemAlert3) hemAlert3.style.display = 'none';
 
             const rtpa = document.getElementById('f4_rtpa_time'); if (rtpa) rtpa.value = '';
             const o2n = document.getElementById('f4_stroke_o2n_min'); if (o2n) o2n.value = '';
@@ -863,9 +883,92 @@ def get_js():
         }
     }
 
+    // --- Acute Stroke CT Brain Findings & rtPA Contraindication Gating ---
+    function toggleStrokeCTDetails() {
+        const isStroke = document.getElementById('f1_inc4_ais')?.checked;
+        const ctType = document.querySelector('input[name="f4_ct_stroke_type"]:checked')?.value;
+        const alertBox = document.getElementById('f4_stroke_hemorrhagic_alert');
+        const rtpaInputs = document.getElementById('f4_stroke_rtpa_inputs');
+        const rtpaTime = document.getElementById('f4_rtpa_time');
+        const strokeO2n = document.getElementById('f4_stroke_o2n_min');
+        const strokeAch = document.getElementById('f4_stroke_achieved');
+        const strokeMis = document.getElementById('f4_stroke_missed');
+        const strokeContra = document.getElementById('f4_stroke_contraindicated');
+        const strokeNotGiven = document.getElementById('f4_stroke_not_given_other');
+        const ctBrainTime = document.getElementById('f4_ct_brain_time')?.value;
+        const rtpaBadge = document.getElementById('f4_stroke_rtpa_badge');
+
+        if (!isStroke) return;
+
+        if (ctType === 'hemorrhagic') {
+            // Hemorrhagic Stroke: Absolute Contraindication to rtPA & Study Exclusion Criterion #1 (Post-CT Exclusion)
+            if (alertBox) alertBox.style.display = 'block';
+            if (rtpaBadge) {
+                rtpaBadge.textContent = '⛔ ห้าม rtPA & คัดออกจากการศึกษา (Post-CT Exclusion)';
+                rtpaBadge.style.background = '#fee2e2';
+                rtpaBadge.style.color = '#991b1b';
+            }
+            const f4Elig = document.getElementById('f4_study_eligibility');
+            const f4Reason = document.getElementById('f4_exclusion_reason');
+            if (f4Elig) f4Elig.value = 'excluded';
+            if (f4Reason) f4Reason.value = 'Acute Hemorrhagic Stroke (CT Confirmed)';
+
+            if (rtpaInputs) {
+                rtpaInputs.style.opacity = '0.4';
+                rtpaInputs.style.pointerEvents = 'none';
+            }
+            if (rtpaTime) {
+                rtpaTime.value = '';
+                rtpaTime.disabled = true;
+            }
+            if (strokeO2n) strokeO2n.value = '--';
+
+            // Auto-check contraindicated
+            if (strokeContra) strokeContra.checked = true;
+            if (strokeAch) strokeAch.checked = false;
+            if (strokeMis) strokeMis.checked = false;
+            if (strokeNotGiven) strokeNotGiven.checked = false;
+
+            // Auto-sync T5 to CT Brain Completion time if T5 was empty or rtpa time
+            if (ctBrainTime) {
+                const t5TimeEl = document.getElementById('f4_t5_time');
+                if (t5TimeEl && (!t5TimeEl.value || t5TimeEl.value === rtpaTime?.value)) {
+                    t5TimeEl.value = ctBrainTime;
+                    syncT5_fromF4();
+                }
+            }
+        } else {
+            // AIS or other/unselected: Allow rtPA
+            if (alertBox) alertBox.style.display = 'none';
+            const f4Elig = document.getElementById('f4_study_eligibility');
+            const f4Reason = document.getElementById('f4_exclusion_reason');
+            if (f4Elig) f4Elig.value = '';
+            if (f4Reason) f4Reason.value = '';
+
+            if (rtpaBadge) {
+                rtpaBadge.textContent = 'เป้าหมาย Onset-to-Needle ≤ 270 นาที';
+                rtpaBadge.style.background = '#fef3c7';
+                rtpaBadge.style.color = '#92400e';
+            }
+            if (rtpaInputs) {
+                rtpaInputs.style.opacity = '1';
+                rtpaInputs.style.pointerEvents = 'auto';
+            }
+            if (rtpaTime) {
+                rtpaTime.disabled = false;
+            }
+            if (strokeContra && strokeContra.checked && ctType === 'ais') {
+                strokeContra.checked = false;
+            }
+        }
+        calcGoldenWindows();
+        scheduleAutoSave();
+    }
+
     if (typeof window !== 'undefined') {
         window.toggleIntubationDetails = toggleIntubationDetails;
         window.toggleInotropesDetails = toggleInotropesDetails;
+        window.toggleStrokeCTDetails = toggleStrokeCTDetails;
     }
 
     // --- En-route CPR Outcome & Duration Gating ---
@@ -1162,7 +1265,15 @@ def get_js():
         if (type === 'stemi') {
             t = document.getElementById('f4_pci_wire_time')?.value;
         } else if (type === 'ais') {
-            t = document.getElementById('f4_rtpa_time')?.value;
+            const ctType = document.querySelector('input[name="f4_ct_stroke_type"]:checked')?.value;
+            if (ctType === 'hemorrhagic') {
+                t = document.getElementById('f4_ct_brain_time')?.value;
+            } else {
+                t = document.getElementById('f4_rtpa_time')?.value;
+                if (!t) {
+                    t = document.getElementById('f4_ct_brain_time')?.value;
+                }
+            }
         } else if (type === 'trauma_or') {
             t = document.getElementById('f4_or_time')?.value;
         } else if (type === 'trauma_ct') {
@@ -2256,19 +2367,41 @@ def get_js():
 
         // 2. Stroke Onset to Needle
         if (isStroke) {
+            const ctType = document.querySelector('input[name="f4_ct_stroke_type"]:checked')?.value;
             const rtpaTime = document.getElementById('f4_rtpa_time')?.value;
             const t5Date = document.getElementById('f4_t5_date')?.value || t0Date;
-            if (oTime && rtpaTime) {
-                const o2n = diffMinutes(oDate, oTime, t5Date, rtpaTime);
-                setTimelineResult('f4_stroke_o2n_min', 'f4_stroke_achieved', 'f4_stroke_missed', o2n, 270);
+            const strokeContra = document.getElementById('f4_stroke_contraindicated');
+            const strokeNotGiven = document.getElementById('f4_stroke_not_given_other');
+
+            if (ctType === 'hemorrhagic' || (strokeContra && strokeContra.checked)) {
+                // Hemorrhagic Stroke: rtPA contraindicated
+                const o2nEl = document.getElementById('f4_stroke_o2n_min');
+                if (o2nEl) o2nEl.value = '--';
+                if (strokeContra) strokeContra.checked = true;
+                const ctTime = document.getElementById('f4_ct_brain_time')?.value;
+                if (ctTime && !document.getElementById('f4_t5_time')?.value) {
+                    const f4_t5_t = document.getElementById('f4_t5_time');
+                    if (f4_t5_t) {
+                        f4_t5_t.value = ctTime;
+                        syncT5_fromF4();
+                    }
+                }
+            } else if (strokeNotGiven && strokeNotGiven.checked) {
+                const o2nEl = document.getElementById('f4_stroke_o2n_min');
+                if (o2nEl) o2nEl.value = '--';
             } else {
-                setTimelineResult('f4_stroke_o2n_min', 'f4_stroke_achieved', 'f4_stroke_missed', null, 270);
-            }
-            if (rtpaTime && !document.getElementById('f4_t5_time')?.value) {
-                const f4_t5_t = document.getElementById('f4_t5_time');
-                if (f4_t5_t) {
-                    f4_t5_t.value = rtpaTime;
-                    syncT5_fromF4();
+                if (oTime && rtpaTime) {
+                    const o2n = diffMinutes(oDate, oTime, t5Date, rtpaTime);
+                    setTimelineResult('f4_stroke_o2n_min', 'f4_stroke_achieved', 'f4_stroke_missed', o2n, 270);
+                } else {
+                    setTimelineResult('f4_stroke_o2n_min', 'f4_stroke_achieved', 'f4_stroke_missed', null, 270);
+                }
+                if (rtpaTime && !document.getElementById('f4_t5_time')?.value) {
+                    const f4_t5_t = document.getElementById('f4_t5_time');
+                    if (f4_t5_t) {
+                        f4_t5_t.value = rtpaTime;
+                        syncT5_fromF4();
+                    }
                 }
             }
         } else {
@@ -2851,6 +2984,7 @@ def get_js():
         toggleMortalityDetails();
         toggleIntubationDetails();
         toggleInotropesDetails();
+        toggleStrokeCTDetails();
         autoDetectFerryOperate();
         if (typeof updateEpidemiologicalAssessment === 'function') updateEpidemiologicalAssessment();
     }
@@ -3103,8 +3237,10 @@ def get_js():
                 HN: c.f1_hn || '',
                 VN: c.f1_vn || '',
                 Abstract_Date: c.f1_abs_date || '',
-                Abstractor: c.f1_abstractor || '',
-                Eligible_Status: c.f1_eligible || '',
+                Eligible_Status_Lanta: c.f1_eligible || '',
+                Final_Study_Eligibility: (c.f1_eligible === 'excluded' ? 'Excluded (Baseline)' : (c.f4_ct_stroke_type === 'hemorrhagic' ? 'Excluded (Post-CT ICH)' : 'Eligible')),
+                Exclusion_Reason: (c.f4_ct_stroke_type === 'hemorrhagic' ? 'Acute Hemorrhagic Stroke (CT Confirmed)' : (c.f1_eligible === 'excluded' ? (c.f1_screening_reasons || 'Baseline Criteria') : '')),
+                Exclusion_Timing: (c.f1_eligible === 'excluded' ? 'Initial (Form 1)' : (c.f4_ct_stroke_type === 'hemorrhagic' ? 'Post-CT (Form 4)' : '')),
                 Age: c.f1_age || '',
                 Sex: c.f1_sex || '',
                 Residency: c.f1_residency || '',
@@ -3210,6 +3346,10 @@ def get_js():
                 Door_to_Intervention_min: c.f4_t4_5_min || '',
                 STEMI_D2B_min: c.f4_pci_d2b_min || '',
                 STEMI_GoldenWindow: c.f4_eval_pci || '',
+                Stroke_CT_Brain_Time: c.f4_ct_brain_time || '',
+                Stroke_CT_Stroke_Type: c.f4_ct_stroke_type || '',
+                Stroke_Study_Eligibility: c.f4_ct_stroke_type === 'hemorrhagic' ? 'Excluded (Post-CT ICH)' : (c.f1_eligible === 'excluded' ? 'Excluded (Baseline)' : 'Eligible'),
+                Stroke_rtPA_Time: c.f4_rtpa_time || '',
                 Stroke_O2N_min: c.f4_stroke_o2n_min || '',
                 Stroke_GoldenWindow: c.f4_eval_stroke || '',
                 Trauma_D2CT_min: c.f4_trauma_d2ct_min || '',
@@ -3374,6 +3514,8 @@ def get_js():
                 STEMI_Wire_Time: c.f4_pci_wire_time || '',
                 STEMI_D2B_min: c.f4_pci_d2b_min || '',
                 STEMI_Golden_Window: c.f4_eval_pci || '',
+                Stroke_CT_Brain_Time: c.f4_ct_brain_time || '',
+                Stroke_CT_Stroke_Type: c.f4_ct_stroke_type || '',
                 Stroke_rtPA_Time: c.f4_rtpa_time || '',
                 Stroke_O2N_min: c.f4_stroke_o2n_min || '',
                 Stroke_Golden_Window: c.f4_eval_stroke || '',
@@ -4132,11 +4274,18 @@ const CRF_AUDIT_FIELDS = [
             { value: 'achieved', label: 'บรรลุเกณฑ์ Remote Primary PCI (≤ 180 นาที)' },
             { value: 'missed', label: 'หลุดกรอบเวลา (STEMI PCI > 180 นาที)' }
         ]},
-        { key: 'f4_rtpa_time', label: 'เวลาเริ่มฉีดยา rtPA Bolus (T5 Time)', form: 4, formName: 'Form 4', category: 'หัตถการจำเพาะและกรอบเวลา (T5)', type: 'time', condition: isCaseStroke },
         { key: 'f4_ct_brain_time', label: 'เวลาทำ CT Brain เสร็จสิ้น', form: 4, formName: 'Form 4', category: 'หัตถการจำเพาะและกรอบเวลา (T5)', type: 'time', condition: isCaseStroke },
+        { key: 'f4_ct_stroke_type', label: 'ผลการตรวจ CT Brain (ชนิดโรค Stroke)', form: 4, formName: 'Form 4', category: 'หัตถการจำเพาะและกรอบเวลา (T5)', type: 'select', condition: isCaseStroke, options: [
+            { value: 'ais', label: '1. Acute Ischemic Stroke (AIS - สมองขาดเลือด/ไม่พบเลือดออก)' },
+            { value: 'hemorrhagic', label: '2. Acute Hemorrhagic Stroke (พบเลือดออกในสมอง ICH/SAH)' },
+            { value: 'other', label: '3. Normal / Other Findings (ไม่พบความผิดปกติเฉียบพลัน/อื่นๆ)' }
+        ]},
+        { key: 'f4_rtpa_time', label: 'เวลาเริ่มฉีดยา rtPA Bolus (T5 Time)', form: 4, formName: 'Form 4', category: 'หัตถการจำเพาะและกรอบเวลา (T5)', type: 'time', condition: d => isCaseStroke(d) && d.f4_ct_stroke_type !== 'hemorrhagic' },
         { key: 'f4_eval_stroke', label: 'การบรรลุเกณฑ์ IV rtPA', form: 4, formName: 'Form 4', category: 'หัตถการจำเพาะและกรอบเวลา (T5)', type: 'select', condition: isCaseStroke, options: [
-            { value: 'achieved', label: 'บรรลุเกณฑ์ IV rtPA (≤ 4.5 ชั่วโมง)' },
-            { value: 'missed', label: 'หลุดกรอบเวลา (Stroke rtPA > 4.5 ชั่วโมง)' }
+            { value: 'achieved', label: 'บรรลุเกณฑ์ IV rtPA (≤ 4.5 ชั่วโมง / ≤ 270 นาที)' },
+            { value: 'missed', label: 'หลุดกรอบเวลา (Stroke rtPA > 4.5 ชั่วโมง)' },
+            { value: 'contraindicated', label: 'ไม่ได้ให้ยา rtPA (มีข้อห้าม: พบเลือดออกในสมอง Hemorrhagic Stroke)' },
+            { value: 'not_given_other', label: 'ไม่ได้ให้ยา rtPA ด้วยเหตุผลอื่น' }
         ]},
         { key: 'f4_trauma_ct_time', label: 'เวลาทำ CT Scan บาดเจ็บเสร็จสิ้น', form: 4, formName: 'Form 4', category: 'หัตถการจำเพาะและกรอบเวลา (T5)', type: 'time', condition: isCaseTrauma },
         { key: 'f4_or_time', label: 'เวลาลงมีดผ่าตัดฉุกเฉิน (Damage Control OR)', form: 4, formName: 'Form 4', category: 'หัตถการจำเพาะและกรอบเวลา (T5)', type: 'time', condition: isCaseTrauma },
@@ -4386,6 +4535,10 @@ const CRF_AUDIT_FIELDS = [
                 const t4Dur = parseFloat(data.f2_eq6_mainland_road || data.f2_t4_mainland_min);
                 const t4ToT5 = parseFloat(data.f4_t4_5_min);
 
+                const isInitialExcluded = Boolean(data.f1_eligible === 'excluded');
+                const isHemorrhagicExcluded = Boolean(isStroke && data.f4_ct_stroke_type === 'hemorrhagic');
+                const isExcluded = Boolean(isInitialExcluded || isHemorrhagicExcluded);
+
                 allCases.push({
                     studyId: studyId,
                     displayId: 'LANTA_' + studyId,
@@ -4400,6 +4553,9 @@ const CRF_AUDIT_FIELDS = [
                     diseaseKey: diseaseKey,
                     transferMin: transferMin,
                     isExposed: isExposed,
+                    isInitialExcluded: isInitialExcluded,
+                    isHemorrhagicExcluded: isHemorrhagicExcluded,
+                    isExcluded: isExcluded,
                     hasCpr: hasCpr,
                     hasIntub: hasIntub,
                     hasInotropes: hasInotropes,
@@ -4435,6 +4591,8 @@ const CRF_AUDIT_FIELDS = [
         const filtered = allCases.filter(c => {
             if (filterDisease && c.diseaseKey !== filterDisease) return false;
             if (filterEsi && c.esi !== filterEsi) return false;
+            if (filterCohort === 'eligible' && c.isExcluded) return false;
+            if (filterCohort === 'excluded' && !c.isExcluded) return false;
             if (filterCohort === 'exposed' && !c.isExposed) return false;
             if (filterCohort === 'unexposed' && c.isExposed) return false;
             if (query) {
@@ -4571,7 +4729,12 @@ const CRF_AUDIT_FIELDS = [
                 if (mortStatus === '0') outcomeHtml = '<span class="badge-evaluated badge-ontime" style="background:#dcfce7; color:#15803d; font-size:11px;">✓ รอดชีวิต</span>';
                 else if (mortStatus === '1') outcomeHtml = '<span class="badge-evaluated badge-delay" style="background:#fee2e2; color:#b91c1c; font-size:11px;">✕ เสียชีวิต</span>';
 
-                const ineligBadge = (data.f1_eligible === 'excluded') ? '<div style="font-size: 10px; color: #dc2626; font-weight: 700; background: #fee2e2; border-radius: 4px; padding: 1px 4px; margin-top: 3px; display: inline-block;">⛔ Excluded</div>' : '';
+                let ineligBadge = '';
+                if (c.isHemorrhagicExcluded) {
+                    ineligBadge = '<div style="font-size: 10px; color: #991b1b; font-weight: 700; background: #fee2e2; border: 1px solid #f87171; border-radius: 4px; padding: 1px 4px; margin-top: 3px; display: inline-block;" title="เกณฑ์คัดออกข้อ 1: Acute Hemorrhagic Stroke (คัดออกภายหลังหลังตรวจ CT ที่ รพ.กระบี่)">⛔ Excluded (ICH)</div>';
+                } else if (c.isInitialExcluded) {
+                    ineligBadge = '<div style="font-size: 10px; color: #dc2626; font-weight: 700; background: #fee2e2; border: 1px solid #fca5a5; border-radius: 4px; padding: 1px 4px; margin-top: 3px; display: inline-block;" title="ไม่ผ่านเกณฑ์การคัดกรองแรกรับ รพ.เกาะลันตา">⛔ Excluded</div>';
+                }
 
                 const comp = c.completeness;
                 let compHtml = '';
@@ -4631,6 +4794,18 @@ const CRF_AUDIT_FIELDS = [
         // Update Overview Stat Cards
         const statTotal = document.getElementById('stat-total-patients');
         if (statTotal) statTotal.textContent = totalPatients;
+        const statTotalSub = document.getElementById('stat-total-patients-sub');
+        if (statTotalSub) {
+            const initialExcl = filtered.filter(c => c.isInitialExcluded).length;
+            const ichExcl = filtered.filter(c => c.isHemorrhagicExcluded).length;
+            const totalExcl = initialExcl + ichExcl;
+            const eligibleCount = filtered.length - totalExcl;
+            if (totalExcl > 0) {
+                statTotalSub.innerHTML = `<span style="color:#047857; font-weight:600;">เข้าเกณฑ์ ${eligibleCount}</span> • <span style="color:#b91c1c; font-weight:600;">คัดออก ${totalExcl}</span>${ichExcl > 0 ? ` <span style="font-size:10.5px; color:#991b1b;">(ICH ${ichExcl})</span>` : ''}`;
+            } else {
+                statTotalSub.textContent = 'เคสที่บันทึกแล้วในเบราว์เซอร์';
+            }
+        }
 
         const statMean = document.getElementById('stat-mean-time');
         const statDetail = document.getElementById('stat-time-detail');
@@ -4711,9 +4886,10 @@ const CRF_AUDIT_FIELDS = [
         const stemiAchieved = stemiEvalCases.filter(c => c.data.f4_eval_pci === 'achieved' || (parseFloat(c.data.f4_pci_d2b_min) > 0 && parseFloat(c.data.f4_pci_d2b_min) <= 180));
         const stemiD2BTimes = stemiEvalCases.map(c => parseFloat(c.data.f4_pci_d2b_min)).filter(t => !isNaN(t) && t > 0);
 
-        const strokeEvalCases = filtered.filter(c => c.isStroke && (c.data.f4_eval_stroke || c.data.f4_stroke_o2n_min));
+        const strokeEvalCases = filtered.filter(c => c.isStroke && c.data.f4_ct_stroke_type !== 'hemorrhagic' && c.data.f4_eval_stroke !== 'contraindicated' && (c.data.f4_eval_stroke || c.data.f4_stroke_o2n_min));
         const strokeAchieved = strokeEvalCases.filter(c => c.data.f4_eval_stroke === 'achieved' || (parseFloat(c.data.f4_stroke_o2n_min) > 0 && parseFloat(c.data.f4_stroke_o2n_min) <= 270));
         const strokeO2NTimes = strokeEvalCases.map(c => parseFloat(c.data.f4_stroke_o2n_min)).filter(t => !isNaN(t) && t > 0);
+        const strokeHemorrhagicCases = filtered.filter(c => c.isStroke && (c.data.f4_ct_stroke_type === 'hemorrhagic' || c.data.f4_eval_stroke === 'contraindicated'));
 
         const traumaEvalCases = filtered.filter(c => c.isTrauma && (c.data.f4_eval_trauma || c.data.f4_trauma_d2or_min || c.data.f4_trauma_d2ct_min));
         const traumaAchieved = traumaEvalCases.filter(c => c.data.f4_eval_trauma === 'achieved' || (parseFloat(c.data.f4_trauma_d2or_min) > 0 && parseFloat(c.data.f4_trauma_d2or_min) <= 180) || (parseFloat(c.data.f4_trauma_d2ct_min) > 0 && parseFloat(c.data.f4_trauma_d2ct_min) <= 150));
@@ -4747,7 +4923,10 @@ const CRF_AUDIT_FIELDS = [
         const primCardStrokePct = document.getElementById('prim-card-stroke-pct');
         const primCardStrokeMean = document.getElementById('prim-card-stroke-mean');
         if (primCardStrokePct) primCardStrokePct.textContent = `${strokePct.toFixed(1)}% (${strokeAchieved.length}/${strokeEvalCases.length})`;
-        if (primCardStrokeMean) primCardStrokeMean.textContent = `เวลาเฉลี่ย: ${strokeMeanO2N > 0 ? strokeMeanO2N.toFixed(0) : '--'} น. (เกณฑ์ ≤ 4.5 ชม.)`;
+        if (primCardStrokeMean) {
+            const exclNote = strokeHemorrhagicCases.length > 0 ? ` (คัดออกจากการศึกษา ${strokeHemorrhagicCases.length} เคส เลือดออกในสมอง)` : '';
+            primCardStrokeMean.textContent = `เวลาเฉลี่ย: ${strokeMeanO2N > 0 ? strokeMeanO2N.toFixed(0) : '--'} น. (เกณฑ์ ≤ 4.5 ชม.)${exclNote}`;
+        }
 
         const traumaPct = traumaEvalCases.length > 0 ? (traumaAchieved.length / traumaEvalCases.length) * 100 : 0;
         const traumaMeanOR = calcMean(traumaORTimes);

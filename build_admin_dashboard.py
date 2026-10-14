@@ -326,6 +326,8 @@ def get_admin_dashboard_html():
                         <span style="font-weight: 600; color: #475569;">สถานะ Cohort:</span>
                         <select id="admin-filter-cohort" onchange="renderAdminDashboard()" style="padding: 3px 8px; font-size: 12.5px; border: 1px solid #cbd5e1; border-radius: 4px; background: #ffffff;">
                             <option value="">ทั้งหมด (All Cases)</option>
+                            <option value="eligible">เข้าเกณฑ์การศึกษา (Eligible Cohort - คัดออก ICH แล้ว)</option>
+                            <option value="excluded">เคสที่ถูกคัดออก (Excluded Cases - รวม ICH)</option>
                             <option value="exposed">กลุ่ม Exposed (Delay / Triggers)</option>
                             <option value="unexposed">กลุ่ม Unexposed / Control (On-time)</option>
                         </select>
@@ -351,7 +353,7 @@ def get_admin_dashboard_html():
                         <div style="background: #ffffff; border: 1px solid #cbd5e1; border-left: 4px solid #1e40af; border-radius: 6px; padding: 10px 14px; box-shadow: 0 1px 3px rgba(0,0,0,0.03);">
                             <div style="font-size: 12.5px; color: #64748b; font-weight: 600;">ผู้ป่วยใน Cohort ทั้งหมด</div>
                             <div id="stat-total-patients" style="font-size: 26px; font-weight: 700; color: #1e40af; line-height: 1.2; margin-top: 2px;">0</div>
-                            <div style="font-size: 11.5px; color: #94a3b8;">เคสที่บันทึกแล้วในเบราว์เซอร์</div>
+                            <div id="stat-total-patients-sub" style="font-size: 11.5px; color: #94a3b8;">เคสที่บันทึกแล้วในเบราว์เซอร์</div>
                         </div>
                         <div style="background: #ffffff; border: 1px solid #cbd5e1; border-left: 4px solid #0f766e; border-radius: 6px; padding: 10px 14px; box-shadow: 0 1px 3px rgba(0,0,0,0.03);">
                             <div style="font-size: 12.5px; color: #64748b; font-weight: 600;">เวลาส่งต่อเฉลี่ย (T0 ➔ T5)</div>
