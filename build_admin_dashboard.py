@@ -294,6 +294,10 @@ def get_admin_dashboard_html():
                     <span>📝 ตรวจสอบช่องว่าง (Missing Audit)</span>
                     <span id="admin-nav-missing-badge" style="background: #f59e0b; color: #ffffff; padding: 1px 6px; border-radius: 999px; font-size: 10.5px; font-weight: 700; margin-left: 4px;">0</span>
                 </button>
+                <button type="button" class="admin-tab-btn" id="admin-tab-btn-users" onclick="switchAdminSubTab('users')">
+                    <span>👥 จัดการบัญชีผู้ใช้ (Users)</span>
+                    <span id="admin-nav-users-badge" style="background: #3b82f6; color: #ffffff; padding: 1px 6px; border-radius: 999px; font-size: 10.5px; font-weight: 700; margin-left: 4px;">1</span>
+                </button>
             </div>
 
             <!-- Global Cohort Filter Toolbar (มีผลต่อการวิเคราะห์ทุกแท็บ) -->
@@ -1145,6 +1149,123 @@ def get_admin_dashboard_html():
                                     </tr>
                                 </thead>
                                 <tbody id="audit-cases-tbody">
+                                    <!-- Populated dynamically by JS -->
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- ========================================== -->
+                <!-- TAB 8: USER ACCOUNTS MANAGEMENT (ADMIN)   -->
+                <!-- ========================================== -->
+                <div id="admin-tab-content-users" class="admin-tab-pane" style="display:none;">
+                    <div class="research-banner" style="background: linear-gradient(135deg, #eff6ff 0%, #dbeafe 100%); border: 1px solid #bfdbfe; border-left: 5px solid #2563eb;">
+                        <div>
+                            <div style="font-size: 11.5px; font-weight: 800; color: #1e40af; letter-spacing: 0.5px; text-transform: uppercase;">
+                                👥 USER ACCOUNTS & ACCESS CONTROL • "Admin Authorization Only"
+                            </div>
+                            <div style="font-size: 16px; font-weight: 700; color: #1e3a8a; margin-top: 2px;">
+                                จัดการบัญชีผู้ใช้งานระบบสกัดข้อมูล (User Accounts Management)
+                            </div>
+                            <div style="font-size: 12.5px; color: #1e40af; opacity: 0.9; margin-top: 2px;">
+                                เฉพาะแอดมินเท่านั้นที่มีสิทธิ์สร้าง ลบ หรือแก้ไขบัญชีผู้ใช้งาน • ทุกบัญชีจะใช้ชื่อจริง-นามสกุลบันทึกเป็น Abstractor ในฟอร์มโดยอัตโนมัติ
+                            </div>
+                        </div>
+                        <div style="display: flex; gap: 10px;">
+                            <div style="background: #ffffff; border: 1px solid #bfdbfe; border-radius: 8px; padding: 8px 14px; text-align: right; box-shadow: 0 1px 3px rgba(0,0,0,0.05);">
+                                <div style="font-size: 11px; color: #64748b; font-weight: 600;">บัญชีทั้งหมด</div>
+                                <div id="admin-users-total-count" style="font-size: 24px; font-weight: 800; color: #2563eb; line-height: 1.1;">1</div>
+                                <div style="font-size: 10.5px; color: #94a3b8;">บัญชีในระบบ</div>
+                            </div>
+                            <div style="background: #ffffff; border: 1px solid #bbf7d0; border-radius: 8px; padding: 8px 14px; text-align: right; box-shadow: 0 1px 3px rgba(0,0,0,0.05);">
+                                <div style="font-size: 11px; color: #15803d; font-weight: 600;">เคสที่บันทึกรวม</div>
+                                <div id="admin-users-total-cases" style="font-size: 24px; font-weight: 800; color: #16a34a; line-height: 1.1;">0</div>
+                                <div style="font-size: 10.5px; color: #86efac;">เคสทั้งหมด</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Create New User Form Card -->
+                    <div class="research-card" style="margin-bottom: 16px; border-left: 4px solid #2563eb; background: #ffffff;">
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; border-bottom: 1px solid #e2e8f0; padding-bottom: 8px;">
+                            <div style="font-size: 14px; font-weight: 700; color: #1e293b; display: flex; align-items: center; gap: 6px;">
+                                <span>➕ สร้างบัญชีผู้ใช้งานใหม่ (Create New User Account)</span>
+                            </div>
+                            <span style="font-size: 12px; color: #64748b;">(เฉพาะสิทธิ์แอดมิน)</span>
+                        </div>
+
+                        <form id="admin-create-user-form" onsubmit="event.preventDefault(); adminCreateAccount();" style="margin: 0;">
+                            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 12px; margin-bottom: 12px;">
+                                <div>
+                                    <label style="display: block; font-size: 12.5px; font-weight: 700; color: #334155; margin-bottom: 4px;">
+                                        ชื่อผู้ใช้งาน (Username) <span style="color: #ef4444;">*</span>
+                                    </label>
+                                    <input type="text" id="new-user-username" placeholder="เช่น somchai_k, doctor_a" 
+                                           style="width: 100%; font-size: 13px; padding: 7px 10px; border: 1.5px solid #cbd5e1; border-radius: 6px; box-sizing: border-box;" required autocomplete="off">
+                                </div>
+                                <div>
+                                    <label style="display: block; font-size: 12.5px; font-weight: 700; color: #334155; margin-bottom: 4px;">
+                                        รหัสผ่าน (Password) <span style="color: #ef4444;">*</span>
+                                    </label>
+                                    <input type="password" id="new-user-password" placeholder="ตั้งรหัสผ่านสำหรับเข้าสู่ระบบ" 
+                                           style="width: 100%; font-size: 13px; padding: 7px 10px; border: 1.5px solid #cbd5e1; border-radius: 6px; box-sizing: border-box;" required autocomplete="new-password">
+                                </div>
+                                <div>
+                                    <label style="display: block; font-size: 12.5px; font-weight: 700; color: #334155; margin-bottom: 4px;">
+                                        ชื่อจริง - นามสกุล (Full Name) <span style="color: #ef4444;">*</span>
+                                    </label>
+                                    <input type="text" id="new-user-fullname" placeholder="เช่น นพ.สมชาย ใจดี, พว.สมหญิง บุญมา" 
+                                           style="width: 100%; font-size: 13px; padding: 7px 10px; border: 1.5px solid #cbd5e1; border-radius: 6px; box-sizing: border-box;" required autocomplete="off">
+                                    <div style="font-size: 11px; color: #64748b; margin-top: 2px;">* จะแสดงเป็นชื่อผู้สกัดข้อมูล (Abstractor) ในแบบบันทึกอัตโนมัติ</div>
+                                </div>
+                                <div>
+                                    <label style="display: block; font-size: 12.5px; font-weight: 700; color: #334155; margin-bottom: 4px;">
+                                        ระดับสิทธิ์ (Role) <span style="color: #ef4444;">*</span>
+                                    </label>
+                                    <select id="new-user-role" style="width: 100%; font-size: 13px; padding: 7px 10px; border: 1.5px solid #cbd5e1; border-radius: 6px; box-sizing: border-box; background: #ffffff;">
+                                        <option value="abstractor" selected>👤 ผู้สกัดข้อมูล (Abstractor) - กรอก/แก้ไขข้อมูล</option>
+                                        <option value="admin">🛡️ ผู้ดูแลระบบ (Admin) - จัดการผู้ใช้ & แดชบอร์ด</option>
+                                    </select>
+                                </div>
+                            </div>
+
+                            <div id="admin-create-user-msg" style="display: none; padding: 8px 12px; border-radius: 6px; font-size: 12.5px; font-weight: 600; margin-bottom: 12px;"></div>
+
+                            <div style="display: flex; justify-content: flex-end; gap: 8px;">
+                                <button type="reset" class="btn btn-outline" style="padding: 6px 14px; font-size: 13px;">ล้างข้อมูล</button>
+                                <button type="submit" class="btn btn-primary" style="padding: 6px 18px; font-size: 13px; font-weight: 700; background: #2563eb;">
+                                    ➕ สร้างบัญชีใหม่ (Create Account)
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+
+                    <!-- Existing Accounts List Card -->
+                    <div class="research-card" style="background: #ffffff;">
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; border-bottom: 1px solid #e2e8f0; padding-bottom: 8px;">
+                            <div style="font-size: 14px; font-weight: 700; color: #1e293b;">
+                                📋 รายชื่อบัญชีผู้ใช้งานในระบบ (<span id="admin-users-table-count">1</span> บัญชี)
+                            </div>
+                            <div style="font-size: 12px; color: #64748b;">
+                                💡 บัญชี Master Admin ไม่สามารถลบได้ เพื่อความปลอดภัยของระบบ
+                            </div>
+                        </div>
+
+                        <div style="overflow-x: auto;">
+                            <table class="research-table" style="width: 100%; border-collapse: collapse;">
+                                <thead>
+                                    <tr style="background: #f8fafc; border-bottom: 2px solid #cbd5e1;">
+                                        <th style="width: 50px; text-align: center;">ลำดับ</th>
+                                        <th style="width: 220px;">ชื่อจริง - นามสกุล (Abstractor Name)</th>
+                                        <th style="width: 140px;">ชื่อผู้ใช้งาน (Username)</th>
+                                        <th style="width: 130px; text-align: center;">ระดับสิทธิ์ (Role)</th>
+                                        <th style="width: 140px; text-align: center;">จำนวนเคสที่บันทึก</th>
+                                        <th style="width: 140px; text-align: center;">วันที่สร้างบัญชี</th>
+                                        <th style="width: 140px; text-align: center;">จัดการบัญชี</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="admin-users-tbody">
                                     <!-- Populated dynamically by JS -->
                                 </tbody>
                             </table>

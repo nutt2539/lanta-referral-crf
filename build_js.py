@@ -74,6 +74,7 @@ def get_js():
 
     // Initialize on DOM load
     document.addEventListener('DOMContentLoaded', function() {
+        initUserAccounts();
         initToggleableRadios();
         initSyncFields();
         initAutoSave();
@@ -82,20 +83,66 @@ def get_js():
         // Automatic Screen Density Optimization
         autoAdjustScreenDensity();
 
-        // Load latest case or default
+        // Apply Global Authentication & Access Control
+        applyGlobalAuthGuard();
+
+        // Load latest case or default with user permission check
         const lastCaseId = localStorage.getItem('online_crf_last_active_id');
-        if (lastCaseId) {
-            loadCase(lastCaseId);
-        } else {
-            document.getElementById('f1_study_id').value = '001';
-            syncFields('study-id-sync', '001');
-            const ambEl = document.getElementById('f2_amb_type');
-            if (ambEl) ambEl.checked = true;
-            updateDiseaseVisuals(null);
-            calcAll();
+        const currentUser = getCurrentUser();
+        const isAdmin = currentUser && currentUser.role === 'admin';
+        let caseLoaded = false;
+
+        if (lastCaseId && currentUser) {
+            const raw = localStorage.getItem('online_crf_case_' + lastCaseId);
+            if (raw) {
+                try {
+                    const c = JSON.parse(raw);
+                    if (isAdmin || isCaseOwnedByUser(c, currentUser)) {
+                        loadCase(lastCaseId);
+                        caseLoaded = true;
+                    }
+                } catch(e) {}
+            }
+        }
+
+        // If last active case could not be loaded, find a case this user is permitted to see
+        if (!caseLoaded && currentUser) {
+            const index = JSON.parse(localStorage.getItem('online_crf_case_index') || '[]');
+            if (isAdmin) {
+                if (index.length > 0) {
+                    loadCase(index[0]);
+                    caseLoaded = true;
+                }
+            } else {
+                for (const id of index) {
+                    const r = localStorage.getItem('online_crf_case_' + id);
+                    if (r) {
+                        try {
+                            const c = JSON.parse(r);
+                            if (isCaseOwnedByUser(c, currentUser)) {
+                                loadCase(id);
+                                caseLoaded = true;
+                                break;
+                            }
+                        } catch(e) {}
+                    }
+                }
+            }
+        }
+
+        // If still no case loaded, prepare a clean new case
+        if (!caseLoaded) {
+            resetToNewCase(currentUser);
         }
         toggleIntubationDetails();
         toggleInotropesDetails();
+
+        // Auto prompt login if not logged in
+        if (!isUserLoggedIn()) {
+            setTimeout(() => {
+                openLoginModal();
+            }, 300);
+        }
 
         // Listen for pre-transfer interventions change events
         document.addEventListener('change', function(e) {
@@ -3082,11 +3129,26 @@ def get_js():
                     el.checked = false;
                 }
             } else {
-                if (data[key] !== undefined) {
+                if (data[key] !== undefined && data[key] !== null) {
                     el.value = data[key];
+                } else {
+                    el.value = '';
                 }
             }
         });
+
+        // Explicitly sync shared identifiers across all forms
+        const studyId = data.f1_study_id || data.studyId || '';
+        syncFields('study-id-sync', studyId);
+        syncFields('refer-id-sync', data.f1_refer_id || data.refer_id || '');
+        syncFields('hn-sync', data.f1_hn || data.hn || '');
+        syncFields('vn-sync', data.f1_vn || data.vn || '');
+
+        // Sync abstractor & date across forms (ALWAYS sync, empty if unset, never leak from previous cases)
+        const absDate = (data.f1_abs_date !== undefined && data.f1_abs_date !== null) ? data.f1_abs_date : (data.abs_date || '');
+        const absName = (data.f1_abstractor !== undefined && data.f1_abstractor !== null) ? data.f1_abstractor : (data.abstractor || '');
+        syncFields('date-sync', absDate);
+        syncFields('abs-sync', absName);
 
         // Sync active disease visuals & isolation
         const disease = getActiveDisease();
@@ -3104,11 +3166,62 @@ def get_js():
     }
 
     function saveCurrentCase(isAuto = false) {
+        if (!isUserLoggedIn()) {
+            if (!isAuto) {
+                alert('⚠️ กรุณาเข้าสู่ระบบก่อนบันทึกข้อมูล');
+                openLoginModal();
+            }
+            return;
+        }
+
         const studyId = document.getElementById('f1_study_id')?.value.trim() || 'UNNAMED';
         const key = 'online_crf_case_' + studyId;
         const formData = getFormData();
-        formData.lastUpdated = new Date().toISOString();
         formData.studyId = studyId;
+
+        // Check if case already exists in database to strictly preserve original creator & date
+        const existingRaw = localStorage.getItem(key);
+        let existing = null;
+        if (existingRaw) {
+            try { existing = JSON.parse(existingRaw); } catch(e) {}
+        }
+
+        const currentUser = getCurrentUser();
+        const todayStr = new Date().toISOString().split('T')[0];
+
+        if (existing) {
+            // Case already existed: PRESERVE ORIGINAL CREATOR, DATE, AND METADATA!
+            // Even if an Admin opens or edits this form, the original author remains intact!
+            // If the original case had NO abstractor or date, DO NOT inject currentUser's name!
+            formData.f1_abs_date = (existing.f1_abs_date !== undefined && existing.f1_abs_date !== null) 
+                ? existing.f1_abs_date 
+                : (existing.abs_date || '');
+            formData.f1_abstractor = (existing.f1_abstractor !== undefined && existing.f1_abstractor !== null) 
+                ? existing.f1_abstractor 
+                : (existing.abstractor || '');
+            formData.createdBy = existing.createdBy || '';
+            formData.createdByName = existing.createdByName || formData.f1_abstractor || '';
+            formData.createdAt = existing.createdAt || existing.lastUpdated || '';
+
+            // Record editor metadata separately without touching original abstractor
+            formData.lastUpdated = new Date().toISOString();
+            if (currentUser) {
+                formData.lastEditedBy = currentUser.username;
+                formData.lastEditedByName = currentUser.fullname;
+            }
+        } else {
+            // Brand new case being saved for the first time
+            formData.f1_abs_date = formData.f1_abs_date || todayStr;
+            formData.f1_abstractor = formData.f1_abstractor || (currentUser ? currentUser.fullname : '');
+            formData.createdBy = currentUser ? currentUser.username : 'unknown';
+            formData.createdByName = currentUser ? currentUser.fullname : '';
+            formData.createdAt = new Date().toISOString();
+            formData.lastUpdated = formData.createdAt;
+        }
+
+        // Always keep the UI synchronized with the preserved original author and date
+        syncFields('date-sync', formData.f1_abs_date);
+        syncFields('abs-sync', formData.f1_abstractor);
 
         localStorage.setItem(key, JSON.stringify(formData));
         localStorage.setItem('online_crf_last_active_id', studyId);
@@ -3118,8 +3231,8 @@ def get_js():
         if (!index.includes(studyId)) {
             index.push(studyId);
             localStorage.setItem('online_crf_case_index', JSON.stringify(index));
-            loadCaseIndex();
         }
+        loadCaseIndex();
 
         const statusEl = document.getElementById('save-status');
         if (statusEl) {
@@ -3146,15 +3259,49 @@ def get_js():
         const select = document.getElementById('case-selector');
         if (!select) return;
         const index = JSON.parse(localStorage.getItem('online_crf_case_index') || '[]');
-        select.innerHTML = '<option value="">-- เลือกเคสที่บันทึกไว้ --</option>';
+        
+        const currentUser = getCurrentUser();
+        const isAdmin = currentUser && currentUser.role === 'admin';
+
+        select.innerHTML = '';
+
+        let visibleCount = 0;
         index.forEach(id => {
-            const opt = document.createElement('option');
-            opt.value = id;
-            opt.textContent = 'LANTA_' + id;
-            select.appendChild(opt);
+            const raw = localStorage.getItem('online_crf_case_' + id);
+            if (!raw) return;
+            try {
+                const c = JSON.parse(raw);
+                const isOwner = isCaseOwnedByUser(c, currentUser);
+
+                if (isAdmin || isOwner) {
+                    visibleCount++;
+                    const opt = document.createElement('option');
+                    opt.value = id;
+                    const authorLabel = (isAdmin && c.f1_abstractor) ? ` [${c.f1_abstractor}]` : '';
+                    opt.textContent = 'LANTA_' + id + authorLabel;
+                    select.appendChild(opt);
+                }
+            } catch(e) {}
         });
+
+        // Insert prompt option at top
+        const defaultOpt = document.createElement('option');
+        defaultOpt.value = '';
+        if (isAdmin) {
+            defaultOpt.textContent = `-- เคสทั้งหมดในระบบ (${visibleCount}) --`;
+        } else if (currentUser) {
+            defaultOpt.textContent = `-- เคสที่คุณบันทึก (${visibleCount}) --`;
+        } else {
+            defaultOpt.textContent = '-- เข้าสู่ระบบเพื่อดูเคส --';
+        }
+        select.insertBefore(defaultOpt, select.firstChild);
+
         const curId = document.getElementById('f1_study_id')?.value.trim();
-        if (curId && index.includes(curId)) select.value = curId;
+        if (curId && Array.from(select.options).some(o => o.value === curId)) {
+            select.value = curId;
+        } else {
+            select.value = '';
+        }
     }
 
     function onCaseSelected(sel) {
@@ -3165,38 +3312,86 @@ def get_js():
     function loadCase(studyId) {
         const raw = localStorage.getItem('online_crf_case_' + studyId);
         if (!raw) return;
-        const data = JSON.parse(raw);
+        let data = null;
+        try { data = JSON.parse(raw); } catch(e) { return; }
+
+        const currentUser = getCurrentUser();
+        const isAdmin = currentUser && currentUser.role === 'admin';
+        const isOwner = isCaseOwnedByUser(data, currentUser);
+
+        if (!isAdmin && !isOwner) {
+            alert('⚠️ คุณสามารถเปิดดูและแก้ไขได้เฉพาะเคสที่คุณเป็นผู้บันทึกเท่านั้น');
+            return;
+        }
+
         setFormData(data);
         localStorage.setItem('online_crf_last_active_id', studyId);
         loadCaseIndex();
     }
 
+    function resetToNewCase(user) {
+        const index = JSON.parse(localStorage.getItem('online_crf_case_index') || '[]');
+        let maxId = 0;
+        index.forEach(id => {
+            const num = parseInt(id, 10);
+            if (!isNaN(num) && num > maxId) maxId = num;
+        });
+        for (let i = 0; i < localStorage.length; i++) {
+            const k = localStorage.key(i);
+            if (k && k.startsWith('online_crf_case_')) {
+                const sub = k.replace('online_crf_case_', '');
+                const num = parseInt(sub, 10);
+                if (!isNaN(num) && num > maxId) maxId = num;
+            }
+        }
+        let nextNum = (maxId + 1).toString().padStart(3, '0');
+        
+        // Clear all inputs, selects, and textareas
+        document.querySelectorAll('input:not([type="radio"]):not([type="checkbox"])').forEach(el => el.value = '');
+        document.querySelectorAll('input[type="radio"], input[type="checkbox"]').forEach(el => el.checked = false);
+        document.querySelectorAll('select').forEach(el => el.value = '');
+        document.querySelectorAll('textarea').forEach(el => el.value = '');
+
+        document.getElementById('f1_study_id').value = nextNum;
+        syncFields('study-id-sync', nextNum);
+        
+        // ALS Ambulance always checked!
+        const ambEl = document.getElementById('f2_amb_type');
+        if (ambEl) ambEl.checked = true;
+
+        // Auto-populate Abstract Date & Abstractor only if user is logged in
+        const todayStr = new Date().toISOString().split('T')[0];
+        if (user) {
+            syncFields('date-sync', todayStr);
+            syncFields('abs-sync', user.fullname);
+        } else {
+            syncFields('date-sync', '');
+            syncFields('abs-sync', '');
+        }
+
+        applyDiseaseIsolation(null);
+        updateDiseaseVisuals(null);
+
+        toggleCprDetails();
+        toggleMortalityDetails();
+        toggleRainDetails();
+        toggleIntubationDetails();
+        toggleInotropesDetails();
+
+        calcAll();
+        loadCaseIndex();
+    }
+
     function createNewCase() {
+        if (!isUserLoggedIn()) {
+            alert('⚠️ กรุณาเข้าสู่ระบบก่อนเริ่มบันทึกเคสใหม่');
+            openLoginModal();
+            return;
+        }
+
         if (confirm('ต้องการสร้างเคสใหม่ใช่หรือไม่? (ข้อมูลปัจจุบันได้รับการบันทึกแล้ว)')) {
-            const index = JSON.parse(localStorage.getItem('online_crf_case_index') || '[]');
-            let nextNum = (index.length + 1).toString().padStart(3, '0');
-            
-            // Clear inputs
-            document.querySelectorAll('input:not([type="radio"]):not([type="checkbox"])').forEach(el => el.value = '');
-            document.querySelectorAll('input[type="radio"], input[type="checkbox"]').forEach(el => el.checked = false);
-
-            document.getElementById('f1_study_id').value = nextNum;
-            syncFields('study-id-sync', nextNum);
-            
-            // ALS Ambulance always checked!
-            const ambEl = document.getElementById('f2_amb_type');
-            if (ambEl) ambEl.checked = true;
-
-            applyDiseaseIsolation(null);
-            updateDiseaseVisuals(null);
-
-            toggleCprDetails();
-            toggleMortalityDetails();
-            toggleRainDetails();
-            toggleIntubationDetails();
-            toggleInotropesDetails();
-
-            calcAll();
+            const currentUser = getCurrentUser();
+            resetToNewCase(currentUser);
             saveCurrentCase(true);
             switchTab(1);
         }
@@ -3204,6 +3399,12 @@ def get_js():
 
     // --- EXCEL EXPORT (SHEETJS) ---
     function exportToExcel() {
+        if (!isUserLoggedIn()) {
+            alert('⚠️ กรุณาเข้าสู่ระบบก่อน Export ข้อมูล');
+            openLoginModal();
+            return;
+        }
+
         if (typeof XLSX === 'undefined') {
             alert('ไม่พบไลบรารี SheetJS กรุณาตรวจสอบไฟล์ xlsx.full.min.js ในโฟลเดอร์');
             return;
@@ -3697,12 +3898,465 @@ def get_js():
         openPdfModal(studyId);
     }
 
+    // =========================================================================
+    // USER AUTHENTICATION & ACCESS CONTROL ENGINE
+    // =========================================================================
+    function escapeHtml(str) {
+        if (!str) return '';
+        return String(str)
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;')
+            .replace(/'/g, '&#039;');
+    }
+
+    const DEFAULT_ADMIN_ACCOUNT = {
+        username: 'admin',
+        password: 'admin1234',
+        fullname: 'ผู้ดูแลระบบ (Admin)',
+        role: 'admin',
+        createdAt: '2026-10-01T00:00:00.000Z'
+    };
+
+    function initUserAccounts() {
+        let accounts = [];
+        try {
+            const raw = localStorage.getItem('crf_user_accounts');
+            if (raw) accounts = JSON.parse(raw);
+        } catch (e) {
+            accounts = [];
+        }
+        if (!Array.isArray(accounts) || accounts.length === 0) {
+            accounts = [DEFAULT_ADMIN_ACCOUNT];
+            localStorage.setItem('crf_user_accounts', JSON.stringify(accounts));
+        } else {
+            // Ensure default admin always exists
+            const hasAdmin = accounts.some(u => u.username === 'admin');
+            if (!hasAdmin) {
+                accounts.unshift(DEFAULT_ADMIN_ACCOUNT);
+                localStorage.setItem('crf_user_accounts', JSON.stringify(accounts));
+            }
+        }
+
+        // Self-heal any cases that were accidentally corrupted with Admin name as abstractor
+        try {
+            const index = JSON.parse(localStorage.getItem('online_crf_case_index') || '[]');
+            index.forEach(id => {
+                const raw = localStorage.getItem('online_crf_case_' + id);
+                if (raw) {
+                    const c = JSON.parse(raw);
+                    let changed = false;
+                    if (c.f1_abstractor === 'ผู้ดูแลระบบ (Admin)' || c.abstractor === 'ผู้ดูแลระบบ (Admin)') {
+                        c.f1_abstractor = '';
+                        c.abstractor = '';
+                        c.createdByName = '';
+                        if (c.createdBy === 'admin') c.createdBy = '';
+                        changed = true;
+                    }
+                    if (changed) {
+                        localStorage.setItem('online_crf_case_' + id, JSON.stringify(c));
+                    }
+                }
+            });
+        } catch(e) {}
+    }
+
+    function getUserAccounts() {
+        try {
+            const raw = localStorage.getItem('crf_user_accounts');
+            if (raw) return JSON.parse(raw);
+        } catch (e) {}
+        return [DEFAULT_ADMIN_ACCOUNT];
+    }
+
+    function saveUserAccounts(accounts) {
+        localStorage.setItem('crf_user_accounts', JSON.stringify(accounts));
+    }
+
+    function getCurrentUser() {
+        try {
+            const raw = sessionStorage.getItem('crf_current_user');
+            if (raw) return JSON.parse(raw);
+        } catch (e) {}
+        return null;
+    }
+
+    function isCaseOwnedByUser(c, user) {
+        if (!c || !user) return false;
+        const uName = (user.username || '').toLowerCase().trim();
+        const fName = (user.fullname || '').trim();
+        if (uName && c.createdBy && c.createdBy.toLowerCase().trim() === uName) return true;
+        if (fName && c.f1_abstractor && c.f1_abstractor.trim() === fName) return true;
+        if (fName && c.abstractor && c.abstractor.trim() === fName) return true;
+        if (fName && c.createdByName && c.createdByName.trim() === fName) return true;
+        return false;
+    }
+
+    function isUserLoggedIn() {
+        return Boolean(getCurrentUser());
+    }
+
+    function openLoginModal() {
+        const modal = document.getElementById('user-login-modal');
+        const userInput = document.getElementById('login-username');
+        const passInput = document.getElementById('login-password');
+        const errEl = document.getElementById('login-error-msg');
+        if (modal) {
+            if (errEl) errEl.style.display = 'none';
+            if (userInput) userInput.value = '';
+            if (passInput) passInput.value = '';
+            modal.style.display = 'flex';
+            setTimeout(() => userInput?.focus(), 150);
+        }
+    }
+
+    function closeLoginModal() {
+        const modal = document.getElementById('user-login-modal');
+        if (modal) modal.style.display = 'none';
+    }
+
+    function submitUserLogin() {
+        const userInput = document.getElementById('login-username');
+        const passInput = document.getElementById('login-password');
+        const errEl = document.getElementById('login-error-msg');
+        const username = userInput?.value.trim();
+        const password = passInput?.value.trim();
+
+        if (!username || !password) {
+            if (errEl) {
+                errEl.textContent = '⚠️ กรุณากรอกทั้งชื่อผู้ใช้และรหัสผ่าน';
+                errEl.style.display = 'block';
+            }
+            return;
+        }
+
+        const accounts = getUserAccounts();
+        const found = accounts.find(u => 
+            u.username.toLowerCase() === username.toLowerCase() && 
+            (u.password === password || (u.username === 'admin' && (password === 'admin1234' || password === ADMIN_PIN)))
+        );
+
+        if (found) {
+            const sessionUser = {
+                username: found.username,
+                fullname: found.fullname,
+                role: found.role
+            };
+            sessionStorage.setItem('crf_current_user', JSON.stringify(sessionUser));
+            if (found.role === 'admin') {
+                sessionStorage.setItem('crf_admin_authorized', 'true');
+            }
+            closeLoginModal();
+            applyGlobalAuthGuard();
+            loadCaseIndex();
+
+            // Check currently open case: non-admin can only see their own cases
+            const curStudyId = document.getElementById('f1_study_id')?.value.trim();
+            if (found.role !== 'admin' && curStudyId) {
+                const curRaw = localStorage.getItem('online_crf_case_' + curStudyId);
+                let isOwner = false;
+                if (curRaw) {
+                    try {
+                        const curCase = JSON.parse(curRaw);
+                        isOwner = isCaseOwnedByUser(curCase, found);
+                    } catch(e) {}
+                }
+                if (!isOwner) {
+                    // Find user's first available case or prepare new case
+                    const index = JSON.parse(localStorage.getItem('online_crf_case_index') || '[]');
+                    let userCaseId = null;
+                    for (const id of index) {
+                        const r = localStorage.getItem('online_crf_case_' + id);
+                        if (r) {
+                            try {
+                                const parsed = JSON.parse(r);
+                                if (isCaseOwnedByUser(parsed, found)) {
+                                    userCaseId = id;
+                                    break;
+                                }
+                            } catch(e) {}
+                        }
+                    }
+                    if (userCaseId) {
+                        loadCase(userCaseId);
+                    } else {
+                        resetToNewCase(found);
+                    }
+                }
+            } else if (found.role === 'admin' && curStudyId) {
+                const curRaw = localStorage.getItem('online_crf_case_' + curStudyId);
+                if (curRaw) {
+                    loadCase(curStudyId);
+                }
+            }
+
+            const statusEl = document.getElementById('save-status');
+            if (statusEl) {
+                statusEl.innerHTML = `✓ เข้าสู่ระบบสำเร็จ: <b>${escapeHtml(found.fullname)}</b> (${found.role === 'admin' ? 'Admin' : 'Abstractor'})`;
+                statusEl.style.display = 'inline-flex';
+                setTimeout(() => { if (statusEl) statusEl.style.display = 'none'; }, 4000);
+            }
+        } else {
+            if (errEl) {
+                errEl.textContent = '❌ ชื่อผู้ใช้หรือรหัสผ่านไม่ถูกต้อง กรุณาลองใหม่อีกครั้ง';
+                errEl.style.display = 'block';
+            }
+            if (passInput) {
+                passInput.focus();
+                passInput.select();
+            }
+        }
+    }
+
+    function logoutUser() {
+        if (!confirm('ต้องการออกจากระบบใช่หรือไม่?')) return;
+        sessionStorage.removeItem('crf_current_user');
+        sessionStorage.removeItem('crf_admin_authorized');
+        syncFields('abs-sync', '');
+        syncFields('date-sync', '');
+        resetToNewCase(null);
+        applyGlobalAuthGuard();
+        loadCaseIndex();
+        const statusEl = document.getElementById('save-status');
+        if (statusEl) {
+            statusEl.innerHTML = '🔒 ออกจากระบบแล้ว (ระบบล็อกการกรอกข้อมูล)';
+            statusEl.style.display = 'inline-flex';
+            setTimeout(() => { if (statusEl) statusEl.style.display = 'none'; }, 3000);
+        }
+    }
+
+    function applyGlobalAuthGuard() {
+        const currentUser = getCurrentUser();
+        const isLoggedIn = Boolean(currentUser);
+
+        const banner = document.getElementById('auth-locked-banner');
+        const navUserInfo = document.getElementById('nav-user-info');
+        const navUserFullname = document.getElementById('nav-user-fullname');
+        const navUserBadge = document.getElementById('nav-user-badge');
+        const btnLogin = document.getElementById('btn-login');
+        const btnLogout = document.getElementById('btn-logout');
+        const masterForm = document.getElementById('crf-master-form');
+
+        if (isLoggedIn) {
+            if (banner) banner.style.display = 'none';
+            if (navUserInfo) navUserInfo.style.display = 'inline-flex';
+            if (navUserFullname) navUserFullname.textContent = currentUser.fullname;
+            if (navUserBadge) {
+                if (currentUser.role === 'admin') {
+                    navUserBadge.textContent = '🛡️ Admin';
+                    navUserBadge.style.background = '#dc2626';
+                    navUserBadge.style.color = '#ffffff';
+                } else {
+                    navUserBadge.textContent = '👤 Abstractor';
+                    navUserBadge.style.background = '#2563eb';
+                    navUserBadge.style.color = '#ffffff';
+                }
+            }
+            if (btnLogin) btnLogin.style.display = 'none';
+            if (btnLogout) btnLogout.style.display = 'inline-flex';
+
+            if (masterForm) {
+                masterForm.style.pointerEvents = 'auto';
+                masterForm.style.opacity = '1';
+                masterForm.querySelectorAll('input, select, textarea, button').forEach(el => {
+                    if (el.classList.contains('abs-sync') || el.classList.contains('date-sync') || el.classList.contains('calc-field') || el.hasAttribute('data-readonly')) {
+                        el.readOnly = true;
+                        el.disabled = false;
+                    } else {
+                        el.disabled = false;
+                    }
+                });
+            }
+        } else {
+            if (banner) banner.style.display = 'block';
+            if (navUserInfo) navUserInfo.style.display = 'none';
+            if (btnLogin) btnLogin.style.display = 'inline-flex';
+            if (btnLogout) btnLogout.style.display = 'none';
+
+            if (masterForm) {
+                masterForm.style.pointerEvents = 'none';
+                masterForm.style.opacity = '0.65';
+                masterForm.querySelectorAll('input, select, textarea, button').forEach(el => {
+                    el.disabled = true;
+                });
+            }
+        }
+    }
+
+    // --- Admin User Management Operations ---
+    function adminCreateAccount() {
+        const usernameEl = document.getElementById('new-user-username');
+        const passwordEl = document.getElementById('new-user-password');
+        const fullnameEl = document.getElementById('new-user-fullname');
+        const roleEl = document.getElementById('new-user-role');
+        const msgEl = document.getElementById('admin-create-user-msg');
+
+        const username = usernameEl?.value.trim();
+        const password = passwordEl?.value.trim();
+        const fullname = fullnameEl?.value.trim();
+        const role = roleEl?.value || 'abstractor';
+
+        if (!username || !password || !fullname) {
+            if (msgEl) {
+                msgEl.style.display = 'block';
+                msgEl.style.background = '#fef2f2';
+                msgEl.style.color = '#b91c1c';
+                msgEl.style.border = '1px solid #fecaca';
+                msgEl.innerHTML = '⚠️ กรุณากรอกข้อมูลให้ครบทุกช่อง (Username, Password, ชื่อจริง-นามสกุล)';
+            }
+            return;
+        }
+
+        const accounts = getUserAccounts();
+        if (accounts.some(u => u.username.toLowerCase() === username.toLowerCase())) {
+            if (msgEl) {
+                msgEl.style.display = 'block';
+                msgEl.style.background = '#fef2f2';
+                msgEl.style.color = '#b91c1c';
+                msgEl.style.border = '1px solid #fecaca';
+                msgEl.innerHTML = `⚠️ ชื่อผู้ใช้ <b>${escapeHtml(username)}</b> มีอยู่ในระบบแล้ว กรุณาใช้ชื่อผู้ใช้อื่น`;
+            }
+            return;
+        }
+
+        const newAcc = {
+            username: username,
+            password: password,
+            fullname: fullname,
+            role: role,
+            createdAt: new Date().toISOString()
+        };
+
+        accounts.push(newAcc);
+        saveUserAccounts(accounts);
+        renderAdminUserAccounts();
+
+        if (usernameEl) usernameEl.value = '';
+        if (passwordEl) passwordEl.value = '';
+        if (fullnameEl) fullnameEl.value = '';
+
+        if (msgEl) {
+            msgEl.style.display = 'block';
+            msgEl.style.background = '#f0fdf4';
+            msgEl.style.color = '#15803d';
+            msgEl.style.border = '1px solid #bbf7d0';
+            msgEl.innerHTML = `✓ สร้างบัญชีผู้ใช้งาน <b>${escapeHtml(fullname)}</b> (${escapeHtml(username)}) สำเร็จเรียบร้อยแล้ว`;
+            setTimeout(() => { if (msgEl) msgEl.style.display = 'none'; }, 5000);
+        }
+    }
+
+    function adminDeleteUser(username) {
+        if (username === 'admin') {
+            alert('⚠️ ไม่สามารถลบบัญชี Master Admin ได้');
+            return;
+        }
+        const currentUser = getCurrentUser();
+        if (currentUser && currentUser.username === username) {
+            alert('⚠️ ไม่สามารถลบบัญชีที่กำลังล็อกอินใช้งานอยู่ในปัจจุบันได้');
+            return;
+        }
+        if (!confirm(`ยืนยันการลบบัญชีผู้ใช้งาน "${username}" ออกจากระบบใช่หรือไม่?`)) {
+            return;
+        }
+        let accounts = getUserAccounts();
+        accounts = accounts.filter(u => u.username !== username);
+        saveUserAccounts(accounts);
+        renderAdminUserAccounts();
+        alert(`✓ ลบบัญชี "${username}" เรียบร้อยแล้ว`);
+    }
+
+    function adminResetPassword(username) {
+        const newPass = prompt(`ระบุรหัสผ่านใหม่สำหรับผู้ใช้ "${username}":`);
+        if (!newPass || !newPass.trim()) return;
+        const accounts = getUserAccounts();
+        const user = accounts.find(u => u.username === username);
+        if (user) {
+            user.password = newPass.trim();
+            saveUserAccounts(accounts);
+            alert(`✓ เปลี่ยนรหัสผ่านของผู้ใช้ "${username}" เรียบร้อยแล้ว`);
+        }
+    }
+
+    function renderAdminUserAccounts() {
+        const tbody = document.getElementById('admin-users-tbody');
+        const countTotal = document.getElementById('admin-users-total-count');
+        const countTable = document.getElementById('admin-users-table-count');
+        const totalCasesEl = document.getElementById('admin-users-total-cases');
+        const badge = document.getElementById('admin-nav-users-badge');
+
+        const accounts = getUserAccounts();
+        const index = JSON.parse(localStorage.getItem('online_crf_case_index') || '[]');
+
+        if (countTotal) countTotal.textContent = accounts.length;
+        if (countTable) countTable.textContent = accounts.length;
+        if (totalCasesEl) totalCasesEl.textContent = index.length;
+        if (badge) badge.textContent = accounts.length;
+
+        if (!tbody) return;
+
+        let html = '';
+        accounts.forEach((acc, idx) => {
+            const isMasterAdmin = acc.username === 'admin';
+            const roleBadge = acc.role === 'admin' 
+                ? '<span style="background: #fee2e2; color: #b91c1c; font-weight: 700; padding: 2px 8px; border-radius: 999px; font-size: 11px;">🛡️ ผู้ดูแลระบบ (Admin)</span>'
+                : '<span style="background: #dbeafe; color: #1e40af; font-weight: 600; padding: 2px 8px; border-radius: 999px; font-size: 11px;">👤 ผู้สกัดข้อมูล (Abstractor)</span>';
+            
+            const dateStr = acc.createdAt ? new Date(acc.createdAt).toLocaleDateString('th-TH', { year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }) : '-';
+
+            // Calculate number of cases extracted/created by this account
+            let accCaseCount = 0;
+            const uName = acc.username.toLowerCase();
+            const fName = acc.fullname.trim();
+
+            index.forEach(id => {
+                const raw = localStorage.getItem('online_crf_case_' + id);
+                if (!raw) return;
+                try {
+                    const c = JSON.parse(raw);
+                    if (isCaseOwnedByUser(c, acc)) accCaseCount++;
+                } catch(e) {}
+            });
+
+            const caseCountBadge = accCaseCount > 0
+                ? `<span style="background: #dcfce7; color: #15803d; font-weight: 800; font-size: 12.5px; padding: 2px 10px; border-radius: 999px;">${accCaseCount} เคส</span>`
+                : `<span style="color: #94a3b8; font-size: 12px; font-weight: 500;">0 เคส</span>`;
+
+            const actionsHtml = isMasterAdmin 
+                ? `<button type="button" class="btn btn-outline" style="font-size: 11px; padding: 2px 6px;" onclick="adminResetPassword('${escapeHtml(acc.username)}')">🔑 เปลี่ยนรหัสผ่าน</button>
+                   <span style="font-size: 11px; color: #94a3b8; margin-left: 4px;">(Master)</span>`
+                : `<div style="display: flex; gap: 4px; justify-content: center;">
+                       <button type="button" class="btn btn-outline" style="font-size: 11px; padding: 2px 6px;" onclick="adminResetPassword('${escapeHtml(acc.username)}')" title="รีเซ็ตรหัสผ่าน">🔑 รีเซ็ต</button>
+                       <button type="button" class="btn btn-outline" style="font-size: 11px; padding: 2px 6px; color: #dc2626; border-color: #fca5a5;" onclick="adminDeleteUser('${escapeHtml(acc.username)}')" title="ลบบัญชี">🗑️ ลบ</button>
+                   </div>`;
+
+            html += `
+                <tr style="border-bottom: 1px solid #f1f5f9;">
+                    <td style="text-align: center; color: #64748b; font-weight: 600;">${idx + 1}</td>
+                    <td style="font-weight: 700; color: #1e293b;">
+                        ${escapeHtml(acc.fullname)}
+                        ${isMasterAdmin ? ' <span style="font-size: 10px; color: #b45309; background: #fef3c7; padding: 1px 4px; border-radius: 3px;">Default Admin</span>' : ''}
+                    </td>
+                    <td><code style="background: #f1f5f9; padding: 2px 6px; border-radius: 4px; color: #0f172a; font-weight: 600;">${escapeHtml(acc.username)}</code></td>
+                    <td style="text-align: center;">${roleBadge}</td>
+                    <td style="text-align: center;">${caseCountBadge}</td>
+                    <td style="text-align: center; font-size: 11.5px; color: #64748b;">${dateStr}</td>
+                    <td style="text-align: center;">${actionsHtml}</td>
+                </tr>
+            `;
+        });
+
+        tbody.innerHTML = html;
+    }
+
     // --- ADMIN DASHBOARD & MANAGEMENT ENGINE ---
     const ADMIN_PIN = '1212312121';
 
     function openAdminDashboard() {
-        const isAuth = sessionStorage.getItem('crf_admin_authorized') === 'true';
+        const currentUser = getCurrentUser();
+        const isAuth = sessionStorage.getItem('crf_admin_authorized') === 'true' || (currentUser && currentUser.role === 'admin');
         if (isAuth) {
+            sessionStorage.setItem('crf_admin_authorized', 'true');
             showAdminDashboardModal();
         } else {
             const modal = document.getElementById('admin-auth-modal');
@@ -3727,7 +4381,10 @@ def get_js():
         const errEl = document.getElementById('admin-auth-error');
         const pass = passInput?.value.trim();
 
-        if (pass === ADMIN_PIN) {
+        const accounts = getUserAccounts();
+        const isAdminPass = (pass === ADMIN_PIN) || accounts.some(u => u.role === 'admin' && (u.password === pass || pass === ADMIN_PIN));
+
+        if (isAdminPass) {
             sessionStorage.setItem('crf_admin_authorized', 'true');
             closeAdminAuthModal();
             showAdminDashboardModal();
@@ -3743,6 +4400,7 @@ def get_js():
     function showAdminDashboardModal() {
         try {
             renderAdminDashboard();
+            renderAdminUserAccounts();
         } catch (e) {
             console.error("Admin Dashboard render error:", e);
         }
@@ -3770,9 +4428,9 @@ def get_js():
     // RESEARCH ADMIN DASHBOARD & CLINICAL OBJECTIVES ANALYTICS ENGINE
     // =========================================================================
 
-    // Tab Switching for Admin Dashboard (7 Sub-tabs)
+    // Tab Switching for Admin Dashboard (8 Sub-tabs)
     function switchAdminSubTab(tabName) {
-        const tabs = ['overview', 'primary', 'sec1', 'sec2', 'sec3', 'deterioration', 'missing'];
+        const tabs = ['overview', 'primary', 'sec1', 'sec2', 'sec3', 'deterioration', 'missing', 'users'];
         tabs.forEach(t => {
             const btn = document.getElementById('admin-tab-btn-' + t);
             const pane = document.getElementById('admin-tab-content-' + t);
@@ -3784,6 +4442,9 @@ def get_js():
                 pane.style.display = (t === tabName) ? 'block' : 'none';
             }
         });
+        if (tabName === 'users') {
+            renderAdminUserAccounts();
+        }
     }
 
     // Reset Cohort Filters

@@ -1273,6 +1273,16 @@ def get_css():
             .nav-actions .btn-admin {
                 grid-column: 1 / -1;
             }
+            #nav-user-container {
+                grid-column: 1 / -1;
+                width: 100%;
+                justify-content: space-between;
+                border-left: none;
+                border-top: 1px solid #cbd5e1;
+                padding-left: 0;
+                padding-top: 6px;
+                margin-left: 0;
+            }
         }
 
         /* ==========================================================================

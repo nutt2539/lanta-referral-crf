@@ -36,11 +36,14 @@ def get_form1_html():
                         <span>VN:</span><input type="text" id="f1_vn" class="vn-sync" style="width: 80px;">
                     </div>
                 </td>
-                <td style="font-weight: 700; background: #f8fafc;">วันที่สกัดข้อมูล / ผู้สกัด (Abstractor)</td>
+                <td style="font-weight: 700; background: #f8fafc;">
+                    วันที่สกัดข้อมูล / ผู้สกัด (Abstractor)<br>
+                    <span style="font-size: 11px; font-weight: normal; color: #64748b;">(🔒 ระบุอัตโนมัติตามวันสร้างและชื่อผู้ใช้)</span>
+                </td>
                 <td>
-                    <div style="display: flex; gap: 6px; align-items: center;">
-                        <span>วันที่:</span><input type="date" id="f1_abs_date" class="date-sync" style="width: 125px;">
-                        <span>ผู้สกัด:</span><input type="text" id="f1_abstractor" class="abs-sync" style="width: 100px;">
+                    <div style="display: flex; gap: 6px; align-items: center; flex-wrap: wrap;">
+                        <span>วันที่:</span><input type="date" id="f1_abs_date" class="date-sync" style="width: 130px; background: #f8fafc; cursor: not-allowed;" readonly title="ระบุอัตโนมัติตามวันสร้างฟอร์ม">
+                        <span>ผู้สกัด:</span><input type="text" id="f1_abstractor" class="abs-sync" style="width: 150px; background: #f8fafc; cursor: not-allowed;" readonly title="ระบุอัตโนมัติตามชื่อจริง-นามสกุลของผู้ใช้ที่เข้าสู่ระบบ">
                     </div>
                 </td>
             </tr>

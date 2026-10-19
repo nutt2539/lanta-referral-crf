@@ -71,6 +71,19 @@ def assemble():
                 <button type="button" class="btn btn-admin" onclick="openAdminDashboard()" title="เข้าสู่ระบบผู้ดูแลเพื่อดูสรุป ลบ หรือแก้ไขข้อมูลคนไข้ทั้งหมด">
                     🔐 Admin Dashboard
                 </button>
+                <div id="nav-user-container" style="display: flex; align-items: center; gap: 8px; margin-left: 6px; padding-left: 10px; border-left: 1.5px solid #cbd5e1; flex-shrink: 0;">
+                    <div id="nav-user-info" style="display: none; align-items: center; gap: 6px; font-size: 13px; color: #1e293b; background: #f8fafc; border: 1px solid #cbd5e1; padding: 4px 10px; border-radius: 6px; box-shadow: 0 1px 2px rgba(0,0,0,0.05);">
+                        <span style="font-size: 14px;">👤</span>
+                        <span id="nav-user-fullname" style="font-weight: 700; color: #0f172a; max-width: 160px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">-</span>
+                        <span id="nav-user-badge" style="font-size: 10.5px; padding: 1.5px 7px; border-radius: 999px; background: #2563eb; color: #ffffff; font-weight: 700;">ผู้สกัดข้อมูล</span>
+                    </div>
+                    <button type="button" id="btn-login" class="btn btn-primary" onclick="openLoginModal()" style="font-size: 13px; padding: 5px 14px; background: #1e40af; color: #ffffff; border: 1px solid #1d4ed8; font-weight: 700; border-radius: 6px;" title="เข้าสู่ระบบเพื่อบันทึกข้อมูล">
+                        🔑 เข้าสู่ระบบ
+                    </button>
+                    <button type="button" id="btn-logout" class="btn" onclick="logoutUser()" style="display: none; font-size: 12px; padding: 4px 10px; color: #b91c1c; border: 1px solid #fecdd3; background: #fff1f2; font-weight: 600; border-radius: 6px;" title="ออกจากระบบ">
+                        🚪 ออกจากระบบ
+                    </button>
+                </div>
             </div>
         </div>
         <!-- Progress Bar Indicator -->
@@ -103,6 +116,21 @@ def assemble():
 
     <!-- Main Content Container -->
     <main class="main-container">
+        <!-- Auth Lock Banner -->
+        <div id="auth-locked-banner" style="display: none; background: #fff7ed; border: 2px dashed #f97316; border-radius: 8px; padding: 14px 18px; margin-bottom: 18px; text-align: center; box-shadow: 0 2px 8px rgba(249, 115, 22, 0.08);">
+            <div style="font-size: 26px; margin-bottom: 4px;">🔒</div>
+            <div style="font-size: 16px; font-weight: 800; color: #c2410c; margin-bottom: 4px;">
+                ระบบอยู่ในสถานะล็อกการกรอกข้อมูล (Authentication Required)
+            </div>
+            <div style="font-size: 13.5px; color: #7c2d12; line-height: 1.5; margin-bottom: 10px;">
+                คุณยังไม่ได้เข้าสู่ระบบ กรุณาเข้าสู่ระบบด้วยบัญชีผู้ใช้งานที่ได้รับอนุญาตเพื่อเริ่มบันทึก แก้ไข หรือจัดการข้อมูลผู้ป่วย<br>
+                <span style="font-size: 12px; color: #9a3412;">(หากยังไม่มีบัญชีผู้ใช้งาน กรุณาติดต่อผู้ดูแลระบบ [Admin] เพื่อสร้างบัญชีใหม่)</span>
+            </div>
+            <button type="button" class="btn btn-blue" onclick="openLoginModal()" style="padding: 6px 18px; font-size: 13.5px; font-weight: 700;">
+                🔑 เข้าสู่ระบบทันที (Sign In)
+            </button>
+        </div>
+
         <form id="crf-master-form" onsubmit="return false;">
 {f1_html}
 {f2_html}
@@ -165,6 +193,52 @@ def assemble():
 
                 <div style="display: flex; justify-content: flex-end; margin-top: 15px;">
                     <button type="button" class="btn btn-outline" onclick="closePdfModal()">ปิด</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- User Login Modal -->
+    <div id="user-login-modal" class="modal-overlay" style="display:none; z-index: 3000;">
+        <div class="modal-box" style="max-width: 420px; border-radius: 10px; overflow: hidden; box-shadow: 0 10px 30px rgba(0,0,0,0.3);">
+            <div class="modal-header" style="background: linear-gradient(135deg, #1e3a8a 0%, #1e40af 100%); color: #ffffff; padding: 14px 20px;">
+                <h3 style="font-size: 16px; font-weight: 700; color: #ffffff; display: flex; align-items: center; gap: 8px; margin: 0;">
+                    <span>🔐 เข้าสู่ระบบบันทึกข้อมูลวิจัย (CRF Login)</span>
+                </h3>
+                <button type="button" class="modal-close-btn" onclick="closeLoginModal()" style="color: #ffffff; font-size: 18px;">✕</button>
+            </div>
+            <div style="padding: 20px 24px; background: #ffffff;">
+                <div id="login-modal-notice" style="font-size: 13px; color: #475569; margin-bottom: 14px; line-height: 1.5;">
+                    กรุณากรอกชื่อผู้ใช้และรหัสผ่านเพื่อเริ่มบันทึกข้อมูล (ชื่อจริง-นามสกุลของคุณจะถูกบันทึกเป็นผู้สกัดข้อมูลอัตโนมัติ)
+                </div>
+
+                <div style="margin-bottom: 12px;">
+                    <label style="display: block; font-size: 13px; font-weight: 700; color: #1e293b; margin-bottom: 4px;">
+                        ชื่อผู้ใช้งาน (Username)
+                    </label>
+                    <input type="text" id="login-username" placeholder="กรอก Username" autocomplete="username"
+                           style="width: 100%; font-size: 14px; padding: 8px 12px; border: 1.5px solid #cbd5e1; border-radius: 6px;"
+                           onkeydown="if(event.key==='Enter') document.getElementById('login-password')?.focus();">
+                </div>
+
+                <div style="margin-bottom: 12px;">
+                    <label style="display: block; font-size: 13px; font-weight: 700; color: #1e293b; margin-bottom: 4px;">
+                        รหัสผ่าน (Password)
+                    </label>
+                    <input type="password" id="login-password" placeholder="กรอกรหัสผ่าน" autocomplete="current-password"
+                           style="width: 100%; font-size: 14px; padding: 8px 12px; border: 1.5px solid #cbd5e1; border-radius: 6px;"
+                           onkeydown="if(event.key==='Enter') submitUserLogin();">
+                </div>
+
+                <div id="login-error-msg" style="display: none; background: #fef2f2; border: 1px solid #fecaca; border-radius: 6px; padding: 8px 12px; color: #b91c1c; font-size: 12.5px; font-weight: 600; margin-bottom: 12px;">
+                    ❌ ชื่อผู้ใช้หรือรหัสผ่านไม่ถูกต้อง
+                </div>
+
+                <div style="display: flex; gap: 8px; justify-content: flex-end;">
+                    <button type="button" class="btn btn-outline" onclick="closeLoginModal()">ยกเลิก</button>
+                    <button type="button" class="btn btn-primary" onclick="submitUserLogin()" style="background: #1e40af; color: #ffffff; padding: 6px 18px; font-weight: 700;">
+                        เข้าสู่ระบบ ➔
+                    </button>
                 </div>
             </div>
         </div>
