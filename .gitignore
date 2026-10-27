@@ -10,4 +10,6 @@ mock_cases_300.json
 preview_mock_dashboard.html
 generate_mock_*.py
 test_complete_case_schema.js
+gps_master_data.js
+
 

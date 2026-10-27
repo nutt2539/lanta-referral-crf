@@ -66,11 +66,14 @@ def get_form4_html():
             <tr>
                 <td style="width: 25%; font-weight: 700; background: #f8fafc;">เลขที่เวชระเบียน รพ.กระบี่ (HN)</td>
                 <td style="width: 25%;"><input type="text" id="f4_krabi_hn" placeholder="HN รพ.กระบี่"></td>
-                <td style="width: 25%; font-weight: 700; background: #f8fafc;">เวลาถึง ER รพ.กระบี่ (T4)</td>
+                <td style="width: 25%; font-weight: 700; background: #f8fafc;">
+                    เวลาถึง ER รพ.กระบี่ (T4)
+                    <div style="font-size: 11px; color: #0284c7; font-weight: 600; margin-top: 2px;">🔗 ดึงข้อมูลอัตโนมัติจาก Form 2</div>
+                </td>
                 <td style="width: 25%;">
                     <div style="display: flex; gap: 6px; align-items: center;">
-                        <span>วันที่:</span><input type="date" id="f4_t4_date" onchange="syncT4_fromF4(); calcForm4Timelines();" style="width: 125px;">
-                        <span>เวลา:</span><input type="time" id="f4_t4_time" onchange="syncT4_fromF4(); calcForm4Timelines();" oninput="syncT4_fromF4(); calcForm4Timelines();"><span>น.</span>
+                        <span>วันที่:</span><input type="date" id="f4_t4_date" onchange="syncT4_fromF4(); calcForm4Timelines();" oninput="syncT4_fromF4(); calcForm4Timelines();" style="width: 125px; background: #f0fdf4; border-color: #86efac;" title="เชื่อมโยงอัตโนมัติกับ Form 2 (T4)">
+                        <span>เวลา:</span><input type="time" id="f4_t4_time" onchange="syncT4_fromF4(); calcForm4Timelines();" oninput="syncT4_fromF4(); calcForm4Timelines();" style="background: #f0fdf4; border-color: #86efac;" title="เชื่อมโยงอัตโนมัติกับ Form 2 (T4)"><span>น.</span>
                     </div>
                 </td>
             </tr>
@@ -208,10 +211,15 @@ def get_form4_html():
                         </div>
                     </td>
                     <td id="f4_cell_stroke_lbl" style="font-weight: 700; background: #f8fafc;">
-                        Stroke GCS Consciousness
+                        Stroke Acuity & Consciousness
                         <div style="font-size: 11px; color: #7c3aed; font-weight: normal;">(เฉพาะผู้ป่วย Stroke)</div>
                     </td>
                     <td id="f4_cell_stroke_val">
+                        <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 6px;">
+                            <span style="font-weight: 600;">NIHSS แรกรับ รพ.กระบี่:</span>
+                            <input type="number" id="f4_stroke_nihss" min="0" max="42" placeholder="0-42" style="width: 80px; text-align: center;" oninput="calcDeltaNIHSS()">
+                            <span style="font-size: 12px; color: #64748b;">(0–42 คะแนน)</span>
+                        </div>
                         <div class="check-group">
                             <label class="form-check"><input type="radio" name="f4_stroke_gcs" id="f4_stroke_gcs_1" value="severe"> GCS 3–8 (Severe Coma)</label>
                             <label class="form-check"><input type="radio" name="f4_stroke_gcs" id="f4_stroke_gcs_2" value="moderate"> GCS 9–12 (Moderate)</label>
@@ -287,6 +295,25 @@ def get_form4_html():
                         <div class="check-group">
                             <label class="form-check"><input type="radio" name="f4_eval_gcs" id="f4_gcs_stable" value="stable"> คงที่ / ดีขึ้น</label>
                             <label class="form-check"><input type="radio" name="f4_eval_gcs" id="f4_gcs_deter" value="deter"> ทรุดหนัก (ΔGCS &lt;= -2)</label>
+                        </div>
+                    </td>
+                </tr>
+                <tr id="f4_row_delta_nihss" class="disease-specific-row" data-disease="ais">
+                    <td style="font-weight: 700; background: #f8fafc;">
+                        ΔNIHSS (Stroke Neurological Status)
+                        <div style="font-size: 11px; color: #7c3aed; font-weight: normal;">(คำนวณเฉพาะผู้ป่วย Stroke)</div>
+                    </td>
+                    <td>NIHSS_Krabi - NIHSS_Lanta</td>
+                    <td class="td-center">
+                        <div style="display: flex; align-items: center; justify-content: center; gap: 4px;">
+                            <input type="text" id="f4_delta_nihss" class="input-calc" style="width: 70px; text-align: center;" readonly placeholder="--">
+                            <span>คะแนน</span>
+                        </div>
+                    </td>
+                    <td>
+                        <div class="check-group">
+                            <label class="form-check"><input type="radio" name="f4_eval_nihss" id="f4_nihss_stable" value="stable"> คงที่ / ดีขึ้น (ΔNIHSS &lt; +2)</label>
+                            <label class="form-check"><input type="radio" name="f4_eval_nihss" id="f4_nihss_deter" value="deter"> ทรุดหนัก (Early Neurological Deterioration: ΔNIHSS &gt;= +2)</label>
                         </div>
                     </td>
                 </tr>
@@ -382,12 +409,12 @@ def get_form4_html():
             <tr>
                 <td style="width: 32%; font-weight: 700; background: #f8fafc;">
                     <div>วันและเวลาเริ่มทำหัตถการรักษาจำเพาะ (T5)</div>
-                    <div style="font-size: 11px; color: #2563eb; font-weight: normal;">(🔗 ลิ้งค์ข้อมูลอัตโนมัติกับ Form 2: T5 Definitive Management)</div>
+                    <div style="font-size: 11px; color: #0284c7; font-weight: 600; margin-top: 2px;">🔗 ลิ้งค์ข้อมูลอัตโนมัติกับ Form 2: T5 Definitive Management</div>
                 </td>
                 <td style="width: 68%;">
                     <div style="display: flex; gap: 10px; align-items: center;">
-                        <span>วันที่:</span><input type="date" id="f4_t5_date" onchange="syncT5_fromF4();" oninput="syncT5_fromF4();" style="width: 125px;">
-                        <span>เวลา:</span><input type="time" id="f4_t5_time" onchange="syncT5_fromF4();" oninput="syncT5_fromF4();"><span>น.</span>
+                        <span>วันที่:</span><input type="date" id="f4_t5_date" onchange="syncT5_fromF4();" oninput="syncT5_fromF4();" style="width: 125px; background: #f0fdf4; border-color: #86efac;" title="เชื่อมโยงอัตโนมัติกับ Form 2 (T5)">
+                        <span>เวลา:</span><input type="time" id="f4_t5_time" onchange="syncT5_fromF4();" oninput="syncT5_fromF4();" style="background: #f0fdf4; border-color: #86efac;" title="เชื่อมโยงอัตโนมัติกับ Form 2 (T5)"><span>น.</span>
                     </div>
                 </td>
             </tr>

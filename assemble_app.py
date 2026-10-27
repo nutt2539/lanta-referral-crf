@@ -11,6 +11,7 @@ from build_form2 import get_form2_html
 from build_form3 import get_form3_html
 from build_form4 import get_form4_html
 from build_admin_dashboard import get_admin_dashboard_html, get_admin_dashboard_css
+from build_user_dashboard import get_user_dashboard_html, get_user_dashboard_css
 from build_js import get_js
 
 import re
@@ -26,7 +27,9 @@ def wrap_tables(content):
 def assemble():
     css_content = get_css()
     admin_css = get_admin_dashboard_css()
+    user_css = get_user_dashboard_css()
     admin_dashboard_html = get_admin_dashboard_html()
+    user_dashboard_html = get_user_dashboard_html()
     f1_html = wrap_tables(get_form1_html())
     f2_html = wrap_tables(get_form2_html())
     f3_html = wrap_tables(get_form3_html())
@@ -46,6 +49,7 @@ def assemble():
     <style>
 {css_content}
 {admin_css}
+{user_css}
     </style>
 </head>
 <body>
@@ -58,29 +62,32 @@ def assemble():
                 <p title="Timeliness, delay determinants, and early clinical outcomes of emergency transfers from an island district hospital to a mainland referral hospital: a retrospective cohort study">โครงการวิจัย: ความทันเวลา ปัจจัยกำหนดความล่าช้า และผลลัพธ์ทางคลินิกระยะแรกของการส่งต่อผู้ป่วยฉุกเฉินจากโรงพยาบาลชุมชนบนเกาะสู่โรงพยาบาลรับส่งต่อบนแผ่นดินใหญ่: การศึกษาตามรุ่นย้อนหลัง</p>
             </div>
             <div class="nav-actions">
-                <span id="save-status" class="save-status" style="display:none;">✓ บันทึกอัตโนมัติแล้ว</span>
-                <select id="case-selector" onchange="onCaseSelected(this)" style="width: 170px; padding: 5px 8px; font-weight: 600; font-size: 13px;">
+                <span id="save-status" class="save-status" style="display:none; font-size: 12px; padding: 3px 8px;">✓ บันทึกอัตโนมัติแล้ว</span>
+                <select id="case-selector" onchange="onCaseSelected(this)" style="width: 155px; padding: 4px 6px; font-weight: 600; font-size: 12.5px; border: 1.5px solid #cbd5e1; border-radius: 6px;">
                     <option value="">-- เคสที่บันทึกไว้ --</option>
                 </select>
-                <button type="button" class="btn btn-success" onclick="createNewCase()" title="สร้างเคสผู้ป่วยใหม่">
+                <button type="button" class="btn btn-success" onclick="createNewCase()" title="สร้างเคสผู้ป่วยใหม่" style="padding: 4px 10px; font-size: 13px;">
                     ➕ เคสใหม่
                 </button>
-                <button type="button" class="btn btn-blue" onclick="saveCurrentCase(false)" title="บันทึกข้อมูลเคสปัจจุบัน">
+                <button type="button" class="btn btn-blue" onclick="saveCurrentCase(false)" title="บันทึกข้อมูลเคสปัจจุบัน" style="padding: 4px 10px; font-size: 13px;">
                     💾 บันทึกเคส
                 </button>
-                <button type="button" class="btn btn-admin" onclick="openAdminDashboard()" title="เข้าสู่ระบบผู้ดูแลเพื่อดูสรุป ลบ หรือแก้ไขข้อมูลคนไข้ทั้งหมด">
+                <button type="button" id="btn-my-cases" class="btn" onclick="openMyCasesDashboard()" title="ดูสรุปและรายชื่อเคสที่ฉันสร้างไว้" style="background: #3b0764; color: #ffffff; padding: 4px 10px; font-size: 13px; font-weight: 600; border-radius: 6px;">
+                    📋 เคสของฉัน
+                </button>
+                <button type="button" id="btn-admin-dash" class="btn btn-admin" onclick="openAdminDashboard()" title="เข้าสู่ระบบผู้ดูแลเพื่อดูสรุป ลบ หรือแก้ไขข้อมูลคนไข้ทั้งหมด" style="padding: 4px 10px; font-size: 13px;">
                     🔐 Admin Dashboard
                 </button>
-                <div id="nav-user-container" style="display: flex; align-items: center; gap: 8px; margin-left: 6px; padding-left: 10px; border-left: 1.5px solid #cbd5e1; flex-shrink: 0;">
-                    <div id="nav-user-info" style="display: none; align-items: center; gap: 6px; font-size: 13px; color: #1e293b; background: #f8fafc; border: 1px solid #cbd5e1; padding: 4px 10px; border-radius: 6px; box-shadow: 0 1px 2px rgba(0,0,0,0.05);">
-                        <span style="font-size: 14px;">👤</span>
-                        <span id="nav-user-fullname" style="font-weight: 700; color: #0f172a; max-width: 160px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">-</span>
-                        <span id="nav-user-badge" style="font-size: 10.5px; padding: 1.5px 7px; border-radius: 999px; background: #2563eb; color: #ffffff; font-weight: 700;">ผู้สกัดข้อมูล</span>
+                <div id="nav-user-container" style="display: inline-flex; align-items: center; gap: 6px; margin-left: 4px; padding-left: 8px; border-left: 1.5px solid #cbd5e1; flex-shrink: 0;">
+                    <div id="nav-user-info" style="display: none; align-items: center; gap: 6px; font-size: 12.5px; color: #1e293b; background: #f8fafc; border: 1px solid #cbd5e1; padding: 3px 8px; border-radius: 6px; box-shadow: 0 1px 2px rgba(0,0,0,0.05);">
+                        <span style="font-size: 13px;">👤</span>
+                        <span id="nav-user-fullname" style="font-weight: 700; color: #0f172a; max-width: 130px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">-</span>
+                        <span id="nav-user-badge" style="font-size: 10px; padding: 1px 6px; border-radius: 999px; background: #2563eb; color: #ffffff; font-weight: 700;">ผู้สกัดข้อมูล</span>
                     </div>
-                    <button type="button" id="btn-login" class="btn btn-primary" onclick="openLoginModal()" style="font-size: 13px; padding: 5px 14px; background: #1e40af; color: #ffffff; border: 1px solid #1d4ed8; font-weight: 700; border-radius: 6px;" title="เข้าสู่ระบบเพื่อบันทึกข้อมูล">
+                    <button type="button" id="btn-login" class="btn btn-primary" onclick="openLoginModal()" style="font-size: 12.5px; padding: 4px 12px; background: #1e40af; color: #ffffff; border: 1px solid #1d4ed8; font-weight: 700; border-radius: 6px;" title="เข้าสู่ระบบเพื่อบันทึกข้อมูล">
                         🔑 เข้าสู่ระบบ
                     </button>
-                    <button type="button" id="btn-logout" class="btn" onclick="logoutUser()" style="display: none; font-size: 12px; padding: 4px 10px; color: #b91c1c; border: 1px solid #fecdd3; background: #fff1f2; font-weight: 600; border-radius: 6px;" title="ออกจากระบบ">
+                    <button type="button" id="btn-logout" class="btn" onclick="logoutUser()" style="display: none; font-size: 12px; padding: 3px 8px; color: #b91c1c; border: 1px solid #fecdd3; background: #fff1f2; font-weight: 600; border-radius: 6px;" title="ออกจากระบบ">
                         🚪 ออกจากระบบ
                     </button>
                 </div>
@@ -129,6 +136,26 @@ def assemble():
             <button type="button" class="btn btn-blue" onclick="openLoginModal()" style="padding: 6px 18px; font-size: 13.5px; font-weight: 700;">
                 🔑 เข้าสู่ระบบทันที (Sign In)
             </button>
+        </div>
+
+        <!-- Standby / No Case Selected Banner (Shown when user is logged in but has not chosen or created a case) -->
+        <div id="case-standby-banner" style="display: none; background: #f0fdf4; border: 2px dashed #22c55e; border-radius: 8px; padding: 20px 24px; margin-bottom: 18px; text-align: center; box-shadow: 0 2px 8px rgba(34, 197, 94, 0.08);">
+            <div style="font-size: 28px; margin-bottom: 4px;">📋</div>
+            <div style="font-size: 16.5px; font-weight: 800; color: #15803d; margin-bottom: 6px;">
+                ระบบพร้อมใช้งาน: ยังไม่ได้เลือกหรือสร้างเคสผู้ป่วย
+            </div>
+            <div style="font-size: 13.5px; color: #166534; line-height: 1.6; margin-bottom: 14px;">
+                คุณได้เข้าสู่ระบบเรียบร้อยแล้ว (ระบบจะไม่สร้างเคสใหม่อัตโนมัติ)<br>
+                กรุณากดปุ่ม <b>"➕ เคสใหม่"</b> เพื่อเริ่มบันทึกเคสใหม่ หรือเลือกเคสเดิมจากเมนู <b>"เคสที่บันทึกไว้"</b> ด้านบน
+            </div>
+            <div style="display: flex; gap: 10px; justify-content: center; align-items: center; flex-wrap: wrap;">
+                <button type="button" class="btn btn-success" onclick="createNewCase()" style="padding: 7px 22px; font-size: 14px; font-weight: 700; box-shadow: 0 2px 6px rgba(22, 163, 74, 0.25);">
+                    ➕ เริ่มต้นสร้างเคสใหม่
+                </button>
+                <button type="button" class="btn" onclick="openMyCasesDashboard()" style="background: #3b0764; color: #ffffff; padding: 7px 18px; font-size: 13.5px; font-weight: 700; border-radius: 6px; box-shadow: 0 2px 6px rgba(59, 7, 100, 0.25);">
+                    📋 ดูรายชื่อเคสที่ฉันสร้างไว้
+                </button>
+            </div>
         </div>
 
         <form id="crf-master-form" onsubmit="return false;">
@@ -271,6 +298,7 @@ def assemble():
         </div>
     </div>
 
+{user_dashboard_html}
 {admin_dashboard_html}
 
     <!-- SheetJS for Offline Excel Export & Online CDN Fallback -->

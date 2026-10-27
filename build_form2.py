@@ -64,8 +64,25 @@ def get_form2_html():
         <!-- Table 2: Ambulance Details -->
         <table class="crf-table">
             <tr>
-                <td style="width: 25%; font-weight: 700; background: #f8fafc;">หมายเลขทะเบียนรถพยาบาล</td>
-                <td style="width: 25%;"><input type="text" id="f2_amb_plate" placeholder="เช่น นข 1234 กระบี่"></td>
+                <td style="width: 25%; font-weight: 700; background: #f8fafc;">
+                    หมายเลขทะเบียนรถพยาบาล
+                    <div style="font-size: 11px; color: #64748b; font-weight: normal;">(รถพยาบาลฉุกเฉิน รพ.เกาะลันตา)</div>
+                </td>
+                <td style="width: 25%;">
+                    <div style="display: flex; flex-direction: column; gap: 4px;">
+                        <select id="f2_amb_plate" onchange="toggleCustomPlate(this)" style="width: 100%; padding: 5px 8px; font-weight: 600; font-size: 13px; border: 1.5px solid #cbd5e1; border-radius: 6px; background-color: #ffffff;">
+                            <option value="">-- เลือกรถพยาบาล (5 คัน) --</option>
+                            <option value="กน-5271">กน-5271 (ALS 1)</option>
+                            <option value="กน8725">กน8725 (ALS 2)</option>
+                            <option value="กท1504">กท1504 (ALS 3)</option>
+                            <option value="กต5829">กต5829 (ALS 4)</option>
+                            <option value="กม8945">กม8945 (ALS 5)</option>
+                            <option value="other">✍️ ระบุทะเบียนอื่นเอง...</option>
+                        </select>
+                        <input type="text" id="f2_amb_plate_custom" placeholder="พิมพ์ทะเบียนรถ เช่น นข 1234 กระบี่" 
+                               style="display: none; width: 100%; padding: 5px 8px; font-size: 12.5px; border: 1.5px solid #3b82f6; border-radius: 6px; margin-top: 2px;">
+                    </div>
+                </td>
                 <td style="width: 25%; font-weight: 700; background: #f8fafc;">พยาบาลผู้ดูแล (Escort RN)</td>
                 <td style="width: 25%;"><input type="text" id="f2_escort_rn" placeholder="ชื่อ-สกุล พยาบาล"></td>
             </tr>
@@ -134,11 +151,14 @@ def get_form2_html():
                 </tr>
                 <tr>
                     <td class="td-center" style="font-weight: 700; background: #eff6ff;">T3</td>
-                    <td>ล้อรถเคลื่อนขึ้นบนแพขนานยนต์ (Embark Ro-Ro Ferry)</td>
+                    <td>
+                        <div>ล้อรถเคลื่อนขึ้นบนแพขนานยนต์ (Embark Ro-Ro Ferry)</div>
+                        <div style="font-size: 11px; color: #0284c7; font-weight: 600; margin-top: 2px;">🔗 ลิ้งค์ข้อมูลอัตโนมัติกับ Form 3 (T3 ข้ามฟาก)</div>
+                    </td>
                     <td>
                         <div style="display: flex; gap: 6px; align-items: center;">
-                            <span>วันที่:</span><input type="date" id="f2_t3_embark_date" onchange="calcForm2Timelines();" style="width: 125px;">
-                            <span>เวลา:</span><input type="time" id="f2_t3_embark_time" onchange="calcForm2Timelines();"><span>น.</span>
+                            <span>วันที่:</span><input type="date" id="f2_t3_embark_date" onchange="syncT3_fromF2();" oninput="syncT3_fromF2();" style="width: 125px; background: #f0fdf4; border-color: #86efac;" title="เชื่อมโยงอัตโนมัติกับ Form 3">
+                            <span>เวลา:</span><input type="time" id="f2_t3_embark_time" onchange="syncT3_fromF2();" oninput="syncT3_fromF2();" style="background: #f0fdf4; border-color: #86efac;" title="เชื่อมโยงอัตโนมัติกับ Form 3"><span>น.</span>
                         </div>
                     </td>
                     <td>บันทึกพยาบาล / GPS</td>
@@ -148,19 +168,22 @@ def get_form2_html():
                     <td>ล้อรถแตะพื้นฝั่งแผ่นดินใหญ่ ท่าบ้านหัวหิน (Disembark Port)</td>
                     <td>
                         <div style="display: flex; gap: 6px; align-items: center;">
-                            <span>วันที่:</span><input type="date" id="f2_t3_disembark_date" onchange="calcForm2Timelines();" style="width: 125px;">
-                            <span>เวลา:</span><input type="time" id="f2_t3_disembark_time" onchange="calcForm2Timelines();"><span>น.</span>
+                            <span>วันที่:</span><input type="date" id="f2_t3_disembark_date" onchange="calcForm2Timelines();" oninput="calcForm2Timelines();" style="width: 125px;">
+                            <span>เวลา:</span><input type="time" id="f2_t3_disembark_time" onchange="calcForm2Timelines();" oninput="calcForm2Timelines();"><span>น.</span>
                         </div>
                     </td>
                     <td>บันทึกพยาบาล / GPS</td>
                 </tr>
                 <tr>
                     <td class="td-center" style="font-weight: 700; background: #eff6ff;">T4</td>
-                    <td>ผู้ป่วย ER รพ.กระบี่ (Krabi Hospital ER Door)</td>
+                    <td>
+                        <div>ผู้ป่วย ER รพ.กระบี่ (Krabi Hospital ER Door)</div>
+                        <div style="font-size: 11px; color: #0284c7; font-weight: 600; margin-top: 2px;">🔗 ลิ้งค์ข้อมูลอัตโนมัติกับ Form 4 (เวลาถึง ER)</div>
+                    </td>
                     <td>
                         <div style="display: flex; gap: 6px; align-items: center;">
-                            <span>วันที่:</span><input type="date" id="f2_t4_date" onchange="syncT4(); calcForm2Timelines(); calcForm4Timelines();" style="width: 125px;">
-                            <span>เวลา:</span><input type="time" id="f2_t4_time" onchange="syncT4(); calcForm2Timelines(); calcForm4Timelines();" oninput="syncT4(); calcForm2Timelines(); calcForm4Timelines();"><span>น.</span>
+                            <span>วันที่:</span><input type="date" id="f2_t4_date" onchange="syncT4();" oninput="syncT4();" style="width: 125px; background: #f0fdf4; border-color: #86efac;" title="เชื่อมโยงอัตโนมัติกับ Form 4">
+                            <span>เวลา:</span><input type="time" id="f2_t4_time" onchange="syncT4();" oninput="syncT4();" style="background: #f0fdf4; border-color: #86efac;" title="เชื่อมโยงอัตโนมัติกับ Form 4"><span>น.</span>
                         </div>
                     </td>
                     <td>EMR รพ.กระบี่ / GPS</td>
@@ -173,8 +196,8 @@ def get_form2_html():
                     </td>
                     <td>
                         <div style="display: flex; gap: 6px; align-items: center;">
-                            <span>วันที่:</span><input type="date" id="f2_t5_date" onchange="syncT5();" oninput="syncT5();" style="width: 125px;">
-                            <span>เวลา:</span><input type="time" id="f2_t5_time" onchange="syncT5();" oninput="syncT5();"><span>น.</span>
+                            <span>วันที่:</span><input type="date" id="f2_t5_date" onchange="syncT5();" oninput="syncT5();" style="width: 125px; background: #f0fdf4; border-color: #86efac;" title="เชื่อมโยงอัตโนมัติกับ Form 4">
+                            <span>เวลา:</span><input type="time" id="f2_t5_time" onchange="syncT5();" oninput="syncT5();" style="background: #f0fdf4; border-color: #86efac;" title="เชื่อมโยงอัตโนมัติกับ Form 4"><span>น.</span>
                         </div>
                     </td>
                     <td>EMR รพ.กระบี่</td>
@@ -361,19 +384,27 @@ def get_form2_html():
             <thead>
                 <tr>
                     <th style="width: 25%;">จุดสังเกตการณ์ (Location)</th>
-                    <th style="width: 10%; text-align: center;">เวลา (น.)</th>
+                    <th style="width: 12%; text-align: center;">เวลา (น.)<br><span style="font-size: 10px; font-weight: normal; color: #0284c7;">(🔗 ดึงออโต้)</span></th>
                     <th style="width: 13%; text-align: center;">BP (mmHg)</th>
                     <th style="width: 9%; text-align: center;">HR (bpm)</th>
                     <th style="width: 8%; text-align: center;">RR (/min)</th>
-                    <th style="width: 8%; text-align: center;">BT (°C)</th>
-                    <th style="width: 8%; text-align: center;">O2Sat (%)</th>
+                    <th style="width: 7%; text-align: center;">BT (°C)</th>
+                    <th style="width: 7%; text-align: center;">O2Sat (%)</th>
                     <th style="width: 19%;">GCS / อาการ</th>
                 </tr>
             </thead>
             <tbody>
                 <tr>
-                    <td style="font-weight: 600;">1. ทางหลวงบนเกาะ (ก่อนลงแพ)</td>
-                    <td><input type="time" id="f2_mon1_time"></td>
+                    <td>
+                        <div style="font-weight: 600;">1. ทางหลวงบนเกาะ (ก่อนลงแพ)</div>
+                        <div style="font-size: 11px; color: #0284c7;">(🔗 ดึงกึ่งกลาง T1–T2)</div>
+                    </td>
+                    <td>
+                        <input type="time" id="f2_mon1_time" style="background: #f0fdf4; border-color: #86efac;" 
+                               title="ดึงออโต้จากหมวด 1 (กึ่งกลางเส้นทาง T1–T2) สามารถคลิกแก้ไขได้" 
+                               oninput="this.dataset.manual = this.value ? 'true' : ''; scheduleAutoSave();" 
+                               onchange="this.dataset.manual = this.value ? 'true' : ''; scheduleAutoSave();">
+                    </td>
                     <td>
                         <div style="display: flex; align-items: center; gap: 2px;">
                             <input type="number" id="f2_mon1_sbp" style="width: 45px;" placeholder="SBP">/
@@ -390,8 +421,16 @@ def get_form2_html():
                     </td>
                 </tr>
                 <tr>
-                    <td style="font-weight: 600;">2. บนแพขนานยนต์ (กลางน้ำ)</td>
-                    <td><input type="time" id="f2_mon2_time"></td>
+                    <td>
+                        <div style="font-weight: 600;">2. บนแพขนานยนต์ (กลางน้ำ)</div>
+                        <div style="font-size: 11px; color: #0284c7;">(🔗 ดึงกึ่งกลาง T3 ข้ามแพ)</div>
+                    </td>
+                    <td>
+                        <input type="time" id="f2_mon2_time" style="background: #f0fdf4; border-color: #86efac;" 
+                               title="ดึงออโต้จากหมวด 1 (กึ่งกลางช่วงข้ามแพ T3) สามารถคลิกแก้ไขได้" 
+                               oninput="this.dataset.manual = this.value ? 'true' : ''; scheduleAutoSave();" 
+                               onchange="this.dataset.manual = this.value ? 'true' : ''; scheduleAutoSave();">
+                    </td>
                     <td>
                         <div style="display: flex; align-items: center; gap: 2px;">
                             <input type="number" id="f2_mon2_sbp" style="width: 45px;" placeholder="SBP">/
@@ -408,8 +447,16 @@ def get_form2_html():
                     </td>
                 </tr>
                 <tr>
-                    <td style="font-weight: 600;">3. ทางหลวงแผ่นดิน (กม. 35)</td>
-                    <td><input type="time" id="f2_mon3_time"></td>
+                    <td>
+                        <div style="font-weight: 600;">3. ทางหลวงแผ่นดิน (กม. 35)</div>
+                        <div style="font-size: 11px; color: #0284c7;">(🔗 ดึงกึ่งกลาง T3–T4)</div>
+                    </td>
+                    <td>
+                        <input type="time" id="f2_mon3_time" style="background: #f0fdf4; border-color: #86efac;" 
+                               title="ดึงออโต้จากหมวด 1 (กึ่งกลางทางหลวง กม. 35) สามารถคลิกแก้ไขได้" 
+                               oninput="this.dataset.manual = this.value ? 'true' : ''; scheduleAutoSave();" 
+                               onchange="this.dataset.manual = this.value ? 'true' : ''; scheduleAutoSave();">
+                    </td>
                     <td>
                         <div style="display: flex; align-items: center; gap: 2px;">
                             <input type="number" id="f2_mon3_sbp" style="width: 45px;" placeholder="SBP">/
@@ -426,8 +473,16 @@ def get_form2_html():
                     </td>
                 </tr>
                 <tr>
-                    <td style="font-weight: 600;">4. หน้า ER รพ.กระบี่ (T4)</td>
-                    <td><input type="time" id="f2_mon4_time"></td>
+                    <td>
+                        <div style="font-weight: 600;">4. หน้า ER รพ.กระบี่ (T4)</div>
+                        <div style="font-size: 11px; color: #0284c7;">(🔗 ดึงเวลา T4)</div>
+                    </td>
+                    <td>
+                        <input type="time" id="f2_mon4_time" style="background: #f0fdf4; border-color: #86efac;" 
+                               title="ดึงออโต้จากหมวด 1 (เวลาถึงหน้า ER รพ.กระบี่ T4) สามารถคลิกแก้ไขได้" 
+                               oninput="this.dataset.manual = this.value ? 'true' : ''; scheduleAutoSave();" 
+                               onchange="this.dataset.manual = this.value ? 'true' : ''; scheduleAutoSave();">
+                    </td>
                     <td>
                         <div style="display: flex; align-items: center; gap: 2px;">
                             <input type="number" id="f2_mon4_sbp" style="width: 45px;" placeholder="SBP">/
@@ -444,8 +499,16 @@ def get_form2_html():
                     </td>
                 </tr>
                 <tr>
-                    <td style="font-weight: 600;">5. ER รพ.กระบี่ (T5)</td>
-                    <td><input type="time" id="f2_mon5_time"></td>
+                    <td>
+                        <div style="font-weight: 600;">5. ER รพ.กระบี่ (T5)</div>
+                        <div style="font-size: 11px; color: #0284c7;">(🔗 ดึงเวลา T5)</div>
+                    </td>
+                    <td>
+                        <input type="time" id="f2_mon5_time" style="background: #f0fdf4; border-color: #86efac;" 
+                               title="ดึงออโต้จากหมวด 1 (เวลา Definitive Management T5) สามารถคลิกแก้ไขได้" 
+                               oninput="this.dataset.manual = this.value ? 'true' : ''; scheduleAutoSave();" 
+                               onchange="this.dataset.manual = this.value ? 'true' : ''; scheduleAutoSave();">
+                    </td>
                     <td>
                         <div style="display: flex; align-items: center; gap: 2px;">
                             <input type="number" id="f2_mon5_sbp" style="width: 45px;" placeholder="SBP">/

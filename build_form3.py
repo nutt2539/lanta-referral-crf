@@ -66,16 +66,16 @@ def get_form3_html():
         <table class="crf-table">
             <tr>
                 <td style="width: 25%; font-weight: 700; background: #f8fafc;">
-                    <div>วันและเวลาข้ามฟาก</div>
-                    <div>(T3)</div>
+                    <div>วันและเวลาข้ามฟาก (T3)</div>
+                    <div style="font-size: 11px; color: #0284c7; font-weight: 600; margin-top: 2px;">🔗 ดึงข้อมูลอัตโนมัติจาก Form 2</div>
                 </td>
                 <td style="width: 25%;">
                     <div style="display: flex; flex-direction: column; gap: 4px;">
                         <div style="display: flex; align-items: center; gap: 4px;">
-                            <span>วันที่:</span><input type="date" id="f3_t3_date" onchange="calcForm3();" style="width: 125px;">
+                            <span>วันที่:</span><input type="date" id="f3_t3_date" onchange="syncT3_fromF3(); calcForm3();" oninput="syncT3_fromF3(); calcForm3();" style="width: 125px; background: #f0fdf4; border-color: #86efac;" title="เชื่อมโยงอัตโนมัติกับ Form 2 (T3 embark)">
                         </div>
                         <div style="display: flex; align-items: center; gap: 4px;">
-                            <span>เวลา:</span><input type="time" id="f3_t3_time" onchange="calcForm3();"><span>น.</span>
+                            <span>เวลา:</span><input type="time" id="f3_t3_time" onchange="syncT3_fromF3(); calcForm3();" oninput="syncT3_fromF3(); calcForm3();" style="background: #f0fdf4; border-color: #86efac;" title="เชื่อมโยงอัตโนมัติกับ Form 2 (T3 embark)"><span>น.</span>
                         </div>
                     </div>
                 </td>

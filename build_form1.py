@@ -29,6 +29,16 @@ def get_form1_html():
                 </td>
             </tr>
             <tr>
+                <td style="font-weight: 700; background: #f8fafc;">ชื่อ-นามสกุลผู้ป่วย (Patient Name)</td>
+                <td>
+                    <input type="text" id="f1_pt_name" placeholder="ระบุชื่อ-นามสกุลผู้ป่วย (ถ้ามี)" style="width: 95%;">
+                </td>
+                <td style="font-weight: 700; background: #f8fafc;">วันที่ส่งต่อ (Referral Date)</td>
+                <td>
+                    <input type="date" id="f1_refer_date" style="width: 130px;" onchange="const t1 = document.getElementById('f1_t1_date'); if(t1 && !t1.value) { t1.value = this.value; syncT1(); }">
+                </td>
+            </tr>
+            <tr>
                 <td style="font-weight: 700; background: #f8fafc;">เลขประจำตัวผู้ป่วย (HN / VN เกาะลันตา)</td>
                 <td>
                     <div style="display: flex; gap: 6px; align-items: center;">
@@ -341,14 +351,33 @@ def get_form1_html():
                     </td>
                 </tr>
                 <tr>
-                    <td style="font-weight: 700; background: #f8fafc;">เวลาถึง ER เกาะลันตา (T0)</td>
+                    <td style="font-weight: 700; background: #f8fafc; vertical-align: top;">
+                        <div>ปัจจัยเสี่ยงทางคลินิกและพฤติกรรมสุขภาพเพิ่มเติม</div>
+                        <div style="font-size: 11.5px; color: #64748b; font-weight: normal; margin-top: 3px;">(ไม่อยู่ในสูตรคำนวณคะแนน CCI แต่ใช้เป็นตัวแปรต้นทางในโมเดล 1–3)</div>
+                    </td>
+                    <td colspan="3" style="background: #ffffff; padding: 12px 14px;">
+                        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 10px 18px;">
+                            <label class="form-check"><input type="checkbox" id="f1_rf_htn"> ความดันโลหิตสูง (Hypertension: HTN)</label>
+                            <label class="form-check"><input type="checkbox" id="f1_rf_dlp"> ไขมันในเลือดสูง (Dyslipidemia: DLP)</label>
+                            <label class="form-check"><input type="checkbox" id="f1_rf_smoking"> สูบบุหรี่ปัจจุบัน (Current Smoking)</label>
+                            <label class="form-check"><input type="checkbox" id="f1_rf_af"> หัวใจเต้นพลิ้ว (Atrial Fibrillation: AF)</label>
+                            <label class="form-check"><input type="checkbox" id="f1_rf_cad"> ประวัติหลอดเลือดหัวใจเดิม (Prior CAD / PCI / CABG)</label>
+                            <label class="form-check"><input type="checkbox" id="f1_rf_alcohol"> ภาวะมึนเมาแอลกอฮอล์หรือสารเสพติด (Alcohol / Substance Intoxication)</label>
+                        </div>
+                    </td>
+                </tr>
+                <tr>
+                    <td style="font-weight: 700; background: #f8fafc;">
+                        <div>เวลาถึง ER เกาะลันตา (T0)</div>
+                        <div style="font-size: 11px; color: #0284c7; font-weight: normal; margin-top: 2px;">🔗 เชื่อมโยงอัตโนมัติกับ Form 2</div>
+                    </td>
                     <td>
                         <div style="display: flex; flex-direction: column; gap: 4px;">
                             <div style="display: flex; align-items: center; gap: 4px;">
-                                <span>วันที่:</span><input type="date" id="f1_t0_date" onchange="syncT0(); calcTimelines();" oninput="syncT0(); calcTimelines();">
+                                <span>วันที่:</span><input type="date" id="f1_t0_date" onchange="syncT0(); calcTimelines();" oninput="syncT0(); calcTimelines();" style="background: #f0fdf4; border-color: #86efac;" title="เชื่อมโยงอัตโนมัติกับ Form 2 (T0)">
                             </div>
                             <div style="display: flex; align-items: center; gap: 4px;">
-                                <span>เวลา:</span><input type="time" id="f1_t0_time" onchange="syncT0(); calcTimelines();" oninput="syncT0(); calcTimelines();"><span>น.</span>
+                                <span>เวลา:</span><input type="time" id="f1_t0_time" onchange="syncT0(); calcTimelines();" oninput="syncT0(); calcTimelines();" style="background: #f0fdf4; border-color: #86efac;" title="เชื่อมโยงอัตโนมัติกับ Form 2 (T0)"><span>น.</span>
                             </div>
                         </div>
                     </td>
@@ -364,6 +393,11 @@ def get_form1_html():
                             </div>
                             <div style="display: flex; align-items: center; gap: 4px;">
                                 <span>เวลา(โดยประมาณ):</span><input type="time" id="f1_onset_time" onchange="calcTimelines();"><span>น.</span>
+                            </div>
+                            <div style="margin-top: 3px;">
+                                <label class="form-check" style="font-size: 12px; color: #475569;">
+                                    <input type="checkbox" id="f1_onset_wakeup"> ตื่นมาพบอาการ / ไม่ทราบเวลาเริ่มเป็นแน่ชัด (Wake-up Stroke / Unclear Onset: ระบุเป็น Last Known Well)
+                                </label>
                             </div>
                             <div style="display: flex; align-items: center; gap: 4px; margin-top: 4px;">
                                 <input type="text" id="f1_onset_to_er" class="input-calc" style="width: 90px; text-align: center;" readonly placeholder="--">
@@ -410,20 +444,30 @@ def get_form1_html():
             <tr id="sec3_row_stemi" class="disease-specific-row" data-disease="stemi">
                 <td style="width: 32%; font-weight: 700; background: #f8fafc;">1. STEMI / Acute Coronary Syndrome</td>
                 <td style="width: 68%;">
-                    <div style="font-weight: 600; margin-bottom: 4px;">ระดับความรุนแรงภาวะหัวใจวายแรกรับ (Killip Severity):</div>
-                    <div class="check-group">
+                    <div style="font-weight: 600; margin-bottom: 4px;">• ระดับความรุนแรงภาวะหัวใจวายแรกรับ (Killip Severity):</div>
+                    <div class="check-group" style="margin-left: 12px; margin-bottom: 10px;">
                         <label class="form-check"><input type="radio" name="f1_killip" value="1" onchange="calcDeltaKillip()"> Killip Class I (No heart failure)</label>
                         <label class="form-check"><input type="radio" name="f1_killip" value="2" onchange="calcDeltaKillip()"> Killip Class II (Rales, S3 gallop, Mild Pulmonary edema)</label>
                         <label class="form-check"><input type="radio" name="f1_killip" value="3" onchange="calcDeltaKillip()"> Killip Class III (Severe Pulmonary edema)</label>
                         <label class="form-check"><input type="radio" name="f1_killip" value="4" onchange="calcDeltaKillip()"> Killip Class IV (Cardiogenic shock, Hypoperfusion sign)</label>
+                    </div>
+                    <div style="font-weight: 600; margin-bottom: 4px;">• ภาวะหัวใจหยุดเต้นก่อนส่งต่อแต่กู้ชีพสำเร็จ (Pre-referral Cardiac Arrest with ROSC ณ รพ.เกาะลันตา):</div>
+                    <div class="check-row" style="margin-left: 12px;">
+                        <label class="form-check"><input type="radio" name="f1_stemi_rosc" value="0"> 0 = ไม่มีภาวะหัวใจหยุดเต้นก่อนส่งต่อ</label>
+                        <label class="form-check"><input type="radio" name="f1_stemi_rosc" value="1"> 1 = มีภาวะ Cardiac Arrest แต่ CPR ได้ ROSC ก่อนส่งต่อ</label>
                     </div>
                 </td>
             </tr>
             <tr id="sec3_row_ais" class="disease-specific-row" data-disease="ais">
                 <td style="font-weight: 700; background: #f8fafc;">2. Acute Stroke</td>
                 <td>
-                    <div style="font-weight: 600; margin-bottom: 4px;">ระดับความรู้สึกตัวแรกรับ (Stroke Consciousness / GCS):</div>
-                    <div class="check-group">
+                    <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 10px; flex-wrap: wrap;">
+                        <span style="font-weight: 600;">• คะแนน NIHSS แรกรับ ณ รพ.เกาะลันตา (0–42 คะแนน):</span>
+                        <input type="number" id="f1_stroke_nihss" min="0" max="42" placeholder="0-42" style="width: 80px; text-align: center;" oninput="calcDeltaNIHSS()">
+                        <span style="font-size: 12px; color: #64748b;">(ใช้คำนวณ Early Neurological Deterioration: ΔNIHSS)</span>
+                    </div>
+                    <div style="font-weight: 600; margin-bottom: 4px;">• ระดับความรู้สึกตัวแรกรับ (Stroke Consciousness / GCS):</div>
+                    <div class="check-group" style="margin-left: 12px;">
                         <label class="form-check"><input type="radio" name="f1_stroke_gcs" id="f1_stroke_gcs_1" value="severe"> GCS 3–8: Severe Coma (โคม่ารุนแรง)</label>
                         <label class="form-check"><input type="radio" name="f1_stroke_gcs" id="f1_stroke_gcs_2" value="moderate"> GCS 9–12: Moderate (ความรู้สึกตัวลดลงปานกลาง)</label>
                         <label class="form-check"><input type="radio" name="f1_stroke_gcs" id="f1_stroke_gcs_3" value="mild"> GCS 13–15: Mild (สับสนเล็กน้อยหรือรู้สึกตัวดี)</label>
@@ -436,13 +480,21 @@ def get_form1_html():
                     <div style="font-weight: 600;">• กลไกการบาดเจ็บ (Injury Mechanism):</div>
                     <div class="check-group" style="margin-left: 15px; margin-top: 3px; margin-bottom: 8px;">
                         <label class="form-check"><input type="checkbox" id="f1_trauma_mech1"> High-velocity traffic collision (อุบัติเหตุจราจรความเร็วสูง)</label>
-                        <label class="form-check"><input type="checkbox" id="f1_trauma_mech2"> Fall from height (ตกจากที่สูง)</label>
+                        <label class="form-check"><input type="checkbox" id="f1_trauma_mech2"> Fall from height (ตกจากที่สูง > 3 เมตร)</label>
                         <label class="form-check"><input type="checkbox" id="f1_trauma_mech3"> Penetrating trauma (บาดแผลถูกแทง/ยิง)</label>
                     </div>
                     <div style="font-weight: 600;">• คะแนนสรีรวิทยาการบาดเจ็บ (Physiological Trauma Acuity):</div>
-                    <div class="check-group" style="margin-left: 15px; margin-top: 3px;">
+                    <div class="check-group" style="margin-left: 15px; margin-top: 3px; margin-bottom: 8px;">
                         <label class="form-check"><input type="radio" name="f1_trauma_acuity" id="f1_trauma_acuity_crit" value="critical"> RTS &lt;= 6: Critical physiological acuity (วิกฤต)</label>
                         <label class="form-check"><input type="radio" name="f1_trauma_acuity" id="f1_trauma_acuity_mod" value="moderate"> RTS &gt; 6: Moderate physiological acuity (ปานกลาง)</label>
+                    </div>
+                    <div style="font-weight: 600;">• การประเมินการบาดเจ็บทางกายวิภาค (Anatomical Injury Severity & AIS Classification):</div>
+                    <div class="check-group" style="margin-left: 15px; margin-top: 3px;">
+                        <label class="form-check"><input type="checkbox" id="f1_trauma_ais_head"> บาดเจ็บศีรษะรุนแรง (Severe Head Injury: Head AIS ≥ 3 / Severe TBI / Skull fracture / Intracranial injury)</label>
+                        <label class="form-check"><input type="checkbox" id="f1_trauma_ais_torso"> บาดเจ็บรุนแรงในช่องอกหรือช่องท้อง (Severe Torso Injury: Chest/Abdominal AIS ≥ 3 / Organ laceration)</label>
+                        <label class="form-check"><input type="checkbox" id="f1_trauma_ais_pelvis"> กระดูกเชิงกรานหักชนิดไม่คงที่ (Unstable Pelvic Ring Fracture)</label>
+                        <label class="form-check"><input type="checkbox" id="f1_trauma_ais_hemo"> ภาวะลมหรือเลือดออกปริมาณมากในเยื่อหุ้มปอด (Tension / Massive Hemopneumothorax)</label>
+                        <label class="form-check"><input type="checkbox" id="f1_trauma_ais_poly"> บาดเจ็บรุนแรงหลายระบบ (Polytrauma: AIS ≥ 3 ใน ≥ 2 ระบบร่างกาย)</label>
                     </div>
                 </td>
             </tr>
@@ -594,9 +646,12 @@ def get_form1_html():
                         <label class="form-check"><input type="radio" name="f1_intubation" value="0" onchange="toggleIntubationDetails()"> ไม่ได้ใส่</label>
                         <label class="form-check"><input type="radio" name="f1_intubation" value="1" onchange="toggleIntubationDetails()"> ใส่ท่อช่วยหายใจตั้งแต่ รพ.เกาะลันตา</label>
                     </div>
-                    <div id="f1_ett_details_box" style="margin-left: 20px; margin-top: 6px; display: flex; align-items: center; gap: 8px; opacity: 0.35; pointer-events: none; transition: all 0.2s ease;">
+                    <div id="f1_ett_details_box" style="margin-left: 20px; margin-top: 6px; display: flex; align-items: center; gap: 8px; flex-wrap: wrap; opacity: 0.35; pointer-events: none; transition: all 0.2s ease;">
                         <span>(ETT No.</span><input type="text" id="f1_ett_no" style="width: 65px; background-color: #f1f5f9;" placeholder="เช่น 7.5" disabled>
                         <span>, เวลาใส่:</span><input type="time" id="f1_ett_time" style="background-color: #f1f5f9;" disabled><span>น.)</span>
+                        <label class="form-check" style="margin-left: 10px; font-weight: 600; color: #1e3a8a;">
+                            <input type="checkbox" id="f1_ett_ccollar" disabled> ดามกระดูกคอด้วย Hard C-collar
+                        </label>
                     </div>
                 </td>
             </tr>
@@ -613,17 +668,40 @@ def get_form1_html():
                     </div>
                 </td>
             </tr>
+            <tr>
+                <td style="font-weight: 700; background: #f8fafc;">
+                    การให้ยาลดความดันต่อเนื่อง (Pre-Transfer IV Nicardipine)
+                    <div style="font-size: 11px; color: #7c3aed; font-weight: normal;">(กรณี Severe HTN Emergency / Stroke SBP ≥ 185)</div>
+                </td>
+                <td>
+                    <div class="check-row">
+                        <label class="form-check"><input type="radio" name="f1_nicardipine" value="0" onchange="toggleNicardipineDetails()"> ไม่ได้รับ</label>
+                        <label class="form-check"><input type="radio" name="f1_nicardipine" value="1" onchange="toggleNicardipineDetails()"> ได้รับยา IV Nicardipine Infusion</label>
+                    </div>
+                    <div id="f1_nicardipine_details_box" style="margin-left: 20px; margin-top: 6px; display: flex; align-items: center; gap: 8px; opacity: 0.35; pointer-events: none; transition: all 0.2s ease;">
+                        <span>(อัตราหยดยา:</span><input type="text" id="f1_nicardipine_dose" style="width: 140px; background-color: #f1f5f9;" placeholder="เช่น 5 mg/hr" disabled><span>)</span>
+                    </div>
+                </td>
+            </tr>
             <tr id="sec6_row_trauma_resusc" class="disease-specific-row" data-disease="trauma">
                 <td style="font-weight: 700; background: #f8fafc;">
                     การกู้ชีพผู้ป่วยบาดเจ็บ (Trauma Resuscitation)
                     <div style="font-size: 11px; color: #dc2626; font-weight: normal;">(เฉพาะผู้ป่วย Trauma)</div>
                 </td>
                 <td>
-                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 6px;">
-                        <label class="form-check"><input type="checkbox" id="f1_resusc_txa"> ให้ยา Tranexamic Acid (TXA)</label>
-                        <label class="form-check"><input type="checkbox" id="f1_resusc_splint"> ดามกระดูก (Splinting)</label>
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 6px; margin-bottom: 8px;">
+                        <label class="form-check"><input type="checkbox" id="f1_resusc_txa"> ให้ยา Tranexamic Acid (TXA 1g IV)</label>
+                        <label class="form-check"><input type="checkbox" id="f1_resusc_splint"> ดามกระดูก / ดามเฝือก (Splinting)</label>
                         <label class="form-check"><input type="checkbox" id="f1_resusc_pelvic"> ใส่สายรัดเชิงกราน (Pelvic binder)</label>
                         <label class="form-check"><input type="checkbox" id="f1_resusc_icd"> ใส่ท่อระบายทรวงอก (Chest Tube)</label>
+                    </div>
+                    <div style="border-top: 1px dashed #cbd5e1; padding-top: 6px; display: flex; align-items: center; gap: 10px; flex-wrap: wrap;">
+                        <span style="font-weight: 600;">• ปริมาณสารน้ำ Crystalloid IV Fluid ที่ได้รับก่อนส่งต่อ:</span>
+                        <div class="check-row">
+                            <label class="form-check"><input type="radio" name="f1_resusc_fluid" value="0"> &le; 1,000 mL</label>
+                            <label class="form-check"><input type="radio" name="f1_resusc_fluid" value="1"> 1,001–2,000 mL</label>
+                            <label class="form-check"><input type="radio" name="f1_resusc_fluid" value="2"> &gt; 2,000 mL</label>
+                        </div>
                     </div>
                 </td>
             </tr>
@@ -631,11 +709,12 @@ def get_form1_html():
                 <td style="font-weight: 700; background: #f8fafc;">
                     <div>เวลาแพทย์สั่งส่งต่อ / ออกจาก ER</div>
                     <div>(T1: ER Door-Out)</div>
+                    <div style="font-size: 11px; color: #0284c7; font-weight: normal; margin-top: 2px;">🔗 เชื่อมโยงอัตโนมัติกับ Form 2</div>
                 </td>
                 <td>
                     <div style="display: flex; gap: 10px; align-items: center;">
-                        <span>วันที่:</span><input type="date" id="f1_t1_date" onchange="syncT1(); calcTimelines();" oninput="syncT1(); calcTimelines();">
-                        <span>เวลา:</span><input type="time" id="f1_t1_time" onchange="syncT1(); calcTimelines();" oninput="syncT1(); calcTimelines();"><span>น.</span>
+                        <span>วันที่:</span><input type="date" id="f1_t1_date" onchange="syncT1(); calcTimelines();" oninput="syncT1(); calcTimelines();" style="background: #f0fdf4; border-color: #86efac;" title="เชื่อมโยงอัตโนมัติกับ Form 2 (T1)">
+                        <span>เวลา:</span><input type="time" id="f1_t1_time" onchange="syncT1(); calcTimelines();" oninput="syncT1(); calcTimelines();" style="background: #f0fdf4; border-color: #86efac;" title="เชื่อมโยงอัตโนมัติกับ Form 2 (T1)"><span>น.</span>
                     </div>
                 </td>
             </tr>

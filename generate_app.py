@@ -47,37 +47,53 @@ def get_css():
             background: #ffffff;
             border-bottom: 2px solid #cbd5e1;
             box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
-            padding: 6px 18px;
+            padding: 6px 16px;
         }
 
         .navbar-content {
             max-width: var(--app-max-width);
-            width: 96%;
+            width: 100%;
             margin: 0 auto;
             display: flex;
             flex-wrap: wrap;
             justify-content: space-between;
             align-items: center;
-            gap: 10px;
+            gap: 8px 12px;
+        }
+
+        .nav-title-group {
+            flex: 1 1 280px;
+            min-width: 240px;
         }
 
         .nav-title-group h1 {
-            font-size: 17px;
+            font-size: 15.5px;
             font-weight: 700;
             color: var(--primary);
-            line-height: 1.2;
+            line-height: 1.25;
+            margin: 0 0 2px 0;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
         }
 
         .nav-title-group p {
-            font-size: 12px;
+            font-size: 11.5px;
             color: var(--text-muted);
+            margin: 0;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            max-width: 520px;
         }
 
         .nav-actions {
             display: flex;
             align-items: center;
-            gap: 8px;
+            gap: 6px;
             flex-wrap: wrap;
+            justify-content: flex-end;
+            flex-shrink: 0;
         }
 
         .btn {

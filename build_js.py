@@ -105,37 +105,13 @@ def get_js():
             }
         }
 
-        // If last active case could not be loaded, find a case this user is permitted to see
-        if (!caseLoaded && currentUser) {
-            const index = JSON.parse(localStorage.getItem('online_crf_case_index') || '[]');
-            if (isAdmin) {
-                if (index.length > 0) {
-                    loadCase(index[0]);
-                    caseLoaded = true;
-                }
-            } else {
-                for (const id of index) {
-                    const r = localStorage.getItem('online_crf_case_' + id);
-                    if (r) {
-                        try {
-                            const c = JSON.parse(r);
-                            if (isCaseOwnedByUser(c, currentUser)) {
-                                loadCase(id);
-                                caseLoaded = true;
-                                break;
-                            }
-                        } catch(e) {}
-                    }
-                }
-            }
-        }
-
-        // If still no case loaded, prepare a clean new case
+        // If no active case loaded, remain in clean standby state (DO NOT auto-create a new case)
         if (!caseLoaded) {
-            resetToNewCase(currentUser);
+            clearFormToStandby();
         }
         toggleIntubationDetails();
         toggleInotropesDetails();
+        toggleNicardipineDetails();
 
         // Auto prompt login if not logged in
         if (!isUserLoggedIn()) {
@@ -153,6 +129,15 @@ def get_js():
             if (e.target && e.target.name === 'f1_inotropes') {
                 toggleInotropesDetails();
                 scheduleAutoSave();
+            }
+            if (e.target && e.target.name === 'f1_nicardipine') {
+                toggleNicardipineDetails();
+                scheduleAutoSave();
+            }
+        });
+        document.addEventListener('input', function(e) {
+            if (e.target && (e.target.id === 'f1_stroke_nihss' || e.target.id === 'f4_stroke_nihss')) {
+                calcDeltaNIHSS();
             }
         });
     });
@@ -181,7 +166,7 @@ def get_js():
                 alert('⚠️ แจ้งเตือน: ในเกณฑ์การคัดเข้าข้อ 4 บังคับต้องเลือก 1 ใน 3 กลุ่มโรคเป้าหมาย\\n(1. STEMI / ACS, 2. Acute Stroke หรือ 3. Severe Trauma)\\n\\nกรุณาติ๊กเลือกกลุ่มโรคก่อนดำเนินการต่อไป');
                 const alertEl = document.getElementById('f1_inc4_disease_alert');
                 if (alertEl) {
-                    alertEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                    if (typeof alertEl.scrollIntoView === 'function') alertEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
                     alertEl.style.boxShadow = '0 0 14px rgba(244, 63, 94, 0.9)';
                     setTimeout(() => { alertEl.style.boxShadow = ''; }, 2500);
                 }
@@ -258,6 +243,11 @@ def get_js():
     function switchTab(tabIndex) {
         tabIndex = Number(tabIndex);
         if (tabIndex > 1) {
+            const curStudyId = document.getElementById('f1_study_id')?.value.trim();
+            if (!curStudyId) {
+                alert('⚠️ ยังไม่ได้เลือกหรือสร้างเคสผู้ป่วย กรุณากดปุ่ม "➕ เคสใหม่" หรือเลือกเคสจากรายการก่อน');
+                return;
+            }
             if (isCaseExcluded()) {
                 alert('⛔ ไม่สามารถเปิดส่วนที่ ' + tabIndex + ' ได้\\n\\nเคสนี้ไม่ผ่านเกณฑ์การคัดกรอง (Excluded Case) ระบบจึงปิดกั้นการบันทึกข้อมูลใน Form 2–4\\n\\nหากต้องการแก้ไขผลการคัดกรอง กรุณากลับไปตรวจสอบคำตอบในเกณฑ์การคัดเข้า/คัดออกในส่วนที่ 1');
                 return;
@@ -294,11 +284,14 @@ def get_js():
             }
         }
 
+        // Always sync all microtimelines across forms upon tab switch
+        syncAllMicroTimelines();
+
         if (currentTab === 2) {
-            pullT0T1FromForm1();
             autoDetectFerryOperate();
         } else if (currentTab === 3) {
             autoDetectFerryOperate();
+            calcForm3();
         } else if (currentTab === 4) {
             calcForm4Timelines();
             updateEpidemiologicalAssessment();
@@ -467,7 +460,7 @@ def get_js():
                 alert('⚠️ ในเกณฑ์การคัดเข้าข้อ 4 บังคับต้องเลือก 1 ใน 3 กลุ่มโรคเป้าหมาย\\n(1. STEMI / ACS, 2. Acute Stroke หรือ 3. Severe Trauma)\\n\\nกรุณาคลิกเลือกกลุ่มโรคทางด้านซ้าย');
                 const alertEl = document.getElementById('f1_inc4_disease_alert');
                 if (alertEl) {
-                    alertEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                    if (typeof alertEl.scrollIntoView === 'function') alertEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
                     alertEl.style.boxShadow = '0 0 14px rgba(244, 63, 94, 0.9)';
                     setTimeout(() => { alertEl.style.boxShadow = ''; }, 2500);
                 }
@@ -487,6 +480,7 @@ def get_js():
             const m2 = document.getElementById('f1_trauma_mech2'); if (m2) m2.checked = false;
             const m3 = document.getElementById('f1_trauma_mech3'); if (m3) m3.checked = false;
 
+            document.querySelectorAll('input[name="f1_stemi_rosc"]').forEach(r => r.checked = false);
             document.querySelectorAll('input[name="f1_killip"]').forEach(r => r.checked = false);
             document.querySelectorAll('input[name="f4_killip"]').forEach(r => r.checked = false);
             const kFrom = document.getElementById('f4_delta_killip_from'); if (kFrom) kFrom.value = '';
@@ -499,6 +493,13 @@ def get_js():
             const f4Rts = document.getElementById('f4_delta_rts'); if (f4Rts) f4Rts.value = '';
             const rStab = document.getElementById('f4_rts_stable'); if (rStab) rStab.checked = false;
             const rDeter = document.getElementById('f4_rts_deter'); if (rDeter) rDeter.checked = false;
+
+            // Clear Trauma Anatomical AIS & Fluid
+            ['f1_trauma_ais_head', 'f1_trauma_ais_torso', 'f1_trauma_ais_pelvis', 'f1_trauma_ais_hemo', 'f1_trauma_ais_poly'].forEach(id => {
+                const el = document.getElementById(id);
+                if (el) { el.checked = false; el.disabled = true; }
+            });
+            document.querySelectorAll('input[name="f1_resusc_fluid"]').forEach(r => { r.checked = false; r.disabled = true; });
 
             // Clear MSI (Stroke does not calculate MSI)
             const msi1 = document.getElementById('f1_msi'); if (msi1) msi1.value = '';
@@ -530,6 +531,8 @@ def get_js():
             const orMis = document.getElementById('f4_trauma_missed'); if (orMis) orMis.checked = false;
 
             toggleStrokeCTDetails();
+            toggleNicardipineDetails();
+            calcDeltaNIHSS();
 
         } else if (disease === 'stemi') {
             // STEMI selected -> Clear Stroke & Trauma specific scores/fields
@@ -542,12 +545,27 @@ def get_js():
 
             document.querySelectorAll('input[name="f1_stroke_gcs"]').forEach(r => r.checked = false);
             document.querySelectorAll('input[name="f4_stroke_gcs"]').forEach(r => r.checked = false);
+            const nihss1 = document.getElementById('f1_stroke_nihss'); if (nihss1) nihss1.value = '';
+            const nihss4 = document.getElementById('f4_stroke_nihss'); if (nihss4) nihss4.value = '';
+            const dNihss = document.getElementById('f4_delta_nihss'); if (dNihss) dNihss.value = '';
+            const nStab = document.getElementById('f4_nihss_stable'); if (nStab) nStab.checked = false;
+            const nDeter = document.getElementById('f4_nihss_deter'); if (nDeter) nDeter.checked = false;
+
+            document.querySelectorAll('input[name="f1_nicardipine"]').forEach(r => r.checked = false);
+            const nicDose = document.getElementById('f1_nicardipine_dose'); if (nicDose) nicDose.value = '';
 
             const f4Crit = document.getElementById('f4_trauma_crit'); if (f4Crit) f4Crit.checked = false;
             const f4Mod = document.getElementById('f4_trauma_mod'); if (f4Mod) f4Mod.checked = false;
             const f4Rts = document.getElementById('f4_delta_rts'); if (f4Rts) f4Rts.value = '';
             const rStab = document.getElementById('f4_rts_stable'); if (rStab) rStab.checked = false;
             const rDeter = document.getElementById('f4_rts_deter'); if (rDeter) rDeter.checked = false;
+
+            // Clear Trauma Anatomical AIS & Fluid
+            ['f1_trauma_ais_head', 'f1_trauma_ais_torso', 'f1_trauma_ais_pelvis', 'f1_trauma_ais_hemo', 'f1_trauma_ais_poly'].forEach(id => {
+                const el = document.getElementById(id);
+                if (el) { el.checked = false; el.disabled = true; }
+            });
+            document.querySelectorAll('input[name="f1_resusc_fluid"]').forEach(r => { r.checked = false; r.disabled = true; });
 
             // Clear & Disable Baseline Hct (Trauma only)
             const hct1 = document.getElementById('f1_hct');
@@ -580,11 +598,22 @@ def get_js():
             // Recalculate MSI for STEMI
             calcVitals();
             calcKrabiVitals();
+            toggleNicardipineDetails();
+            calcDeltaKillip();
 
         } else if (disease === 'trauma') {
             // Trauma selected -> Clear STEMI & Stroke specific scores/fields
+            document.querySelectorAll('input[name="f1_stemi_rosc"]').forEach(r => r.checked = false);
             document.querySelectorAll('input[name="f1_killip"]').forEach(r => r.checked = false);
             document.querySelectorAll('input[name="f1_stroke_gcs"]').forEach(r => r.checked = false);
+            const nihss1 = document.getElementById('f1_stroke_nihss'); if (nihss1) nihss1.value = '';
+            const nihss4 = document.getElementById('f4_stroke_nihss'); if (nihss4) nihss4.value = '';
+            const dNihss = document.getElementById('f4_delta_nihss'); if (dNihss) dNihss.value = '';
+            const nStab = document.getElementById('f4_nihss_stable'); if (nStab) nStab.checked = false;
+            const nDeter = document.getElementById('f4_nihss_deter'); if (nDeter) nDeter.checked = false;
+
+            document.querySelectorAll('input[name="f1_nicardipine"]').forEach(r => r.checked = false);
+            const nicDose = document.getElementById('f1_nicardipine_dose'); if (nicDose) nicDose.value = '';
 
             document.querySelectorAll('input[name="f4_killip"]').forEach(r => r.checked = false);
             const kFrom = document.getElementById('f4_delta_killip_from'); if (kFrom) kFrom.value = '';
@@ -605,11 +634,16 @@ def get_js():
             const hct1 = document.getElementById('f1_hct');
             if (hct1) { hct1.disabled = false; hct1.placeholder = ''; }
 
-            // Enable Trauma Resuscitation (Trauma only)
+            // Enable Trauma Resuscitation & Anatomical AIS
             ['f1_resusc_txa', 'f1_resusc_splint', 'f1_resusc_pelvic', 'f1_resusc_icd'].forEach(id => {
                 const el = document.getElementById(id);
                 if (el) el.disabled = false;
             });
+            ['f1_trauma_ais_head', 'f1_trauma_ais_torso', 'f1_trauma_ais_pelvis', 'f1_trauma_ais_hemo', 'f1_trauma_ais_poly'].forEach(id => {
+                const el = document.getElementById(id);
+                if (el) el.disabled = false;
+            });
+            document.querySelectorAll('input[name="f1_resusc_fluid"]').forEach(r => r.disabled = false);
 
             const wire = document.getElementById('f4_pci_wire_time'); if (wire) wire.value = '';
             const d2b = document.getElementById('f4_pci_d2b_min'); if (d2b) d2b.value = '';
@@ -627,13 +661,25 @@ def get_js():
             const sAch = document.getElementById('f4_stroke_achieved'); if (sAch) sAch.checked = false;
             const sMis = document.getElementById('f4_stroke_missed'); if (sMis) sMis.checked = false;
 
+            toggleNicardipineDetails();
+            calcDeltaRTS();
+
         } else {
             // None selected -> Clear all disease-specific fields
             const rts1 = document.getElementById('f1_rts_total'); if (rts1) rts1.value = '';
             const tCrit1 = document.getElementById('f1_trauma_acuity_crit'); if (tCrit1) tCrit1.checked = false;
             const tMod1 = document.getElementById('f1_trauma_acuity_mod'); if (tMod1) tMod1.checked = false;
+            document.querySelectorAll('input[name="f1_stemi_rosc"]').forEach(r => r.checked = false);
             document.querySelectorAll('input[name="f1_killip"]').forEach(r => r.checked = false);
             document.querySelectorAll('input[name="f1_stroke_gcs"]').forEach(r => r.checked = false);
+            const nihss1 = document.getElementById('f1_stroke_nihss'); if (nihss1) nihss1.value = '';
+            const nihss4 = document.getElementById('f4_stroke_nihss'); if (nihss4) nihss4.value = '';
+            const dNihss = document.getElementById('f4_delta_nihss'); if (dNihss) dNihss.value = '';
+            const nStab = document.getElementById('f4_nihss_stable'); if (nStab) nStab.checked = false;
+            const nDeter = document.getElementById('f4_nihss_deter'); if (nDeter) nDeter.checked = false;
+
+            document.querySelectorAll('input[name="f1_nicardipine"]').forEach(r => r.checked = false);
+            const nicDose = document.getElementById('f1_nicardipine_dose'); if (nicDose) nicDose.value = '';
 
             document.querySelectorAll('input[name="f4_killip"]').forEach(r => r.checked = false);
             const kFrom = document.getElementById('f4_delta_killip_from'); if (kFrom) kFrom.value = '';
@@ -647,6 +693,13 @@ def get_js():
             const f4Rts = document.getElementById('f4_delta_rts'); if (f4Rts) f4Rts.value = '';
             const rStab = document.getElementById('f4_rts_stable'); if (rStab) rStab.checked = false;
             const rDeter = document.getElementById('f4_rts_deter'); if (rDeter) rDeter.checked = false;
+
+            // Clear Trauma Anatomical AIS & Fluid
+            ['f1_trauma_ais_head', 'f1_trauma_ais_torso', 'f1_trauma_ais_pelvis', 'f1_trauma_ais_hemo', 'f1_trauma_ais_poly'].forEach(id => {
+                const el = document.getElementById(id);
+                if (el) { el.checked = false; el.disabled = true; }
+            });
+            document.querySelectorAll('input[name="f1_resusc_fluid"]').forEach(r => { r.checked = false; r.disabled = true; });
 
             // Clear MSI
             const msi1 = document.getElementById('f1_msi'); if (msi1) msi1.value = '';
@@ -863,6 +916,7 @@ def get_js():
         const box = document.getElementById('f1_ett_details_box');
         const ettNo = document.getElementById('f1_ett_no');
         const ettTime = document.getElementById('f1_ett_time');
+        const ettCollar = document.getElementById('f1_ett_ccollar');
 
         if (box) {
             if (isIntub) {
@@ -876,6 +930,9 @@ def get_js():
                     ettTime.disabled = false;
                     ettTime.style.backgroundColor = '#ffffff';
                 }
+                if (ettCollar) {
+                    ettCollar.disabled = false;
+                }
             } else {
                 box.style.opacity = '0.35';
                 box.style.pointerEvents = 'none';
@@ -888,6 +945,10 @@ def get_js():
                     ettTime.disabled = true;
                     ettTime.value = '';
                     ettTime.style.backgroundColor = '#f1f5f9';
+                }
+                if (ettCollar) {
+                    ettCollar.disabled = true;
+                    ettCollar.checked = false;
                 }
             }
         }
@@ -925,6 +986,33 @@ def get_js():
                     inotDose.disabled = true;
                     inotDose.value = '';
                     inotDose.style.backgroundColor = '#f1f5f9';
+                }
+            }
+        }
+    }
+
+    // --- Pre-Transfer Nicardipine Gating ---
+    function toggleNicardipineDetails() {
+        const rad = document.querySelector('input[name="f1_nicardipine"]:checked');
+        const isNic = (rad && rad.value === '1');
+        const box = document.getElementById('f1_nicardipine_details_box');
+        const nicDose = document.getElementById('f1_nicardipine_dose');
+
+        if (box) {
+            if (isNic) {
+                box.style.opacity = '1';
+                box.style.pointerEvents = 'auto';
+                if (nicDose) {
+                    nicDose.disabled = false;
+                    nicDose.style.backgroundColor = '#ffffff';
+                }
+            } else {
+                box.style.opacity = '0.35';
+                box.style.pointerEvents = 'none';
+                if (nicDose) {
+                    nicDose.disabled = true;
+                    nicDose.value = '';
+                    nicDose.style.backgroundColor = '#f1f5f9';
                 }
             }
         }
@@ -1015,7 +1103,9 @@ def get_js():
     if (typeof window !== 'undefined') {
         window.toggleIntubationDetails = toggleIntubationDetails;
         window.toggleInotropesDetails = toggleInotropesDetails;
+        window.toggleNicardipineDetails = toggleNicardipineDetails;
         window.toggleStrokeCTDetails = toggleStrokeCTDetails;
+        window.calcDeltaNIHSS = calcDeltaNIHSS;
     }
 
     // --- En-route CPR Outcome & Duration Gating ---
@@ -1153,80 +1243,348 @@ def get_js():
         autoDetectFerryOperate();
     }
 
+    let isSyncingT0 = false;
     function syncT0() {
-        const d = document.getElementById('f1_t0_date')?.value || '';
-        const t = document.getElementById('f1_t0_time')?.value || '';
-        const f2_d = document.getElementById('f2_t0_date');
-        const f2_t = document.getElementById('f2_t0_time');
-        if (f2_d) f2_d.value = d;
-        if (f2_t) f2_t.value = t;
-        autoDetectShift();
-        if (typeof calcForm2Timelines === 'function') calcForm2Timelines();
+        if (isSyncingT0) return;
+        isSyncingT0 = true;
+        try {
+            const d = document.getElementById('f1_t0_date')?.value || '';
+            const t = document.getElementById('f1_t0_time')?.value || '';
+            const f2_d = document.getElementById('f2_t0_date');
+            const f2_t = document.getElementById('f2_t0_time');
+            if (f2_d && d) f2_d.value = d;
+            if (f2_t && t) f2_t.value = t;
+            autoDetectShift();
+            if (typeof calcForm2Timelines === 'function') calcForm2Timelines();
+        } finally {
+            isSyncingT0 = false;
+        }
     }
 
     function syncT0_fromF2() {
-        const d = document.getElementById('f2_t0_date')?.value || '';
-        const t = document.getElementById('f2_t0_time')?.value || '';
-        const f1_d = document.getElementById('f1_t0_date');
-        const f1_t = document.getElementById('f1_t0_time');
-        if (f1_d) f1_d.value = d;
-        if (f1_t) f1_t.value = t;
-        autoDetectShift();
-        if (typeof calcTimelines === 'function') calcTimelines();
+        if (isSyncingT0) return;
+        isSyncingT0 = true;
+        try {
+            const d = document.getElementById('f2_t0_date')?.value || '';
+            const t = document.getElementById('f2_t0_time')?.value || '';
+            const f1_d = document.getElementById('f1_t0_date');
+            const f1_t = document.getElementById('f1_t0_time');
+            if (f1_d && d) f1_d.value = d;
+            if (f1_t && t) f1_t.value = t;
+            autoDetectShift();
+            if (typeof calcTimelines === 'function') calcTimelines();
+        } finally {
+            isSyncingT0 = false;
+        }
     }
 
-    function syncT1() {
-        let d = document.getElementById('f1_t1_date')?.value || '';
-        const t = document.getElementById('f1_t1_time')?.value || '';
-        const t0_d = document.getElementById('f1_t0_date')?.value || '';
-        if (!d && t && t0_d) {
-            d = t0_d;
-            const f1T1D = document.getElementById('f1_t1_date');
-            if (f1T1D) f1T1D.value = d;
+    function syncT0_bidirectional() {
+        if (isSyncingT0) return;
+        isSyncingT0 = true;
+        try {
+            const f1_d = document.getElementById('f1_t0_date')?.value || '';
+            const f1_t = document.getElementById('f1_t0_time')?.value || '';
+            const f2_d = document.getElementById('f2_t0_date')?.value || '';
+            const f2_t = document.getElementById('f2_t0_time')?.value || '';
+
+            const dateVal = f1_d || f2_d;
+            const timeVal = f1_t || f2_t;
+
+            const elF1_d = document.getElementById('f1_t0_date');
+            const elF1_t = document.getElementById('f1_t0_time');
+            const elF2_d = document.getElementById('f2_t0_date');
+            const elF2_t = document.getElementById('f2_t0_time');
+
+            if (elF1_d && dateVal && elF1_d.value !== dateVal) elF1_d.value = dateVal;
+            if (elF1_t && timeVal && elF1_t.value !== timeVal) elF1_t.value = timeVal;
+            if (elF2_d && dateVal && elF2_d.value !== dateVal) elF2_d.value = dateVal;
+            if (elF2_t && timeVal && elF2_t.value !== timeVal) elF2_t.value = timeVal;
+
+            autoDetectShift();
+            if (typeof calcTimelines === 'function') calcTimelines();
+            if (typeof calcForm2Timelines === 'function') calcForm2Timelines();
+        } finally {
+            isSyncingT0 = false;
         }
-        const f2_d = document.getElementById('f2_t1_date');
-        const f2_t = document.getElementById('f2_t1_time');
-        if (f2_d) f2_d.value = d;
-        if (f2_t) f2_t.value = t;
-        autoDetectShift();
-        if (typeof calcForm2Timelines === 'function') calcForm2Timelines();
+    }
+
+    let isSyncingT1 = false;
+    function syncT1() {
+        if (isSyncingT1) return;
+        isSyncingT1 = true;
+        try {
+            let d = document.getElementById('f1_t1_date')?.value || '';
+            const t = document.getElementById('f1_t1_time')?.value || '';
+            const t0_d = document.getElementById('f1_t0_date')?.value || document.getElementById('f1_refer_date')?.value || '';
+            if (!d && t && t0_d) {
+                d = t0_d;
+                const f1T1D = document.getElementById('f1_t1_date');
+                if (f1T1D) f1T1D.value = d;
+            }
+            const f2_d = document.getElementById('f2_t1_date');
+            const f2_t = document.getElementById('f2_t1_time');
+            if (f2_d && d) f2_d.value = d;
+            if (f2_t && t) f2_t.value = t;
+            autoDetectShift();
+            if (typeof calcForm2Timelines === 'function') calcForm2Timelines();
+            syncForm2MonitoringTimes();
+        } finally {
+            isSyncingT1 = false;
+        }
     }
 
     function syncT1_fromF2() {
-        const d = document.getElementById('f2_t1_date')?.value || '';
-        const t = document.getElementById('f2_t1_time')?.value || '';
-        const f1_d = document.getElementById('f1_t1_date');
-        const f1_t = document.getElementById('f1_t1_time');
-        if (f1_d) f1_d.value = d;
-        if (f1_t) f1_t.value = t;
-        autoDetectShift();
-        if (typeof calcTimelines === 'function') calcTimelines();
+        if (isSyncingT1) return;
+        isSyncingT1 = true;
+        try {
+            let d = document.getElementById('f2_t1_date')?.value || '';
+            const t = document.getElementById('f2_t1_time')?.value || '';
+            const t0_d = document.getElementById('f2_t0_date')?.value || document.getElementById('f1_refer_date')?.value || '';
+            if (!d && t && t0_d) {
+                d = t0_d;
+                const f2T1D = document.getElementById('f2_t1_date');
+                if (f2T1D) f2T1D.value = d;
+            }
+            const f1_d = document.getElementById('f1_t1_date');
+            const f1_t = document.getElementById('f1_t1_time');
+            if (f1_d && d) f1_d.value = d;
+            if (f1_t && t) f1_t.value = t;
+            autoDetectShift();
+            if (typeof calcTimelines === 'function') calcTimelines();
+            syncForm2MonitoringTimes();
+        } finally {
+            isSyncingT1 = false;
+        }
     }
 
+    function syncT1_bidirectional() {
+        if (isSyncingT1) return;
+        isSyncingT1 = true;
+        try {
+            let f1_d = document.getElementById('f1_t1_date')?.value || '';
+            const f1_t = document.getElementById('f1_t1_time')?.value || '';
+            let f2_d = document.getElementById('f2_t1_date')?.value || '';
+            const f2_t = document.getElementById('f2_t1_time')?.value || '';
+
+            const t0_d = document.getElementById('f1_t0_date')?.value || document.getElementById('f2_t0_date')?.value || document.getElementById('f1_refer_date')?.value || '';
+            let dateVal = f1_d || f2_d;
+            const timeVal = f1_t || f2_t;
+            if (!dateVal && timeVal && t0_d) dateVal = t0_d;
+
+            const elF1_d = document.getElementById('f1_t1_date');
+            const elF1_t = document.getElementById('f1_t1_time');
+            const elF2_d = document.getElementById('f2_t1_date');
+            const elF2_t = document.getElementById('f2_t1_time');
+
+            if (elF1_d && dateVal && elF1_d.value !== dateVal) elF1_d.value = dateVal;
+            if (elF1_t && timeVal && elF1_t.value !== timeVal) elF1_t.value = timeVal;
+            if (elF2_d && dateVal && elF2_d.value !== dateVal) elF2_d.value = dateVal;
+            if (elF2_t && timeVal && elF2_t.value !== timeVal) elF2_t.value = timeVal;
+
+            autoDetectShift();
+            if (typeof calcTimelines === 'function') calcTimelines();
+            if (typeof calcForm2Timelines === 'function') calcForm2Timelines();
+            syncForm2MonitoringTimes();
+        } finally {
+            isSyncingT1 = false;
+        }
+    }
+
+    let isSyncingT3 = false;
+    function syncT3_fromF2() {
+        if (isSyncingT3) return;
+        isSyncingT3 = true;
+        try {
+            let d = document.getElementById('f2_t3_embark_date')?.value || '';
+            const t = document.getElementById('f2_t3_embark_time')?.value || '';
+            if (!d && t) {
+                d = document.getElementById('f3_t3_date')?.value ||
+                    document.getElementById('f2_t2_date')?.value ||
+                    document.getElementById('f2_t1_date')?.value ||
+                    document.getElementById('f1_t0_date')?.value || '';
+                const f2_d = document.getElementById('f2_t3_embark_date');
+                if (f2_d && d) f2_d.value = d;
+            }
+            const f3_d = document.getElementById('f3_t3_date');
+            const f3_t = document.getElementById('f3_t3_time');
+            if (f3_d && d) f3_d.value = d;
+            if (f3_t && t) f3_t.value = t;
+
+            if (typeof calcForm2Timelines === 'function') calcForm2Timelines();
+            if (typeof calcForm3 === 'function') calcForm3();
+            syncForm2MonitoringTimes();
+        } finally {
+            isSyncingT3 = false;
+        }
+    }
+
+    function syncT3_fromF3() {
+        if (isSyncingT3) return;
+        isSyncingT3 = true;
+        try {
+            let d = document.getElementById('f3_t3_date')?.value || '';
+            const t = document.getElementById('f3_t3_time')?.value || '';
+            if (!d && t) {
+                d = document.getElementById('f2_t3_embark_date')?.value ||
+                    document.getElementById('f2_t2_date')?.value ||
+                    document.getElementById('f2_t1_date')?.value ||
+                    document.getElementById('f1_t0_date')?.value || '';
+                const f3_d = document.getElementById('f3_t3_date');
+                if (f3_d && d) f3_d.value = d;
+            }
+            const f2_d = document.getElementById('f2_t3_embark_date');
+            const f2_t = document.getElementById('f2_t3_embark_time');
+            if (f2_d && d) f2_d.value = d;
+            if (f2_t && t) f2_t.value = t;
+
+            if (typeof calcForm2Timelines === 'function') calcForm2Timelines();
+            if (typeof calcForm3 === 'function') calcForm3();
+            syncForm2MonitoringTimes();
+        } finally {
+            isSyncingT3 = false;
+        }
+    }
+
+    function syncT3_bidirectional() {
+        if (isSyncingT3) return;
+        isSyncingT3 = true;
+        try {
+            const f2_d = document.getElementById('f2_t3_embark_date')?.value || '';
+            const f2_t = document.getElementById('f2_t3_embark_time')?.value || '';
+            const f3_d = document.getElementById('f3_t3_date')?.value || '';
+            const f3_t = document.getElementById('f3_t3_time')?.value || '';
+
+            const timeVal = f2_t || f3_t;
+            let dateVal = f2_d || f3_d;
+            if (!dateVal && timeVal) {
+                dateVal = document.getElementById('f2_t2_date')?.value ||
+                          document.getElementById('f2_t1_date')?.value ||
+                          document.getElementById('f1_t0_date')?.value || '';
+            }
+
+            const elF2_d = document.getElementById('f2_t3_embark_date');
+            const elF2_t = document.getElementById('f2_t3_embark_time');
+            const elF3_d = document.getElementById('f3_t3_date');
+            const elF3_t = document.getElementById('f3_t3_time');
+
+            if (elF2_d && dateVal && elF2_d.value !== dateVal) elF2_d.value = dateVal;
+            if (elF2_t && timeVal && elF2_t.value !== timeVal) elF2_t.value = timeVal;
+            if (elF3_d && dateVal && elF3_d.value !== dateVal) elF3_d.value = dateVal;
+            if (elF3_t && timeVal && elF3_t.value !== timeVal) elF3_t.value = timeVal;
+
+            if (typeof calcForm2Timelines === 'function') calcForm2Timelines();
+            if (typeof calcForm3 === 'function') calcForm3();
+            syncForm2MonitoringTimes();
+        } finally {
+            isSyncingT3 = false;
+        }
+    }
+
+    function toggleCustomPlate(selectEl) {
+        if (!selectEl) return;
+        const customInput = document.getElementById('f2_amb_plate_custom');
+        if (!customInput) return;
+        if (selectEl.value === 'other') {
+            customInput.style.display = 'block';
+            setTimeout(() => customInput.focus(), 50);
+        } else {
+            customInput.style.display = 'none';
+            customInput.value = '';
+        }
+    }
+
+    let isSyncingT4 = false;
     function syncT4() {
-        const d = document.getElementById('f2_t4_date')?.value;
-        const t = document.getElementById('f2_t4_time')?.value;
-        const f4_d = document.getElementById('f4_t4_date');
-        const f4_t = document.getElementById('f4_t4_time');
-        if (f4_d) f4_d.value = d || '';
-        if (f4_t) f4_t.value = t || '';
-        if (typeof calcForm2Timelines === 'function') calcForm2Timelines();
-        if (typeof calcForm4Timelines === 'function') calcForm4Timelines();
+        if (isSyncingT4) return;
+        isSyncingT4 = true;
+        try {
+            let d = document.getElementById('f2_t4_date')?.value || '';
+            const t = document.getElementById('f2_t4_time')?.value || '';
+            if (!d && t) {
+                d = document.getElementById('f4_t4_date')?.value ||
+                    document.getElementById('f2_t3_disembark_date')?.value ||
+                    document.getElementById('f2_t1_date')?.value ||
+                    document.getElementById('f1_t0_date')?.value || '';
+                const f2_d = document.getElementById('f2_t4_date');
+                if (f2_d && d) f2_d.value = d;
+            }
+            const f4_d = document.getElementById('f4_t4_date');
+            const f4_t = document.getElementById('f4_t4_time');
+            if (f4_d && d) f4_d.value = d;
+            if (f4_t && t) f4_t.value = t;
+
+            if (typeof calcForm2Timelines === 'function') calcForm2Timelines();
+            if (typeof calcForm4Timelines === 'function') calcForm4Timelines();
+            syncForm2MonitoringTimes();
+        } finally {
+            isSyncingT4 = false;
+        }
     }
 
     function syncT4_fromF4() {
-        const d = document.getElementById('f4_t4_date')?.value;
-        const t = document.getElementById('f4_t4_time')?.value;
-        const f2_d = document.getElementById('f2_t4_date');
-        const f2_t = document.getElementById('f2_t4_time');
-        if (f2_d) f2_d.value = d || '';
-        if (f2_t) f2_t.value = t || '';
-        if (typeof calcForm2Timelines === 'function') calcForm2Timelines();
-        if (typeof calcForm4Timelines === 'function') calcForm4Timelines();
+        if (isSyncingT4) return;
+        isSyncingT4 = true;
+        try {
+            let d = document.getElementById('f4_t4_date')?.value || '';
+            const t = document.getElementById('f4_t4_time')?.value || '';
+            if (!d && t) {
+                d = document.getElementById('f2_t4_date')?.value ||
+                    document.getElementById('f2_t3_disembark_date')?.value ||
+                    document.getElementById('f2_t1_date')?.value ||
+                    document.getElementById('f1_t0_date')?.value || '';
+                const f4_d = document.getElementById('f4_t4_date');
+                if (f4_d && d) f4_d.value = d;
+            }
+            const f2_d = document.getElementById('f2_t4_date');
+            const f2_t = document.getElementById('f2_t4_time');
+            if (f2_d && d) f2_d.value = d;
+            if (f2_t && t) f2_t.value = t;
+
+            if (typeof calcForm2Timelines === 'function') calcForm2Timelines();
+            if (typeof calcForm4Timelines === 'function') calcForm4Timelines();
+            syncForm2MonitoringTimes();
+        } finally {
+            isSyncingT4 = false;
+        }
+    }
+
+    function syncT4_bidirectional() {
+        if (isSyncingT4) return;
+        isSyncingT4 = true;
+        try {
+            let f2_d = document.getElementById('f2_t4_date')?.value || '';
+            const f2_t = document.getElementById('f2_t4_time')?.value || '';
+            let f4_d = document.getElementById('f4_t4_date')?.value || '';
+            const f4_t = document.getElementById('f4_t4_time')?.value || '';
+
+            const timeVal = f2_t || f4_t;
+            let dateVal = f2_d || f4_d;
+            if (!dateVal && timeVal) {
+                dateVal = document.getElementById('f2_t3_disembark_date')?.value ||
+                          document.getElementById('f2_t1_date')?.value ||
+                          document.getElementById('f1_t1_date')?.value ||
+                          document.getElementById('f1_t0_date')?.value || '';
+            }
+
+            const elF2_d = document.getElementById('f2_t4_date');
+            const elF2_t = document.getElementById('f2_t4_time');
+            const elF4_d = document.getElementById('f4_t4_date');
+            const elF4_t = document.getElementById('f4_t4_time');
+
+            if (elF2_d && dateVal && elF2_d.value !== dateVal) elF2_d.value = dateVal;
+            if (elF2_t && timeVal && elF2_t.value !== timeVal) elF2_t.value = timeVal;
+            if (elF4_d && dateVal && elF4_d.value !== dateVal) elF4_d.value = dateVal;
+            if (elF4_t && timeVal && elF4_t.value !== timeVal) elF4_t.value = timeVal;
+
+            if (typeof calcForm2Timelines === 'function') calcForm2Timelines();
+            if (typeof calcForm4Timelines === 'function') calcForm4Timelines();
+            syncForm2MonitoringTimes();
+        } finally {
+            isSyncingT4 = false;
+        }
     }
 
     let isSyncingT5 = false;
-
     function syncT5() {
         if (isSyncingT5) return;
         isSyncingT5 = true;
@@ -1246,8 +1604,8 @@ def get_js():
                 if (f2_d && d) f2_d.value = d;
             }
 
-            if (f4_d) f4_d.value = d || '';
-            if (f4_t) f4_t.value = t || '';
+            if (f4_d && d) f4_d.value = d;
+            if (f4_t && t) f4_t.value = t;
 
             // Auto-fill disease specific intervention in Form 4 if empty
             const isStemi = document.getElementById('f1_inc4_stemi')?.checked;
@@ -1262,6 +1620,7 @@ def get_js():
 
             if (typeof calcForm2Timelines === 'function') calcForm2Timelines();
             if (typeof calcForm4Timelines === 'function') calcForm4Timelines();
+            syncForm2MonitoringTimes();
         } finally {
             isSyncingT5 = false;
         }
@@ -1286,8 +1645,8 @@ def get_js():
                 if (f4_d && d) f4_d.value = d;
             }
 
-            if (f2_d) f2_d.value = d || '';
-            if (f2_t) f2_t.value = t || '';
+            if (f2_d && d) f2_d.value = d;
+            if (f2_t && t) f2_t.value = t;
 
             // Auto-fill disease specific intervention in Form 4 if empty
             const isStemi = document.getElementById('f1_inc4_stemi')?.checked;
@@ -1302,6 +1661,7 @@ def get_js():
 
             if (typeof calcForm2Timelines === 'function') calcForm2Timelines();
             if (typeof calcForm4Timelines === 'function') calcForm4Timelines();
+            syncForm2MonitoringTimes();
         } finally {
             isSyncingT5 = false;
         }
@@ -1340,24 +1700,48 @@ def get_js():
     }
 
     function syncT5_bidirectional() {
-        const f2_d = document.getElementById('f2_t5_date')?.value;
-        const f2_t = document.getElementById('f2_t5_time')?.value;
-        const f4_d = document.getElementById('f4_t5_date')?.value;
-        const f4_t = document.getElementById('f4_t5_time')?.value;
+        if (isSyncingT5) return;
+        isSyncingT5 = true;
+        try {
+            const f2_d = document.getElementById('f2_t5_date')?.value;
+            const f2_t = document.getElementById('f2_t5_time')?.value;
+            const f4_d = document.getElementById('f4_t5_date')?.value;
+            const f4_t = document.getElementById('f4_t5_time')?.value;
 
-        if (f2_t && !f4_t) {
-            syncT5();
-        } else if (f4_t && !f2_t) {
-            syncT5_fromF4();
-        } else if (f2_t && f4_t) {
-            if (f2_d && !f4_d) {
-                const el = document.getElementById('f4_t5_date');
-                if (el) el.value = f2_d;
-            } else if (f4_d && !f2_d) {
-                const el = document.getElementById('f2_t5_date');
-                if (el) el.value = f4_d;
+            const timeVal = f2_t || f4_t;
+            let dateVal = f2_d || f4_d;
+            if (!dateVal && timeVal) {
+                dateVal = document.getElementById('f4_t4_date')?.value ||
+                          document.getElementById('f2_t4_date')?.value ||
+                          document.getElementById('f1_t0_date')?.value || '';
             }
+
+            const elF2_d = document.getElementById('f2_t5_date');
+            const elF2_t = document.getElementById('f2_t5_time');
+            const elF4_d = document.getElementById('f4_t5_date');
+            const elF4_t = document.getElementById('f4_t5_time');
+
+            if (elF2_d && dateVal && elF2_d.value !== dateVal) elF2_d.value = dateVal;
+            if (elF2_t && timeVal && elF2_t.value !== timeVal) elF2_t.value = timeVal;
+            if (elF4_d && dateVal && elF4_d.value !== dateVal) elF4_d.value = dateVal;
+            if (elF4_t && timeVal && elF4_t.value !== timeVal) elF4_t.value = timeVal;
+
+            if (typeof calcForm2Timelines === 'function') calcForm2Timelines();
+            if (typeof calcForm4Timelines === 'function') calcForm4Timelines();
+            syncForm2MonitoringTimes();
+        } finally {
+            isSyncingT5 = false;
         }
+    }
+
+    function syncAllMicroTimelines() {
+        pullT0T1FromForm1();
+        syncT0_bidirectional();
+        syncT1_bidirectional();
+        syncT3_bidirectional();
+        syncT4_bidirectional();
+        syncT5_bidirectional();
+        syncForm2MonitoringTimes();
     }
 
     // --- Date/Time Parsing & Diff (in Minutes) ---
@@ -1393,6 +1777,91 @@ def get_js():
             }
         }
         return Math.round(diffMs / 60000);
+    }
+
+    function calcMidpointTime(d1, t1, d2, t2) {
+        if (!t1 && !t2) return '';
+        if (t1 && !t2) return t1;
+        if (!t1 && t2) return t2;
+
+        if (!d1 && d2) d1 = d2;
+        if (!d2 && d1) d2 = d1;
+        if (!d1 && !d2) d1 = d2 = '2026-01-01';
+
+        const dt1 = parseDateTime(d1, t1);
+        const dt2 = parseDateTime(d2, t2);
+        if (!dt1 || !dt2) return t1 || t2 || '';
+
+        let diffMs = dt2.getTime() - dt1.getTime();
+
+        // Midnight crossover handler (if same date but dt2 < dt1, e.g. 23:50 -> 00:20)
+        if (diffMs < 0 && d1 === d2) {
+            const [h1] = t1.split(':').map(Number);
+            const [h2] = t2.split(':').map(Number);
+            if (h1 >= 18 && h2 < 12) {
+                diffMs += 24 * 60 * 60 * 1000;
+            }
+        }
+
+        if (diffMs < 0) return t1;
+
+        const midMs = dt1.getTime() + Math.round(diffMs / 2);
+        const midDate = new Date(midMs);
+        const hh = String(midDate.getHours()).padStart(2, '0');
+        const mm = String(midDate.getMinutes()).padStart(2, '0');
+        return `${hh}:${mm}`;
+    }
+
+    function syncForm2MonitoringTimes(force = false) {
+        const t1Date = document.getElementById('f2_t1_date')?.value || '';
+        const t1Time = document.getElementById('f2_t1_time')?.value || '';
+        const t2Date = document.getElementById('f2_t2_date')?.value || '';
+        const t2Time = document.getElementById('f2_t2_time')?.value || '';
+        const t3EmbarkDate = document.getElementById('f2_t3_embark_date')?.value || '';
+        const t3EmbarkTime = document.getElementById('f2_t3_embark_time')?.value || '';
+        const t3DisembarkDate = document.getElementById('f2_t3_disembark_date')?.value || '';
+        const t3DisembarkTime = document.getElementById('f2_t3_disembark_time')?.value || '';
+        const t4Date = document.getElementById('f2_t4_date')?.value || '';
+        const t4Time = document.getElementById('f2_t4_time')?.value || '';
+        const t5Time = document.getElementById('f2_t5_time')?.value || '';
+
+        // Point 1: ทางหลวงบนเกาะ (ก่อนลงแพ) - Midpoint between T1 and T2
+        const elMon1 = document.getElementById('f2_mon1_time');
+        if (elMon1 && (!elMon1.dataset.manual || force || !elMon1.value)) {
+            const val1 = calcMidpointTime(t1Date, t1Time, t2Date, t2Time);
+            if (val1) elMon1.value = val1;
+            else if (!t1Time && !t2Time && !elMon1.dataset.manual) elMon1.value = '';
+        }
+
+        // Point 2: บนแพขนานยนต์ (กลางน้ำ) - Midpoint between T3 embark and T3 disembark
+        const elMon2 = document.getElementById('f2_mon2_time');
+        if (elMon2 && (!elMon2.dataset.manual || force || !elMon2.value)) {
+            const val2 = calcMidpointTime(t3EmbarkDate, t3EmbarkTime, t3DisembarkDate, t3DisembarkTime);
+            if (val2) elMon2.value = val2;
+            else if (!t3EmbarkTime && !t3DisembarkTime && !elMon2.dataset.manual) elMon2.value = '';
+        }
+
+        // Point 3: ทางหลวงแผ่นดิน (กม. 35) - Midpoint between T3 disembark and T4
+        const elMon3 = document.getElementById('f2_mon3_time');
+        if (elMon3 && (!elMon3.dataset.manual || force || !elMon3.value)) {
+            const val3 = calcMidpointTime(t3DisembarkDate, t3DisembarkTime, t4Date, t4Time);
+            if (val3) elMon3.value = val3;
+            else if (!t3DisembarkTime && !t4Time && !elMon3.dataset.manual) elMon3.value = '';
+        }
+
+        // Point 4: หน้า ER รพ.กระบี่ (T4)
+        const elMon4 = document.getElementById('f2_mon4_time');
+        if (elMon4 && (!elMon4.dataset.manual || force || !elMon4.value)) {
+            if (t4Time) elMon4.value = t4Time;
+            else if (!elMon4.dataset.manual) elMon4.value = '';
+        }
+
+        // Point 5: ER รพ.กระบี่ (T5)
+        const elMon5 = document.getElementById('f2_mon5_time');
+        if (elMon5 && (!elMon5.dataset.manual || force || !elMon5.value)) {
+            if (t5Time) elMon5.value = t5Time;
+            else if (!elMon5.dataset.manual) elMon5.value = '';
+        }
     }
 
     function setTimelineResult(inputId, ontimeRadioId, delayRadioId, diff, limit) {
@@ -1899,6 +2368,7 @@ def get_js():
             setTimelineResult('f2_t5_min', 'f2_t5_ontime', 'f2_t5_delay', null, 180);
         }
 
+        syncForm2MonitoringTimes();
         calcForm3();
         autoDetectFerryOperate();
         if (typeof updateEpidemiologicalAssessment === 'function') updateEpidemiologicalAssessment();
@@ -2214,6 +2684,40 @@ def get_js():
         calcCompositeDeterioration();
     }
 
+    function calcDeltaNIHSS() {
+        const isStroke = document.getElementById('f1_inc4_ais')?.checked;
+        if (!isStroke) {
+            const deltaNihssEl = document.getElementById('f4_delta_nihss'); if (deltaNihssEl) deltaNihssEl.value = '';
+            const n1 = document.getElementById('f4_nihss_deter'); if (n1) n1.checked = false;
+            const n2 = document.getElementById('f4_nihss_stable'); if (n2) n2.checked = false;
+            calcCompositeDeterioration();
+            return;
+        }
+
+        const lNihss = parseInt(document.getElementById('f1_stroke_nihss')?.value, 10);
+        const kNihss = parseInt(document.getElementById('f4_stroke_nihss')?.value, 10);
+
+        if (!isNaN(lNihss) && !isNaN(kNihss)) {
+            const diff = kNihss - lNihss;
+            const deltaNihssEl = document.getElementById('f4_delta_nihss');
+            if (deltaNihssEl) deltaNihssEl.value = (diff > 0 ? '+' : '') + diff;
+
+            if (diff >= 2) {
+                const nDet = document.getElementById('f4_nihss_deter'); if (nDet) nDet.checked = true;
+                const nStab = document.getElementById('f4_nihss_stable'); if (nStab) nStab.checked = false;
+            } else {
+                const nStab = document.getElementById('f4_nihss_stable'); if (nStab) nStab.checked = true;
+                const nDet = document.getElementById('f4_nihss_deter'); if (nDet) nDet.checked = false;
+            }
+        } else {
+            const deltaNihssEl = document.getElementById('f4_delta_nihss'); if (deltaNihssEl) deltaNihssEl.value = '';
+            const n1 = document.getElementById('f4_nihss_deter'); if (n1) n1.checked = false;
+            const n2 = document.getElementById('f4_nihss_stable'); if (n2) n2.checked = false;
+        }
+        calcCompositeDeterioration();
+        scheduleAutoSave();
+    }
+
     function calcDeltaRTS() {
         const isTrauma = document.getElementById('f1_inc4_trauma')?.checked;
         if (!isTrauma) {
@@ -2327,17 +2831,19 @@ def get_js():
 
     function calcCompositeDeterioration() {
         const isStemi = document.getElementById('f1_inc4_stemi')?.checked;
+        const isAis = document.getElementById('f1_inc4_ais')?.checked;
         const isTrauma = document.getElementById('f1_inc4_trauma')?.checked;
 
         const kDeter = isStemi && document.getElementById('f4_killip_deter')?.checked;
         const rDeter = isTrauma && document.getElementById('f4_rts_deter')?.checked;
+        const nDeter = isAis && document.getElementById('f4_nihss_deter')?.checked;
         const gDeter = document.getElementById('f4_gcs_deter')?.checked;
         const mDeter = isStemi && document.getElementById('f4_msi_deter')?.checked;
         const pDeter = document.getElementById('f4_map_deter')?.checked;
         const bDeter = document.getElementById('f4_bt_hypo')?.checked;
         const aeEvent = document.getElementById('f2_comp_event')?.checked;
 
-        const isDeter = (kDeter || gDeter || rDeter || mDeter || pDeter || bDeter || aeEvent);
+        const isDeter = (kDeter || gDeter || nDeter || rDeter || mDeter || pDeter || bDeter || aeEvent);
         if (isDeter) {
             document.getElementById('f4_deter_event').checked = true;
         } else {
@@ -3008,8 +3514,7 @@ def get_js():
     }
 
     function calcAll() {
-        pullT0T1FromForm1();
-        syncT5_bidirectional();
+        syncAllMicroTimelines();
         calcScreening();
         calcCCI();
         calcVitals();
@@ -3023,6 +3528,7 @@ def get_js():
         calcKrabiGCS();
         calcDeltaKillip();
         calcDeltaGCS();
+        calcDeltaNIHSS();
         calcDeltaRTS();
         calcDeltaVitals();
         calcDeltaBT();
@@ -3031,6 +3537,7 @@ def get_js():
         toggleMortalityDetails();
         toggleIntubationDetails();
         toggleInotropesDetails();
+        toggleNicardipineDetails();
         toggleStrokeCTDetails();
         autoDetectFerryOperate();
         if (typeof updateEpidemiologicalAssessment === 'function') updateEpidemiologicalAssessment();
@@ -3040,6 +3547,8 @@ def get_js():
     let autoSaveTimeout = null;
 
     function scheduleAutoSave() {
+        const curStudyId = document.getElementById('f1_study_id')?.value.trim();
+        if (!curStudyId) return; // Do not schedule auto-save when in standby (no active case)
         clearTimeout(autoSaveTimeout);
         autoSaveTimeout = setTimeout(() => {
             saveCurrentCase(true);
@@ -3075,7 +3584,7 @@ def get_js():
         });
 
         // Epidemiological Evaluation Summary
-        const cohortStatusBadge = document.getElementById('cohort_badge_container')?.innerText || '';
+        const cohortStatusBadge = (document.getElementById('cohort_badge_container')?.innerText || document.getElementById('cohort_badge_container')?.textContent || '');
         const isExposed = cohortStatusBadge.includes('EXPOSED');
         const isControl = cohortStatusBadge.includes('CONTROL');
         data['cohort_classification'] = isExposed ? 'Exposed' : (isControl ? 'Control' : 'Pending');
@@ -3084,7 +3593,7 @@ def get_js():
         const factorEls = document.querySelectorAll('#cohort_factors_container [style*="font-weight: 700"]');
         const factors = [];
         factorEls.forEach(el => {
-            const txt = el.innerText.trim();
+            const txt = (el.innerText || el.textContent || '').trim();
             if (txt && !txt.startsWith('✓') && !txt.startsWith('📌')) factors.push(txt);
         });
         data['cohort_factors'] = factors.join('; ');
@@ -3092,17 +3601,24 @@ def get_js():
         // Extract delayed intervals
         const delayedSummaryLi = document.querySelectorAll('#timeline_delays_container ul li');
         const delayedList = [];
-        delayedSummaryLi.forEach(li => delayedList.push(li.innerText.trim()));
+        delayedSummaryLi.forEach(li => {
+            const txt = (li.innerText || li.textContent || '').trim();
+            if (txt) delayedList.push(txt);
+        });
         data['timeline_delayed_intervals'] = delayedList.join('; ');
         data['timeline_delay_count'] = delayedList.length;
         // Reset inactive conditional pre-transfer sub-fields
         if (data.f1_intubation !== '1') {
             data.f1_ett_no = '';
             data.f1_ett_time = '';
+            data.f1_ett_ccollar = false;
         }
         if (data.f1_inotropes !== '1') {
             data.f1_inotropes_name = '';
             data.f1_inotropes_dose = '';
+        }
+        if (data.f1_nicardipine !== '1') {
+            data.f1_nicardipine_dose = '';
         }
 
         return data;
@@ -3160,7 +3676,47 @@ def get_js():
         toggleRainDetails();
         toggleIntubationDetails();
         toggleInotropesDetails();
+        toggleNicardipineDetails();
         autoDetectFerryOperate();
+
+        // Handle ambulance plate dropdown & custom text
+        const ambPlateSel = document.getElementById('f2_amb_plate');
+        const ambPlateCustom = document.getElementById('f2_amb_plate_custom');
+        if (ambPlateSel && data.f2_amb_plate !== undefined && data.f2_amb_plate !== null && data.f2_amb_plate !== '') {
+            const standardPlates = ['กน-5271', 'กน8725', 'กท1504', 'กต5829', 'กม8945'];
+            if (standardPlates.includes(data.f2_amb_plate)) {
+                ambPlateSel.value = data.f2_amb_plate;
+                if (ambPlateCustom) {
+                    ambPlateCustom.style.display = 'none';
+                    ambPlateCustom.value = '';
+                }
+            } else if (data.f2_amb_plate === 'other') {
+                ambPlateSel.value = 'other';
+                if (ambPlateCustom) {
+                    ambPlateCustom.style.display = 'block';
+                    ambPlateCustom.value = data.f2_amb_plate_custom || '';
+                }
+            } else {
+                // If it was saved as a custom text plate directly (e.g. from earlier version)
+                ambPlateSel.value = 'other';
+                if (ambPlateCustom) {
+                    ambPlateCustom.style.display = 'block';
+                    ambPlateCustom.value = data.f2_amb_plate;
+                }
+            }
+        }
+
+        // Mark monitoring times as manual if they were explicitly loaded from saved case
+        ['f2_mon1_time', 'f2_mon2_time', 'f2_mon3_time', 'f2_mon4_time', 'f2_mon5_time'].forEach(id => {
+            const el = document.getElementById(id);
+            if (el) {
+                if (data[id]) {
+                    el.dataset.manual = 'true';
+                } else {
+                    delete el.dataset.manual;
+                }
+            }
+        });
 
         calcAll();
     }
@@ -3174,8 +3730,15 @@ def get_js():
             return;
         }
 
-        const studyId = document.getElementById('f1_study_id')?.value.trim() || 'UNNAMED';
+        const studyId = document.getElementById('f1_study_id')?.value.trim();
+        if (!studyId) {
+            if (!isAuto) {
+                alert('⚠️ ยังไม่ได้เลือกหรือสร้างเคสผู้ป่วย กรุณากดปุ่ม "➕ เคสใหม่" หรือเลือกเคสจากรายการก่อนบันทึกข้อมูล');
+            }
+            return;
+        }
         const key = 'online_crf_case_' + studyId;
+        syncAllMicroTimelines();
         const formData = getFormData();
         formData.studyId = studyId;
 
@@ -3247,7 +3810,7 @@ def get_js():
                 alert('⚠️ บันทึกข้อมูลฉบับร่างแล้ว แต่ยังไม่ได้ติ๊กเลือกกลุ่มโรคในเกณฑ์การคัดเข้าข้อ 4\\n(บังคับเลือก 1 กลุ่มโรค: STEMI, Acute Stroke หรือ Severe Trauma)');
                 const alertEl = document.getElementById('f1_inc4_disease_alert');
                 if (alertEl) {
-                    alertEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                    if (typeof alertEl.scrollIntoView === 'function') alertEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
                     alertEl.style.boxShadow = '0 0 14px rgba(244, 63, 94, 0.9)';
                     setTimeout(() => { alertEl.style.boxShadow = ''; }, 2500);
                 }
@@ -3326,7 +3889,55 @@ def get_js():
 
         setFormData(data);
         localStorage.setItem('online_crf_last_active_id', studyId);
+        applyGlobalAuthGuard();
         loadCaseIndex();
+    }
+
+    function clearFormToStandby() {
+        // Clear all inputs, selects, and textareas
+        document.querySelectorAll('input:not([type="radio"]):not([type="checkbox"])').forEach(el => el.value = '');
+        document.querySelectorAll('input[type="radio"], input[type="checkbox"]').forEach(el => el.checked = false);
+        document.querySelectorAll('select').forEach(el => el.value = '');
+        document.querySelectorAll('textarea').forEach(el => el.value = '');
+
+        const studyIdEl = document.getElementById('f1_study_id');
+        if (studyIdEl) studyIdEl.value = '';
+        syncFields('study-id-sync', '');
+        syncFields('refer-id-sync', '');
+        syncFields('hn-sync', '');
+        syncFields('vn-sync', '');
+        syncFields('date-sync', '');
+        syncFields('abs-sync', '');
+
+        localStorage.removeItem('online_crf_last_active_id');
+
+        const sel = document.getElementById('case-selector');
+        if (sel) sel.value = '';
+
+        applyDiseaseIsolation(null);
+        updateDiseaseVisuals(null);
+
+        toggleCprDetails();
+        toggleMortalityDetails();
+        toggleRainDetails();
+        toggleIntubationDetails();
+        toggleInotropesDetails();
+        toggleNicardipineDetails();
+
+        const ambPlateCustom = document.getElementById('f2_amb_plate_custom');
+        if (ambPlateCustom) {
+            ambPlateCustom.style.display = 'none';
+            ambPlateCustom.value = '';
+        }
+
+        ['f2_mon1_time', 'f2_mon2_time', 'f2_mon3_time', 'f2_mon4_time', 'f2_mon5_time'].forEach(id => {
+            const el = document.getElementById(id);
+            if (el) delete el.dataset.manual;
+        });
+
+        calcAll();
+        loadCaseIndex();
+        applyGlobalAuthGuard();
     }
 
     function resetToNewCase(user) {
@@ -3351,6 +3962,17 @@ def get_js():
         document.querySelectorAll('input[type="radio"], input[type="checkbox"]').forEach(el => el.checked = false);
         document.querySelectorAll('select').forEach(el => el.value = '');
         document.querySelectorAll('textarea').forEach(el => el.value = '');
+
+        const ambCustomEl = document.getElementById('f2_amb_plate_custom');
+        if (ambCustomEl) {
+            ambCustomEl.style.display = 'none';
+            ambCustomEl.value = '';
+        }
+
+        ['f2_mon1_time', 'f2_mon2_time', 'f2_mon3_time', 'f2_mon4_time', 'f2_mon5_time'].forEach(id => {
+            const el = document.getElementById(id);
+            if (el) delete el.dataset.manual;
+        });
 
         document.getElementById('f1_study_id').value = nextNum;
         syncFields('study-id-sync', nextNum);
@@ -3377,6 +3999,7 @@ def get_js():
         toggleRainDetails();
         toggleIntubationDetails();
         toggleInotropesDetails();
+        toggleNicardipineDetails();
 
         calcAll();
         loadCaseIndex();
@@ -3389,11 +4012,25 @@ def get_js():
             return;
         }
 
-        if (confirm('ต้องการสร้างเคสใหม่ใช่หรือไม่? (ข้อมูลปัจจุบันได้รับการบันทึกแล้ว)')) {
-            const currentUser = getCurrentUser();
-            resetToNewCase(currentUser);
-            saveCurrentCase(true);
-            switchTab(1);
+        const curStudyId = document.getElementById('f1_study_id')?.value.trim();
+        if (curStudyId) {
+            if (!confirm('ต้องการสร้างเคสใหม่ใช่หรือไม่? (ข้อมูลเคสปัจจุบันได้รับการบันทึกแล้ว)')) {
+                return;
+            }
+        }
+
+        const currentUser = getCurrentUser();
+        resetToNewCase(currentUser);
+        saveCurrentCase(true);
+        applyGlobalAuthGuard();
+        switchTab(1);
+
+        const statusEl = document.getElementById('save-status');
+        if (statusEl) {
+            const sid = document.getElementById('f1_study_id')?.value || '';
+            statusEl.innerHTML = `✓ เริ่มต้นเคสใหม่แล้ว (LANTA_${sid})`;
+            statusEl.style.display = 'inline-flex';
+            setTimeout(() => { if (statusEl) statusEl.style.display = 'none'; }, 3500);
         }
     }
 
@@ -3448,6 +4085,13 @@ def get_js():
                 Nationality: c.f1_nationality || '',
                 Premorbid_mRS: c.f1_premrs || '',
                 CCI_Total: c.f1_cci_total || '',
+                RF_HTN: c.f1_rf_htn ? 1 : 0,
+                RF_DLP: c.f1_rf_dlp ? 1 : 0,
+                RF_Smoking: c.f1_rf_smoking ? 1 : 0,
+                RF_AF: c.f1_rf_af ? 1 : 0,
+                RF_CAD: c.f1_rf_cad ? 1 : 0,
+                RF_Alcohol: c.f1_rf_alcohol ? 1 : 0,
+                Wakeup_Stroke: c.f1_onset_wakeup ? 1 : 0,
                 Onset_Date: c.f1_onset_date || '',
                 Onset_Time: c.f1_onset_time || '',
                 Onset_to_ER_min: c.f1_onset_to_er || '',
@@ -3460,9 +4104,16 @@ def get_js():
                 Disease_STEMI: (c.f1_target_disease === 'stemi' || c.f1_inc4_stemi) ? 1 : 0,
                 Disease_AIS: (c.f1_target_disease === 'ais' || c.f1_inc4_ais) ? 1 : 0,
                 Disease_Trauma: (c.f1_target_disease === 'trauma' || c.f1_inc4_trauma) ? 1 : 0,
+                STEMI_PreROSC: c.f1_stemi_rosc || '',
                 Lanta_Killip: c.f1_killip || '',
+                Lanta_NIHSS: c.f1_stroke_nihss || '',
                 Lanta_Stroke_GCS: c.f1_stroke_gcs || '',
                 Lanta_Trauma_Acuity: c.f1_trauma_acuity || '',
+                Trauma_AIS_Head: c.f1_trauma_ais_head ? 1 : 0,
+                Trauma_AIS_Torso: c.f1_trauma_ais_torso ? 1 : 0,
+                Trauma_AIS_Pelvis: c.f1_trauma_ais_pelvis ? 1 : 0,
+                Trauma_AIS_Hemo: c.f1_trauma_ais_hemo ? 1 : 0,
+                Trauma_AIS_Polytrauma: c.f1_trauma_ais_poly ? 1 : 0,
                 Lanta_SBP: c.f1_sbp || '',
                 Lanta_DBP: c.f1_dbp || '',
                 Lanta_MAP: c.f1_map || '',
@@ -3474,7 +4125,11 @@ def get_js():
                 Lanta_Total_GCS: c.f1_gcs_total || '',
                 Lanta_Total_RTS: c.f1_rts_total || '',
                 PreIntubation: c.f1_intubation || '',
+                PreIntubation_CCollar: c.f1_ett_ccollar ? 1 : 0,
                 PreInotropes: c.f1_inotropes || '',
+                PreNicardipine: c.f1_nicardipine || '',
+                PreNicardipine_Dose: c.f1_nicardipine_dose || '',
+                Trauma_PreFluid: c.f1_resusc_fluid || '',
                 T1_Date: c.f1_t1_date || '',
                 T1_Time: c.f1_t1_time || '',
                 T0_1_DIDO_min: c.f1_dido_min || '',
@@ -3532,7 +4187,10 @@ def get_js():
                 Krabi_GCS_Total: c.f4_gcs_total || '',
                 Krabi_MSI: c.f4_msi || '',
                 Krabi_Killip: c.f4_killip || '',
+                Krabi_NIHSS: c.f4_stroke_nihss || '',
                 Delta_Killip_Eval: c.f4_eval_killip || '',
+                Delta_NIHSS_Score: c.f4_delta_nihss || '',
+                Delta_NIHSS_Eval: c.f4_eval_nihss || '',
                 Delta_GCS_Score: c.f4_delta_gcs || '',
                 Delta_GCS_Eval: c.f4_eval_gcs || '',
                 Delta_RTS_Score: c.f4_delta_rts || '',
@@ -3582,6 +4240,13 @@ def get_js():
                 Nationality: c.f1_nationality || '',
                 mRS_Premorbid: c.f1_premrs || '',
                 CCI_Total: c.f1_cci_total || '',
+                RF_HTN: c.f1_rf_htn ? 1 : 0,
+                RF_DLP: c.f1_rf_dlp ? 1 : 0,
+                RF_Smoking: c.f1_rf_smoking ? 1 : 0,
+                RF_AF: c.f1_rf_af ? 1 : 0,
+                RF_CAD: c.f1_rf_cad ? 1 : 0,
+                RF_Alcohol: c.f1_rf_alcohol ? 1 : 0,
+                Wakeup_Stroke: c.f1_onset_wakeup ? 1 : 0,
                 T0_Date: c.f1_t0_date || '',
                 T0_Time: c.f1_t0_time || '',
                 Onset_Date: c.f1_onset_date || '',
@@ -3590,10 +4255,17 @@ def get_js():
                 Arrival_Mode: c.f1_arrival_mode || '',
                 Triage_ESI: c.f1_esi || '',
                 Island_ED_Shift: c.f1_shift || '',
+                STEMI_PreROSC: c.f1_stemi_rosc || '',
                 Killip_Initial: c.f1_killip || '',
+                Stroke_NIHSS_Initial: c.f1_stroke_nihss || '',
                 Stroke_GCS_Conscious: c.f1_stroke_gcs || '',
                 Trauma_Mechanism: (c.f1_trauma_mech1 ? 'HighVelocity;' : '') + (c.f1_trauma_mech2 ? 'FallHeight;' : '') + (c.f1_trauma_mech3 ? 'Penetrating;' : ''),
                 Trauma_Physiological_Acuity: c.f1_trauma_acuity || '',
+                Trauma_AIS_Head: c.f1_trauma_ais_head ? 1 : 0,
+                Trauma_AIS_Torso: c.f1_trauma_ais_torso ? 1 : 0,
+                Trauma_AIS_Pelvis: c.f1_trauma_ais_pelvis ? 1 : 0,
+                Trauma_AIS_Hemo: c.f1_trauma_ais_hemo ? 1 : 0,
+                Trauma_AIS_Polytrauma: c.f1_trauma_ais_poly ? 1 : 0,
                 SBP_Lanta: c.f1_sbp || '',
                 DBP_Lanta: c.f1_dbp || '',
                 MAP_Lanta: c.f1_map || '',
@@ -3606,7 +4278,11 @@ def get_js():
                 GCS_Total_Lanta: c.f1_gcs_total || '',
                 RTS_Total_Lanta: c.f1_rts_total || '',
                 Pre_Intubation: c.f1_intubation || '',
+                Pre_Intubation_CCollar: c.f1_ett_ccollar ? 1 : 0,
                 Pre_Inotropes: c.f1_inotropes || '',
+                Pre_Nicardipine: c.f1_nicardipine || '',
+                Pre_Nicardipine_Dose: c.f1_nicardipine_dose || '',
+                Trauma_PreFluid: c.f1_resusc_fluid || '',
                 T1_DoorOut_Date: c.f1_t1_date || '',
                 T1_DoorOut_Time: c.f1_t1_time || '',
                 T0_1_DIDO_min: c.f1_dido_min || '',
@@ -3695,10 +4371,13 @@ def get_js():
                 GCS_M_Krabi: c.f4_gcs_m || '',
                 GCS_Total_Krabi: c.f4_gcs_total || '',
                 Killip_Krabi: c.f4_killip || '',
+                NIHSS_Krabi: c.f4_stroke_nihss || '',
                 Stroke_GCS_Krabi: c.f4_stroke_gcs || '',
                 Trauma_Acuity_Krabi: c.f4_trauma_acuity || '',
                 MSI_Krabi: c.f4_msi || '',
                 Delta_Killip: c.f4_eval_killip || '',
+                Delta_NIHSS: c.f4_delta_nihss || '',
+                Delta_NIHSS_Eval: c.f4_eval_nihss || '',
                 Delta_GCS: c.f4_delta_gcs || '',
                 Delta_GCS_Eval: c.f4_eval_gcs || '',
                 Delta_RTS: c.f4_delta_rts || '',
@@ -3911,6 +4590,8 @@ def get_js():
             .replace(/'/g, '&#039;');
     }
 
+    const ADMIN_PIN = '1212312121';
+
     const DEFAULT_ADMIN_ACCOUNT = {
         username: 'admin',
         password: 'admin1234',
@@ -3984,12 +4665,15 @@ def get_js():
 
     function isCaseOwnedByUser(c, user) {
         if (!c || !user) return false;
-        const uName = (user.username || '').toLowerCase().trim();
-        const fName = (user.fullname || '').trim();
-        if (uName && c.createdBy && c.createdBy.toLowerCase().trim() === uName) return true;
-        if (fName && c.f1_abstractor && c.f1_abstractor.trim() === fName) return true;
-        if (fName && c.abstractor && c.abstractor.trim() === fName) return true;
-        if (fName && c.createdByName && c.createdByName.trim() === fName) return true;
+        const uName = String(user.username || '').toLowerCase().trim();
+        const fName = String(user.fullname || '').trim();
+        const cCreatedBy = String(c.createdBy || '').toLowerCase().trim();
+        const cAbs = String(c.f1_abstractor || c.abstractor || '').trim();
+        const cCreatedByName = String(c.createdByName || '').trim();
+
+        if (uName && cCreatedBy && cCreatedBy === uName) return true;
+        if (fName && cAbs && cAbs === fName) return true;
+        if (fName && cCreatedByName && cCreatedByName === fName) return true;
         return false;
     }
 
@@ -4048,47 +4732,29 @@ def get_js():
                 sessionStorage.setItem('crf_admin_authorized', 'true');
             }
             closeLoginModal();
-            applyGlobalAuthGuard();
             loadCaseIndex();
 
-            // Check currently open case: non-admin can only see their own cases
+            // After login: strictly do NOT auto-create any new case!
+            // If the user already had a saved case open that they own, keep it loaded;
+            // Otherwise, put the form in clean standby mode (user must click "➕ เคสใหม่" to create a new case)
             const curStudyId = document.getElementById('f1_study_id')?.value.trim();
-            if (found.role !== 'admin' && curStudyId) {
+            let keepCase = false;
+            if (curStudyId) {
                 const curRaw = localStorage.getItem('online_crf_case_' + curStudyId);
-                let isOwner = false;
                 if (curRaw) {
                     try {
                         const curCase = JSON.parse(curRaw);
-                        isOwner = isCaseOwnedByUser(curCase, found);
+                        if (found.role === 'admin' || isCaseOwnedByUser(curCase, found)) {
+                            loadCase(curStudyId);
+                            keepCase = true;
+                        }
                     } catch(e) {}
                 }
-                if (!isOwner) {
-                    // Find user's first available case or prepare new case
-                    const index = JSON.parse(localStorage.getItem('online_crf_case_index') || '[]');
-                    let userCaseId = null;
-                    for (const id of index) {
-                        const r = localStorage.getItem('online_crf_case_' + id);
-                        if (r) {
-                            try {
-                                const parsed = JSON.parse(r);
-                                if (isCaseOwnedByUser(parsed, found)) {
-                                    userCaseId = id;
-                                    break;
-                                }
-                            } catch(e) {}
-                        }
-                    }
-                    if (userCaseId) {
-                        loadCase(userCaseId);
-                    } else {
-                        resetToNewCase(found);
-                    }
-                }
-            } else if (found.role === 'admin' && curStudyId) {
-                const curRaw = localStorage.getItem('online_crf_case_' + curStudyId);
-                if (curRaw) {
-                    loadCase(curStudyId);
-                }
+            }
+            if (!keepCase) {
+                clearFormToStandby();
+            } else {
+                applyGlobalAuthGuard();
             }
 
             const statusEl = document.getElementById('save-status');
@@ -4113,11 +4779,7 @@ def get_js():
         if (!confirm('ต้องการออกจากระบบใช่หรือไม่?')) return;
         sessionStorage.removeItem('crf_current_user');
         sessionStorage.removeItem('crf_admin_authorized');
-        syncFields('abs-sync', '');
-        syncFields('date-sync', '');
-        resetToNewCase(null);
-        applyGlobalAuthGuard();
-        loadCaseIndex();
+        clearFormToStandby();
         const statusEl = document.getElementById('save-status');
         if (statusEl) {
             statusEl.innerHTML = '🔒 ออกจากระบบแล้ว (ระบบล็อกการกรอกข้อมูล)';
@@ -4131,12 +4793,18 @@ def get_js():
         const isLoggedIn = Boolean(currentUser);
 
         const banner = document.getElementById('auth-locked-banner');
+        const standbyBanner = document.getElementById('case-standby-banner');
         const navUserInfo = document.getElementById('nav-user-info');
         const navUserFullname = document.getElementById('nav-user-fullname');
         const navUserBadge = document.getElementById('nav-user-badge');
         const btnLogin = document.getElementById('btn-login');
         const btnLogout = document.getElementById('btn-logout');
+        const btnMyCases = document.getElementById('btn-my-cases');
+        const btnAdminDash = document.getElementById('btn-admin-dash');
         const masterForm = document.getElementById('crf-master-form');
+
+        const curStudyId = document.getElementById('f1_study_id')?.value.trim();
+        const hasActiveCase = Boolean(curStudyId);
 
         if (isLoggedIn) {
             if (banner) banner.style.display = 'none';
@@ -4155,24 +4823,55 @@ def get_js():
             }
             if (btnLogin) btnLogin.style.display = 'none';
             if (btnLogout) btnLogout.style.display = 'inline-flex';
+            if (btnMyCases) btnMyCases.style.display = 'inline-flex';
+            if (btnAdminDash) btnAdminDash.style.display = (currentUser.role === 'admin') ? 'inline-flex' : 'none';
 
-            if (masterForm) {
-                masterForm.style.pointerEvents = 'auto';
-                masterForm.style.opacity = '1';
-                masterForm.querySelectorAll('input, select, textarea, button').forEach(el => {
-                    if (el.classList.contains('abs-sync') || el.classList.contains('date-sync') || el.classList.contains('calc-field') || el.hasAttribute('data-readonly')) {
-                        el.readOnly = true;
-                        el.disabled = false;
-                    } else {
-                        el.disabled = false;
-                    }
-                });
+            if (!hasActiveCase) {
+                // User logged in, but NO active case loaded/created yet -> Show Standby Banner & Lock form
+                if (standbyBanner) standbyBanner.style.display = 'block';
+                if (masterForm) {
+                    masterForm.style.pointerEvents = 'none';
+                    masterForm.style.opacity = '0.55';
+                    masterForm.querySelectorAll('input, select, textarea, button').forEach(el => {
+                        el.disabled = true;
+                    });
+                }
+            } else {
+                // Active case loaded or created -> Hide Standby Banner & Unlock form
+                if (standbyBanner) standbyBanner.style.display = 'none';
+                if (masterForm) {
+                    masterForm.style.pointerEvents = 'auto';
+                    masterForm.style.opacity = '1';
+                    masterForm.querySelectorAll('input, select, textarea, button').forEach(el => {
+                        if (el.classList.contains('abs-sync') || el.classList.contains('date-sync') || el.classList.contains('calc-field') || el.hasAttribute('data-readonly')) {
+                            el.readOnly = true;
+                            el.disabled = false;
+                        } else {
+                            el.disabled = false;
+                        }
+                    });
+
+                    // Re-apply disease isolation and conditional logic
+                    try {
+                        const activeDis = (typeof getActiveDisease === 'function') ? getActiveDisease() : null;
+                        if (typeof updateDiseaseVisuals === 'function') updateDiseaseVisuals(activeDis);
+                        if (typeof toggleCprDetails === 'function') toggleCprDetails();
+                        if (typeof toggleMortalityDetails === 'function') toggleMortalityDetails();
+                        if (typeof toggleRainDetails === 'function') toggleRainDetails();
+                        if (typeof toggleIntubationDetails === 'function') toggleIntubationDetails();
+                        if (typeof toggleInotropesDetails === 'function') toggleInotropesDetails();
+                        if (typeof toggleNicardipineDetails === 'function') toggleNicardipineDetails();
+                    } catch(e) {}
+                }
             }
         } else {
             if (banner) banner.style.display = 'block';
+            if (standbyBanner) standbyBanner.style.display = 'none';
             if (navUserInfo) navUserInfo.style.display = 'none';
             if (btnLogin) btnLogin.style.display = 'inline-flex';
             if (btnLogout) btnLogout.style.display = 'none';
+            if (btnMyCases) btnMyCases.style.display = 'none';
+            if (btnAdminDash) btnAdminDash.style.display = 'none';
 
             if (masterForm) {
                 masterForm.style.pointerEvents = 'none';
@@ -4349,9 +5048,348 @@ def get_js():
         tbody.innerHTML = html;
     }
 
-    // --- ADMIN DASHBOARD & MANAGEMENT ENGINE ---
-    const ADMIN_PIN = '1212312121';
+    // --- USER PERSONAL CASES DASHBOARD ENGINE (MY CASES) ---
+    function openMyCasesDashboard() {
+        const currentUser = getCurrentUser();
+        if (!currentUser) {
+            alert('⚠️ กรุณาเข้าสู่ระบบก่อนเปิดดูรายชื่อเคสที่ฉันสร้างไว้');
+            openLoginModal();
+            return;
+        }
 
+        const modal = document.getElementById('my-cases-dashboard-modal');
+        if (!modal) return;
+
+        // Populate header user info
+        const fnEl = document.getElementById('my-dash-user-fullname');
+        const unEl = document.getElementById('my-dash-user-username');
+        if (fnEl) fnEl.textContent = currentUser.fullname || currentUser.username;
+        if (unEl) unEl.textContent = currentUser.username;
+
+        modal.style.display = 'flex';
+        renderMyCasesDashboard();
+    }
+
+    function closeMyCasesDashboard() {
+        const modal = document.getElementById('my-cases-dashboard-modal');
+        if (modal) modal.style.display = 'none';
+    }
+
+    function myCasesEditCase(studyId) {
+        if (!studyId) return;
+        closeMyCasesDashboard();
+        loadCase(studyId);
+        switchTab(1);
+        const statusEl = document.getElementById('save-status');
+        if (statusEl) {
+            statusEl.innerHTML = `📋 เปิดเคส LANTA_${studyId} สำเร็จ`;
+            statusEl.style.display = 'inline-flex';
+            setTimeout(() => { if (statusEl) statusEl.style.display = 'none'; }, 3000);
+        }
+    }
+
+    function renderMyCasesDashboard() {
+        const currentUser = getCurrentUser();
+        if (!currentUser) return;
+
+        const tbody = document.getElementById('my-cases-tbody');
+        if (!tbody) return;
+
+        const index = JSON.parse(localStorage.getItem('online_crf_case_index') || '[]');
+        
+        // 1. Gather all cases owned by the current user
+        const myCases = [];
+        index.forEach(studyId => {
+            const raw = localStorage.getItem('online_crf_case_' + studyId);
+            if (!raw) return;
+            try {
+                const data = JSON.parse(raw);
+                if (isCaseOwnedByUser(data, currentUser)) {
+                    const comp = (typeof getCaseCompleteness === 'function') 
+                        ? getCaseCompleteness(data) 
+                        : { pct: 100, missingCount: 0, byForm: {} };
+                    
+                    const isStemi = Boolean(data.f1_target_disease === 'stemi' || data.f1_inc4_stemi || data.f1_cond_stemi);
+                    const isStroke = Boolean(data.f1_target_disease === 'ais' || data.f1_inc4_ais || data.f1_cond_stroke);
+                    const isTrauma = Boolean(data.f1_target_disease === 'trauma' || data.f1_inc4_trauma || data.f1_cond_trauma);
+                    const diseaseKey = isStemi ? 'stemi' : (isStroke ? 'ais' : (isTrauma ? 'trauma' : 'other'));
+
+                    myCases.push({
+                        studyId: String(studyId),
+                        data: data,
+                        comp: comp,
+                        pct: comp.pct,
+                        missingCount: comp.missingCount,
+                        isStemi: isStemi,
+                        isStroke: isStroke,
+                        isTrauma: isTrauma,
+                        diseaseKey: diseaseKey,
+                        createdAt: data.createdAt || data.lastUpdated || '',
+                        hn: data.f1_hn || data.hn || '',
+                        ptName: data.f1_pt_name || data.pt_name || '',
+                        referDate: data.f1_refer_date || data.f1_t1_date || data.f2_t1_date || data.f1_t0_date || data.f1_abs_date || ''
+                    });
+                }
+            } catch(e) {
+                console.error('Error parsing case for user dashboard:', studyId, e);
+            }
+        });
+
+        // Update count badge in header
+        const countBadge = document.getElementById('my-dash-count-badge');
+        if (countBadge) countBadge.textContent = `${myCases.length} เคส`;
+
+        // 2. Compute Summary Statistics for My Cases
+        const totalCases = myCases.length;
+        let avgComp = 0;
+        let completeCount = 0;
+        let incompleteCount = 0;
+
+        let diseaseCounts = { stemi: 0, ais: 0, trauma: 0, other: 0 };
+        let compBuckets = { full: 0, high: 0, low: 0 }; // 100%, 80-99%, <80%
+        let formTotals = {
+            1: { expected: 0, missing: 0 },
+            2: { expected: 0, missing: 0 },
+            3: { expected: 0, missing: 0 },
+            4: { expected: 0, missing: 0 }
+        };
+
+        if (totalCases > 0) {
+            let sumPct = 0;
+            myCases.forEach(c => {
+                sumPct += c.pct;
+                if (c.pct === 100) {
+                    completeCount++;
+                    compBuckets.full++;
+                } else {
+                    incompleteCount++;
+                    if (c.pct >= 80) compBuckets.high++;
+                    else compBuckets.low++;
+                }
+
+                if (c.isStemi) diseaseCounts.stemi++;
+                else if (c.isStroke) diseaseCounts.ais++;
+                else if (c.isTrauma) diseaseCounts.trauma++;
+                else diseaseCounts.other++;
+
+                if (c.comp && c.comp.byForm) {
+                    for (let f = 1; f <= 4; f++) {
+                        if (c.comp.byForm[f]) {
+                            formTotals[f].expected += (c.comp.byForm[f].expected || 0);
+                            formTotals[f].missing += (c.comp.byForm[f].missing ? c.comp.byForm[f].missing.length : 0);
+                        }
+                    }
+                }
+            });
+            avgComp = Math.round(sumPct / totalCases);
+        }
+
+        // Render Stat Cards
+        const statTotalEl = document.getElementById('my-stat-total-cases');
+        const statCompletedEl = document.getElementById('my-stat-completed-cases');
+        const statCompletedSub = document.getElementById('my-stat-completed-sub');
+        const statPendingEl = document.getElementById('my-stat-pending-cases');
+        const statPendingSub = document.getElementById('my-stat-pending-sub');
+        const statAvgCompEl = document.getElementById('my-stat-avg-completeness');
+
+        if (statTotalEl) statTotalEl.textContent = totalCases;
+        if (statCompletedEl) statCompletedEl.textContent = completeCount;
+        if (statCompletedSub) statCompletedSub.textContent = totalCases > 0 ? `${((completeCount / totalCases) * 100).toFixed(0)}% ของเคสทั้งหมด` : '0% ของเคสทั้งหมด';
+        if (statPendingEl) statPendingEl.textContent = incompleteCount;
+        if (statPendingSub) statPendingSub.textContent = totalCases > 0 ? `${((incompleteCount / totalCases) * 100).toFixed(0)}% ของเคสทั้งหมด` : '0% ของเคสทั้งหมด';
+        if (statAvgCompEl) statAvgCompEl.textContent = totalCases > 0 ? `${avgComp}%` : '100%';
+
+        // Render Donut Chart 1: Disease Distribution
+        if (typeof renderDonutChart === 'function') {
+            const diseaseSlices = [
+                { label: 'STEMI', count: diseaseCounts.stemi, color: '#dc2626' },
+                { label: 'Stroke', count: diseaseCounts.ais, color: '#d97706' },
+                { label: 'Trauma', count: diseaseCounts.trauma, color: '#2563eb' },
+                { label: 'อื่นๆ / ยังไม่ระบุ', count: diseaseCounts.other, color: '#94a3b8' }
+            ];
+            renderDonutChart('my-pie-chart-disease', 'my-pie-center-disease', 'my-pie-legend-disease', diseaseSlices, totalCases, 'เคส');
+
+            // Render Donut Chart 2: Completeness Distribution
+            const compSlices = [
+                { label: '✓ ครบ 100%', count: compBuckets.full, color: '#16a34a' },
+                { label: '⚡ 80 - 99%', count: compBuckets.high, color: '#0284c7' },
+                { label: '⚠️ น้อยกว่า 80%', count: compBuckets.low, color: '#f43f5e' }
+            ];
+            renderDonutChart('my-pie-chart-comp', 'my-pie-center-comp', 'my-pie-legend-comp', compSlices, totalCases > 0 ? `${avgComp}%` : '100%', 'เฉลี่ย');
+        }
+
+        // Render Form 1-4 Completeness Bars
+        for (let f = 1; f <= 4; f++) {
+            const exp = formTotals[f].expected;
+            const miss = formTotals[f].missing;
+            const fPct = exp > 0 ? Math.round(((exp - miss) / exp) * 100) : 100;
+            const labelEl = document.getElementById(`my-form${f}-pct-label`);
+            const barEl = document.getElementById(`my-form${f}-bar`);
+            if (labelEl) labelEl.textContent = totalCases > 0 ? `${fPct}%` : '100%';
+            if (barEl) {
+                barEl.style.width = totalCases > 0 ? `${fPct}%` : '0%';
+                if (fPct === 100) barEl.style.backgroundColor = '#16a34a';
+                else if (fPct >= 80) barEl.style.backgroundColor = '#0284c7';
+                else barEl.style.backgroundColor = '#f43f5e';
+            }
+        }
+
+        // 3. Filtering & Searching
+        const searchInput = document.getElementById('my-cases-search');
+        const filterDisease = document.getElementById('my-cases-filter-disease');
+        const filterStatus = document.getElementById('my-cases-filter-status');
+
+        const query = searchInput ? searchInput.value.toLowerCase().trim() : '';
+        const diseaseFilter = filterDisease ? filterDisease.value : '';
+        const statusFilter = filterStatus ? filterStatus.value : '';
+
+        const filtered = myCases.filter(c => {
+            if (diseaseFilter && c.diseaseKey !== diseaseFilter) return false;
+            if (statusFilter === 'complete' && c.pct < 100) return false;
+            if (statusFilter === 'incomplete' && c.pct === 100) return false;
+
+            if (query) {
+                const searchCorpus = [
+                    c.studyId,
+                    'LANTA_' + c.studyId,
+                    c.hn,
+                    c.ptName,
+                    c.referDate
+                ].join(' ').toLowerCase();
+                if (!searchCorpus.includes(query)) return false;
+            }
+            return true;
+        });
+
+        // Update table count indicator
+        const tableCountEl = document.getElementById('my-cases-table-count');
+        if (tableCountEl) tableCountEl.textContent = filtered.length;
+
+        // 4. Render Table Rows
+        if (filtered.length === 0) {
+            tbody.innerHTML = `
+                <tr>
+                    <td colspan="8" style="text-align: center; padding: 30px 15px; color: #64748b; font-size: 13.5px;">
+                        ${myCases.length === 0 
+                            ? '📂 คุณยังไม่มีเคสที่บันทึกไว้ในระบบ สามารถกดปุ่ม <b>"➕ สร้างเคสใหม่"</b> ด้านบนเพื่อเริ่มต้นได้ทันที' 
+                            : '🔍 ไม่พบเคสที่ตรงกับเงื่อนไขการค้นหา/ตัวกรอง'}
+                    </td>
+                </tr>
+            `;
+            return;
+        }
+
+        // Sort: newest studyId first by default
+        filtered.sort((a, b) => {
+            const numA = parseInt(a.studyId, 10) || 0;
+            const numB = parseInt(b.studyId, 10) || 0;
+            return numB - numA;
+        });
+
+        let rowsHtml = '';
+        filtered.forEach((c) => {
+            // วันที่สร้าง+เวลา
+            let createdDateStr = '-';
+            if (c.createdAt) {
+                try {
+                    const dt = new Date(c.createdAt);
+                    if (!isNaN(dt.getTime())) {
+                        const datePart = dt.toLocaleDateString('th-TH', { year: 'numeric', month: 'short', day: 'numeric' });
+                        const timePart = dt.toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit' });
+                        createdDateStr = `<div style="font-weight: 600; color: #1e293b;">${datePart}</div><div style="font-size: 11px; color: #64748b;">${timePart} น.</div>`;
+                    }
+                } catch(e) {}
+            }
+            if (createdDateStr === '-' && c.data.f1_abs_date) {
+                createdDateStr = `<div style="font-weight: 600; color: #1e293b;">${escapeHtml(c.data.f1_abs_date)}</div>`;
+            }
+
+            // HN
+            const hnStr = c.hn ? `<code style="font-weight: 700; color: #0f172a; background: #f1f5f9; padding: 2px 6px; border-radius: 4px;">${escapeHtml(c.hn)}</code>` : '<span style="color: #94a3b8;">-</span>';
+
+            // ชื่อ-นามสกุลผู้ป่วย
+            const ptNameStr = c.ptName 
+                ? `<span style="font-weight: 700; color: #1e293b;">${escapeHtml(c.ptName)}</span>` 
+                : '<span style="color: #94a3b8; font-style: italic;">(ไม่ระบุชื่อ)</span>';
+
+            // วันที่ refer
+            let referDateStr = '-';
+            if (c.referDate) {
+                referDateStr = `<span style="font-weight: 600; color: #334155;">${escapeHtml(c.referDate)}</span>`;
+            }
+
+            // กลุ่มโรค
+            let diseaseBadge = '<span style="color: #94a3b8;">-</span>';
+            if (c.isStemi) {
+                diseaseBadge = '<span style="background: #fee2e2; color: #b91c1c; font-weight: 700; font-size: 11px; padding: 2px 8px; border-radius: 4px; display: inline-block;">🫀 STEMI</span>';
+            } else if (c.isStroke) {
+                diseaseBadge = '<span style="background: #fef3c7; color: #b45309; font-weight: 700; font-size: 11px; padding: 2px 8px; border-radius: 4px; display: inline-block;">🧠 Stroke</span>';
+            } else if (c.isTrauma) {
+                diseaseBadge = '<span style="background: #dbeafe; color: #1d4ed8; font-weight: 700; font-size: 11px; padding: 2px 8px; border-radius: 4px; display: inline-block;">🩹 Trauma</span>';
+            } else {
+                diseaseBadge = '<span style="background: #f1f5f9; color: #64748b; font-size: 11px; padding: 2px 8px; border-radius: 4px; display: inline-block;">📁 อื่นๆ</span>';
+            }
+
+            // % ความคืบหน้าของ form
+            const pct = c.pct;
+            let barColor = '#16a34a';
+            let statusText = '✓ ครบ 100%';
+            let badgeBg = '#dcfce7';
+            let badgeColor = '#15803d';
+
+            if (pct < 100) {
+                if (pct >= 80) {
+                    barColor = '#0284c7';
+                    badgeBg = '#e0f2fe';
+                    badgeColor = '#0369a1';
+                    statusText = `${pct}% (ขาด ${c.missingCount} ช่อง)`;
+                } else {
+                    barColor = '#f43f5e';
+                    badgeBg = '#ffe4e6';
+                    badgeColor = '#be123c';
+                    statusText = `${pct}% (ขาด ${c.missingCount} ช่อง)`;
+                }
+            }
+
+            const compHtml = `
+                <div style="display: flex; flex-direction: column; gap: 3px; align-items: center; width: 100%; max-width: 140px; margin: 0 auto;">
+                    <div style="display: flex; justify-content: space-between; width: 100%; font-size: 11px;">
+                        <span style="font-weight: 800; color: ${badgeColor}; background: ${badgeBg}; padding: 1px 6px; border-radius: 4px;">${statusText}</span>
+                    </div>
+                    <div style="width: 100%; height: 6px; background: #e2e8f0; border-radius: 999px; overflow: hidden;">
+                        <div style="width: ${pct}%; height: 100%; background: ${barColor}; border-radius: 999px; transition: width 0.3s;"></div>
+                    </div>
+                </div>
+            `;
+
+            // Action button
+            const actionHtml = `
+                <button type="button" class="btn" onclick="myCasesEditCase('${escapeHtml(c.studyId)}')" 
+                        style="background: #3b0764; color: #ffffff; padding: 4px 10px; font-size: 12px; font-weight: 600; border-radius: 5px; white-space: nowrap; box-shadow: 0 1px 3px rgba(59,7,100,0.2);">
+                    ✏️ แก้ไข
+                </button>
+            `;
+
+            rowsHtml += `
+                <tr>
+                    <td style="text-align: center;">
+                        <span style="font-weight: 800; color: #581c87; font-size: 13px;">LANTA_${escapeHtml(c.studyId)}</span>
+                    </td>
+                    <td style="text-align: center;">${createdDateStr}</td>
+                    <td>${hnStr}</td>
+                    <td>${ptNameStr}</td>
+                    <td style="text-align: center;">${referDateStr}</td>
+                    <td style="text-align: center;">${diseaseBadge}</td>
+                    <td style="text-align: center;">${compHtml}</td>
+                    <td style="text-align: center;">${actionHtml}</td>
+                </tr>
+            `;
+        });
+
+        tbody.innerHTML = rowsHtml;
+    }
+
+    // --- ADMIN DASHBOARD & MANAGEMENT ENGINE ---
     function openAdminDashboard() {
         const currentUser = getCurrentUser();
         const isAuth = sessionStorage.getItem('crf_admin_authorized') === 'true' || (currentUser && currentUser.role === 'admin');
@@ -4634,6 +5672,11 @@ const CRF_AUDIT_FIELDS = [
             { value: '3', label: 'Killip III (Pulmonary edema)' },
             { value: '4', label: 'Killip IV (Cardiogenic shock)' }
         ]},
+        { key: 'f1_stemi_rosc', label: 'Cardiac Arrest with ROSC ก่อนส่งต่อ (STEMI)', form: 1, formName: 'Form 1', category: 'ความรุนแรงจำเพาะโรค', type: 'select', condition: isCaseStemi, options: [
+            { value: '0', label: '0 = ไม่มี' },
+            { value: '1', label: '1 = มีภาวะ CPR จนได้ ROSC' }
+        ]},
+        { key: 'f1_stroke_nihss', label: 'คะแนน NIHSS แรกรับ รพ.เกาะลันตา (0–42)', form: 1, formName: 'Form 1', category: 'ความรุนแรงจำเพาะโรค', type: 'number', condition: isCaseStroke, unit: 'คะแนน', min: 0, max: 42 },
         { key: 'f1_stroke_gcs', label: 'ระดับความรู้สึกตัว Stroke GCS', form: 1, formName: 'Form 1', category: 'ความรุนแรงจำเพาะโรค', type: 'select', condition: isCaseStroke, options: [
             { value: 'severe', label: 'GCS 3–8: Severe Coma (โคม่ารุนแรง)' },
             { value: 'moderate', label: 'GCS 9–12: Moderate (ความรู้สึกตัวลดลงปานกลาง)' },
@@ -4657,6 +5700,15 @@ const CRF_AUDIT_FIELDS = [
         ]},
         { key: 'f1_inotropes_name', label: 'ชื่อยากระตุ้นความดัน ณ เกาะลันตา', form: 1, formName: 'Form 1', category: 'การช่วยกู้ชีพ ณ เกาะลันตา', type: 'text', condition: d => d.f1_inotropes === '1', placeholder: 'เช่น Norepinephrine, Dopamine' },
         { key: 'f1_inotropes_dose', label: 'ขนาดยากระตุ้นความดัน ณ เกาะลันตา', form: 1, formName: 'Form 1', category: 'การช่วยกู้ชีพ ณ เกาะลันตา', type: 'text', condition: d => d.f1_inotropes === '1', placeholder: 'เช่น 0.1 mcg/kg/min' },
+        { key: 'f1_nicardipine', label: 'การให้ยา IV Nicardipine ณ เกาะลันตา', form: 1, formName: 'Form 1', category: 'การช่วยกู้ชีพ ณ เกาะลันตา', type: 'select', condition: isCaseStroke, options: [
+            { value: '0', label: '0 = ไม่ได้รับ' },
+            { value: '1', label: '1 = ได้รับยา IV Nicardipine Infusion' }
+        ]},
+        { key: 'f1_resusc_fluid', label: 'ปริมาณสารน้ำ Crystalloid ก่อนส่งต่อ (Trauma)', form: 1, formName: 'Form 1', category: 'การช่วยกู้ชีพ ณ เกาะลันตา', type: 'select', condition: isCaseTrauma, options: [
+            { value: '0', label: '≤ 1,000 mL' },
+            { value: '1', label: '1,001–2,000 mL' },
+            { value: '2', label: '> 2,000 mL' }
+        ]},
 
         // ส่งต่อออกจากเกาะ (DIDO)
         { key: 'f1_t1_date', label: 'วันที่ออกจาก ER เกาะลันตา (T1 Date)', form: 1, formName: 'Form 1', category: 'ส่งต่อออกจากเกาะ (DIDO)', type: 'date' },
@@ -4887,6 +5939,7 @@ const CRF_AUDIT_FIELDS = [
             { value: '3', label: 'Killip Class III' },
             { value: '4', label: 'Killip Class IV' }
         ]},
+        { key: 'f4_stroke_nihss', label: 'คะแนน NIHSS แรกรับ รพ.กระบี่ (0–42)', form: 4, formName: 'Form 4', category: 'ความรุนแรงแรกรับกระบี่', type: 'number', condition: isCaseStroke, unit: 'คะแนน', min: 0, max: 42 },
         { key: 'f4_stroke_gcs', label: 'Stroke GCS ณ รพ.กระบี่', form: 4, formName: 'Form 4', category: 'ความรุนแรงแรกรับกระบี่', type: 'select', condition: isCaseStroke, options: [
             { value: 'severe', label: 'GCS 3–8 (Severe Coma)' },
             { value: 'moderate', label: 'GCS 9–12 (Moderate)' },
@@ -4901,6 +5954,10 @@ const CRF_AUDIT_FIELDS = [
         { key: 'f4_eval_killip', label: 'การประเมิน ΔKillip (STEMI)', form: 4, formName: 'Form 4', category: 'การประเมินภาวะทรุดหนักสรีรวิทยา', type: 'select', condition: isCaseStemi, options: [
             { value: 'stable', label: 'คงที่ / ดีขึ้น' },
             { value: 'deter', label: 'ทรุดหนัก (ΔKillip ≥ +1 หรือดำเนินสู่ Class IV)' }
+        ]},
+        { key: 'f4_eval_nihss', label: 'การประเมิน ΔNIHSS (Stroke)', form: 4, formName: 'Form 4', category: 'การประเมินภาวะทรุดหนักสรีรวิทยา', type: 'select', condition: isCaseStroke, options: [
+            { value: 'stable', label: 'คงที่ / ดีขึ้น (ΔNIHSS < +2)' },
+            { value: 'deter', label: 'ทรุดหนัก (ΔNIHSS ≥ +2)' }
         ]},
         { key: 'f4_eval_gcs', label: 'การประเมิน ΔGCS (Neurological)', form: 4, formName: 'Form 4', category: 'การประเมินภาวะทรุดหนักสรีรวิทยา', type: 'select', options: [
             { value: 'stable', label: 'คงที่ / ดีขึ้น' },
@@ -6449,7 +7506,7 @@ const CRF_AUDIT_FIELDS = [
         const curActive = localStorage.getItem('online_crf_last_active_id');
         if (curActive === studyId) {
             if (index.length > 0) loadCase(index[0]);
-            else createNewCase();
+            else clearFormToStandby();
         }
 
         loadCaseIndex();
@@ -6763,7 +7820,7 @@ const CRF_AUDIT_FIELDS = [
             setTimeout(() => {
                 const targetInput = document.getElementById('blank-input-' + focusKey);
                 if (targetInput) {
-                    targetInput.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                    if (typeof targetInput.scrollIntoView === 'function') targetInput.scrollIntoView({ behavior: 'smooth', block: 'center' });
                     targetInput.focus();
                 }
             }, 200);
