@@ -311,6 +311,16 @@ def assemble():
         }}
     </script>
 
+    <!-- QRCode for Offline 2FA QR Display & Online CDN Fallback -->
+    <script src="./qrcode.min.js"></script>
+    <script>
+        if (typeof QRCode === 'undefined') {{
+            var s = document.createElement('script');
+            s.src = 'https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js';
+            document.head.appendChild(s);
+        }}
+    </script>
+
     <!-- Embedded Application Logic -->
     <script>
 {js_content}

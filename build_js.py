@@ -79,6 +79,7 @@ def get_js():
         initSyncFields();
         initAutoSave();
         loadCaseIndex();
+        update2FaUI();
         
         // Automatic Screen Density Optimization
         autoAdjustScreenDensity();
@@ -4034,8 +4035,665 @@ def get_js():
         }
     }
 
+    // =========================================================================
+    // --- GOOGLE AUTHENTICATOR 2FA ENGINE (RFC 6238 TOTP) ---
+    // =========================================================================
+
+    // Pure JS SHA-1 Implementation
+    function _totpSha1(bytes) {
+        let w = new Uint32Array(80);
+        let h0 = 0x67452301, h1 = 0xEFCDAB89, h2 = 0x98BADCFE, h3 = 0x10325476, h4 = 0xC3D2E1F0;
+        let n = bytes.length;
+        let bitLen = n * 8;
+        let paddedLen = ((n + 8) >>> 6) + 1 << 6;
+        let padded = new Uint8Array(paddedLen);
+        padded.set(bytes);
+        padded[n] = 0x80;
+        let dv = new DataView(padded.buffer);
+        dv.setUint32(paddedLen - 4, bitLen, false);
+
+        for (let i = 0; i < paddedLen; i += 64) {
+            for (let j = 0; j < 16; j++) {
+                w[j] = dv.getUint32(i + j * 4, false);
+            }
+            for (let j = 16; j < 80; j++) {
+                let t = w[j - 3] ^ w[j - 8] ^ w[j - 14] ^ w[j - 16];
+                w[j] = (t << 1) | (t >>> 31);
+            }
+            let a = h0, b = h1, c = h2, d = h3, e = h4;
+            for (let j = 0; j < 80; j++) {
+                let f, k;
+                if (j < 20) { f = (b & c) | ((~b) & d); k = 0x5A827999; }
+                else if (j < 40) { f = b ^ c ^ d; k = 0x6ED9EBA1; }
+                else if (j < 60) { f = (b & c) | (b & d) | (c & d); k = 0x8F1BBCDC; }
+                else { f = b ^ c ^ d; k = 0xCA62C1D6; }
+                let temp = (((a << 5) | (a >>> 27)) + f + e + k + w[j]) | 0;
+                e = d; d = c; c = (b << 30) | (b >>> 2); b = a; a = temp;
+            }
+            h0 = (h0 + a) | 0;
+            h1 = (h1 + b) | 0;
+            h2 = (h2 + c) | 0;
+            h3 = (h3 + d) | 0;
+            h4 = (h4 + e) | 0;
+        }
+        let res = new Uint8Array(20);
+        let rdv = new DataView(res.buffer);
+        rdv.setUint32(0, h0, false);
+        rdv.setUint32(4, h1, false);
+        rdv.setUint32(8, h2, false);
+        rdv.setUint32(12, h3, false);
+        rdv.setUint32(16, h4, false);
+        return res;
+    }
+
+    // Pure JS HMAC-SHA1 Implementation
+    function _totpHmacSha1(keyBytes, msgBytes) {
+        let k = new Uint8Array(64);
+        if (keyBytes.length > 64) {
+            k.set(_totpSha1(keyBytes));
+        } else {
+            k.set(keyBytes);
+        }
+        let oPad = new Uint8Array(64);
+        let iPad = new Uint8Array(64);
+        for (let i = 0; i < 64; i++) {
+            oPad[i] = k[i] ^ 0x5c;
+            iPad[i] = k[i] ^ 0x36;
+        }
+        let inner = new Uint8Array(64 + msgBytes.length);
+        inner.set(iPad);
+        inner.set(msgBytes, 64);
+        let innerHash = _totpSha1(inner);
+
+        let outer = new Uint8Array(64 + 20);
+        outer.set(oPad);
+        outer.set(innerHash, 64);
+        return _totpSha1(outer);
+    }
+
+    // RFC 4648 Base32 Decoding
+    function _base32Decode(str) {
+        const alphabet = "ABCDEFGHIJKLMNOPQRSTUVWXYZ234567";
+        let cleaned = String(str || '').toUpperCase().replace(/=+$/, "").replace(/\s/g, "");
+        let bits = 0, value = 0;
+        const output = [];
+        for (let i = 0; i < cleaned.length; i++) {
+            const idx = alphabet.indexOf(cleaned[i]);
+            if (idx === -1) continue;
+            value = (value << 5) | idx;
+            bits += 5;
+            if (bits >= 8) {
+                output.push((value >>> (bits - 8)) & 255);
+                bits -= 8;
+            }
+        }
+        return new Uint8Array(output);
+    }
+
+    // Generate Cryptographically Random 16-character Base32 Secret Key
+    function generateRandomBase32(len) {
+        len = len || 16;
+        const alphabet = "ABCDEFGHIJKLMNOPQRSTUVWXYZ234567";
+        const bytes = new Uint8Array(len);
+        if (window.crypto && window.crypto.getRandomValues) {
+            window.crypto.getRandomValues(bytes);
+        } else {
+            for (let i = 0; i < len; i++) bytes[i] = Math.floor(Math.random() * 256);
+        }
+        let res = "";
+        for (let i = 0; i < len; i++) {
+            res += alphabet[bytes[i] % 32];
+        }
+        return res;
+    }
+
+    // Calculate TOTP Code for a given step
+    function _calcTotpCode(keyBytes, step) {
+        let buf = new Uint8Array(8);
+        let dv = new DataView(buf.buffer);
+        dv.setUint32(0, Math.floor(step / 0x100000000), false);
+        dv.setUint32(4, step >>> 0, false);
+
+        let hmac = _totpHmacSha1(keyBytes, buf);
+        let offset = hmac[19] & 0x0f;
+        let code = ((hmac[offset] & 0x7f) << 24) |
+                   ((hmac[offset + 1] & 0xff) << 16) |
+                   ((hmac[offset + 2] & 0xff) << 8) |
+                   (hmac[offset + 3] & 0xff);
+        return String(code % 1000000).padStart(6, "0");
+    }
+
+    // Verify 6-digit TOTP with +/- 1 Step Tolerance and Replay Protection
+    function verifyTOTP(secretBase32, inputOtp) {
+        if (!secretBase32 || !inputOtp) return false;
+        const cleanOtp = String(inputOtp).trim().replace(/\s/g, '');
+        if (cleanOtp.length !== 6 || !/^\d{6}$/.test(cleanOtp)) return false;
+
+        const keyBytes = _base32Decode(secretBase32);
+        if (keyBytes.length === 0) return false;
+
+        const nowSec = Math.floor(Date.now() / 1000);
+        const curStep = Math.floor(nowSec / 30);
+
+        const cfg = get2FaConfig();
+        const lastStep = cfg.lastVerifiedStep || 0;
+
+        // Check window: current step, -1 step (30s ago), +1 step (30s future)
+        for (let delta = -1; delta <= 1; delta++) {
+            let step = curStep + delta;
+            let expected = _calcTotpCode(keyBytes, step);
+            if (expected === cleanOtp) {
+                // Replay protection: cannot reuse the exact same code within the same 30s step
+                if (cfg.enabled && cfg.secret === secretBase32 && step === lastStep) {
+                    console.warn('2FA Replay rejected: code already used in this window.');
+                    return false;
+                }
+                if (cfg.enabled) {
+                    cfg.lastVerifiedStep = step;
+                    save2FaConfig(cfg);
+                }
+                return true;
+            }
+        }
+        return false;
+    }
+
+    // Get 2FA Configuration from localStorage
+    function get2FaConfig() {
+        try {
+            const raw = localStorage.getItem('crf_2fa_config');
+            if (raw) return JSON.parse(raw);
+        } catch (e) {}
+        return {
+            enabled: false,
+            secret: '',
+            configuredAt: null,
+            lastVerifiedStep: 0
+        };
+    }
+
+    // Save 2FA Configuration to localStorage
+    function save2FaConfig(cfg) {
+        localStorage.setItem('crf_2fa_config', JSON.stringify(cfg));
+        update2FaUI();
+    }
+
+    function is2FaEnabled() {
+        const cfg = get2FaConfig();
+        return Boolean(cfg && cfg.enabled && cfg.secret);
+    }
+
+    let currentPending2FaSecret = '';
+    let currentExportFormat = 'excel';
+    let exportTimerInterval = null;
+
+    // Update 2FA Badges in Dashboard Header and Users Tab
+    function update2FaUI() {
+        const cfg = get2FaConfig();
+        const headerBadge = document.getElementById('admin-2fa-header-badge');
+        const usersPill = document.getElementById('admin-users-2fa-status-pill');
+        const infoDiv = document.getElementById('admin-2fa-config-info');
+        const testBtn = document.getElementById('btn-test-2fa-tab');
+        const disableBtn = document.getElementById('btn-disable-2fa');
+        const confirmBtn = document.getElementById('btn-confirm-2fa-setup');
+
+        if (cfg.enabled && cfg.secret) {
+            if (headerBadge) {
+                headerBadge.textContent = '🟢 เปิดใช้แล้ว';
+                headerBadge.style.background = '#15803d';
+                headerBadge.style.color = '#ffffff';
+            }
+            if (usersPill) {
+                usersPill.className = 'two-fa-badge active';
+                usersPill.innerHTML = '🟢 เปิดใช้งานแล้ว (Protected)';
+            }
+            if (infoDiv) {
+                const dt = cfg.configuredAt ? new Date(cfg.configuredAt).toLocaleString('th-TH') : '-';
+                infoDiv.innerHTML = `
+                    <div style="color: #15803d; font-weight: 700; margin-bottom: 2px;">✓ คุ้มครองการดาวน์โหลดฐานข้อมูลอยู่</div>
+                    <div style="font-size: 11.5px; color: #475569;">เปิดใช้งานเมื่อ: ${dt}</div>
+                    <div style="font-size: 11.5px; color: #475569;">อัลกอริทึม: TOTP / SHA-1 (30 วินาที)</div>
+                `;
+            }
+            if (testBtn) testBtn.style.display = 'inline-block';
+            if (disableBtn) disableBtn.style.display = 'inline-block';
+            if (confirmBtn) confirmBtn.textContent = '🔄 อัปเดตคีย์ใหม่';
+        } else {
+            if (headerBadge) {
+                headerBadge.textContent = '⚪ ยังไม่เปิด';
+                headerBadge.style.background = 'rgba(255,255,255,0.2)';
+                headerBadge.style.color = '#ffffff';
+            }
+            if (usersPill) {
+                usersPill.className = 'two-fa-badge inactive';
+                usersPill.innerHTML = '⚪ ยังไม่ได้เปิดใช้งาน';
+            }
+            if (infoDiv) {
+                infoDiv.innerHTML = `
+                    <div style="color: #b91c1c; font-weight: 600;">ยังไม่มีการเปิดใช้งาน 2FA</div>
+                    <div style="font-size: 11.5px; color: #64748b; margin-top: 2px;">แนะนำให้เปิดใช้งานเพื่อป้องกันการดาวน์โหลดข้อมูลวิจัยโดยไม่ได้รับอนุญาต</div>
+                `;
+            }
+            if (testBtn) testBtn.style.display = 'none';
+            if (disableBtn) disableBtn.style.display = 'none';
+            if (confirmBtn) confirmBtn.textContent = '✅ เปิดใช้งาน 2FA';
+        }
+        render2FaAuditTable();
+    }
+
+    // Open Setup Modal
+    function open2faSetupModal() {
+        const modal = document.getElementById('modal-2fa-setup');
+        if (!modal) return;
+
+        const cfg = get2FaConfig();
+        // If already configured, use existing secret or allow regenerating
+        if (cfg.enabled && cfg.secret) {
+            currentPending2FaSecret = cfg.secret;
+        } else {
+            currentPending2FaSecret = generateRandomBase32(16);
+        }
+
+        const secretEl = document.getElementById('setup-2fa-secret-text');
+        if (secretEl) {
+            // Display formatted with spaces for readability
+            secretEl.textContent = currentPending2FaSecret.match(/.{1,4}/g)?.join(' ') || currentPending2FaSecret;
+        }
+
+        const errEl = document.getElementById('setup-2fa-error-msg');
+        if (errEl) errEl.style.display = 'none';
+
+        const copyFeedback = document.getElementById('setup-2fa-copy-feedback');
+        if (copyFeedback) copyFeedback.style.display = 'none';
+
+        const inputCode = document.getElementById('setup-2fa-input-code');
+        if (inputCode) inputCode.value = '';
+
+        const statusBanner = document.getElementById('setup-2fa-status-banner');
+        const statusText = document.getElementById('setup-2fa-status-text');
+        if (cfg.enabled && cfg.secret) {
+            if (statusBanner) {
+                statusBanner.style.background = '#dcfce7';
+                statusBanner.style.borderColor = '#86efac';
+            }
+            if (statusText) statusText.innerHTML = '<b>สถานะ: 2FA กำลังทำงานอยู่แล้ว</b> • คุณสามารถสแกน QR Code นี้ลงในเครื่องใหม่ หรือกรอกรหัสเพื่อทดสอบ/เปลี่ยนคีย์';
+        } else {
+            if (statusBanner) {
+                statusBanner.style.background = '#eef2ff';
+                statusBanner.style.borderColor = '#c7d2fe';
+            }
+            if (statusText) statusText.innerHTML = 'ระบบ 2FA ใช้มาตรฐาน TOTP (RFC 6238) ร่วมกับ Google Authenticator บนมือถือ เพื่อป้องกันการดาวน์โหลดฐานข้อมูลโดยไม่ได้รับอนุญาต';
+        }
+
+        render2faQrCode(currentPending2FaSecret);
+
+        modal.style.display = 'flex';
+        setTimeout(() => inputCode?.focus(), 150);
+    }
+
+    function close2faSetupModal() {
+        const modal = document.getElementById('modal-2fa-setup');
+        if (modal) modal.style.display = 'none';
+    }
+
+    function copy2FaSecret() {
+        if (!currentPending2FaSecret) return;
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+            navigator.clipboard.writeText(currentPending2FaSecret);
+        } else {
+            const ta = document.createElement('textarea');
+            ta.value = currentPending2FaSecret;
+            document.body.appendChild(ta);
+            ta.select();
+            document.execCommand('copy');
+            document.body.removeChild(ta);
+        }
+        const fb = document.getElementById('setup-2fa-copy-feedback');
+        if (fb) {
+            fb.style.display = 'block';
+            setTimeout(() => { if (fb) fb.style.display = 'none'; }, 2500);
+        }
+    }
+
+    // Render QR Code in setup modal using QRCode library or fallback
+    function render2faQrCode(secret) {
+        const container = document.getElementById('setup-2fa-qrcode-container');
+        if (!container) return;
+        container.innerHTML = '';
+
+        const uri = `otpauth://totp/LantaReferralCRF:Admin%20Export?secret=${encodeURIComponent(secret)}&issuer=LantaReferralCRF`;
+
+        if (typeof QRCode !== 'undefined') {
+            try {
+                new QRCode(container, {
+                    text: uri,
+                    width: 160,
+                    height: 160,
+                    colorDark: '#1e1b4b',
+                    colorLight: '#ffffff',
+                    correctLevel: (QRCode.CorrectLevel && QRCode.CorrectLevel.M) || 0
+                });
+                return;
+            } catch(e) {
+                console.warn('QRCode.js render error, falling back:', e);
+            }
+        }
+
+        // Fallback: render QR image via API or notice
+        const img = document.createElement('img');
+        img.src = `https://api.qrserver.com/v1/create-qr-code/?size=160x160&data=${encodeURIComponent(uri)}`;
+        img.style.width = '160px';
+        img.style.height = '160px';
+        img.style.borderRadius = '6px';
+        img.alt = 'Google Authenticator QR Code';
+        img.onerror = function() {
+            container.innerHTML = '<div style="font-size:11px;color:#64748b;text-align:center;padding:10px;">กรุณาใช้การป้อนคีย์การตั้งค่า (Setup Key) ด้วยตนเองในแอป</div>';
+        };
+        container.appendChild(img);
+    }
+
+    // Confirm and Save 2FA Setup
+    function confirm2faSetup() {
+        const input = document.getElementById('setup-2fa-input-code');
+        const errEl = document.getElementById('setup-2fa-error-msg');
+        const code = input?.value.trim();
+
+        if (!code || code.length !== 6) {
+            if (errEl) {
+                errEl.textContent = '⚠️ กรุณากรอกรหัส 6 หลักจากแอป Google Authenticator';
+                errEl.style.display = 'block';
+            }
+            input?.focus();
+            return;
+        }
+
+        const isValid = verifyTOTP(currentPending2FaSecret, code);
+        if (!isValid) {
+            if (errEl) {
+                errEl.textContent = '❌ รหัสไม่ถูกต้อง กรุณาตรวจสอบเวลาในโทรศัพท์ให้ตรงกับเวลาปัจจุบันและลองใหม่อีกครั้ง';
+                errEl.style.display = 'block';
+            }
+            input?.focus();
+            input?.select();
+            return;
+        }
+
+        // Save active 2FA configuration
+        const newCfg = {
+            enabled: true,
+            secret: currentPending2FaSecret,
+            configuredAt: new Date().toISOString(),
+            lastVerifiedStep: 0
+        };
+        save2FaConfig(newCfg);
+        close2faSetupModal();
+
+        alert(`🎉 เปิดใช้งาน Google Authenticator 2FA สำหรับการ Export ข้อมูลสำเร็จแล้ว!\n\nจากนี้ไปทุกครั้งที่มีการดาวน์โหลด Excel หรือ Backup JSON จะต้องยืนยันรหัส OTP 6 หลัก`);
+    }
+
+    // Disable 2FA with master admin authorization
+    function disable2Fa() {
+        const adminPw = prompt(`⚠️ ต้องการปิดใช้งาน 2FA หรือไม่?\nกรุณากรอกรหัสผ่าน Admin เพื่อยืนยัน:`);
+        if (!adminPw) return;
+
+        const accounts = getUserAccounts();
+        const adminAcc = accounts.find(u => u.username === 'admin');
+        const validPw = (adminAcc && adminAcc.password) || 'admin1234';
+
+        if (adminPw !== validPw && adminPw !== ADMIN_PIN) {
+            alert('❌ รหัสผ่าน Admin ไม่ถูกต้อง ไม่สามารถปิดใช้งาน 2FA ได้');
+            return;
+        }
+
+        const cfg = get2FaConfig();
+        cfg.enabled = false;
+        save2FaConfig(cfg);
+        close2faSetupModal();
+        alert('✓ ปิดการใช้งาน 2FA เรียบร้อยแล้ว');
+    }
+
+    function test2FaCodePrompt() {
+        const code = prompt(`🧪 ทดสอบรหัส 2FA:\nกรุณากรอกรหัส 6 หลักที่แสดงอยู่ในแอป Google Authenticator ขณะนี้:`);
+        if (!code) return;
+        const cfg = get2FaConfig();
+        if (!cfg.enabled || !cfg.secret) {
+            alert('ยังไม่ได้เปิดใช้งาน 2FA');
+            return;
+        }
+        if (verifyTOTP(cfg.secret, code)) {
+            alert('✅ ยืนยันสำเร็จ! รหัส 6 หลักถูกต้องและใช้งานได้สมบูรณ์');
+        } else {
+            alert('❌ รหัสไม่ถูกต้องหรือหมดเวลา กรุณาตรวจสอบเวลาบนมือถือ');
+        }
+    }
+
+    // Intercept Export Calls with 2FA Protection
+    function triggerExportWith2Fa(format) {
+        format = format || 'excel';
+        if (!isUserLoggedIn()) {
+            alert('⚠️ กรุณาเข้าสู่ระบบก่อน Export ข้อมูล');
+            openLoginModal();
+            return;
+        }
+
+        const currentUser = getCurrentUser();
+        if (!currentUser || currentUser.role !== 'admin') {
+            alert('⛔ สิทธิ์ไม่เพียงพอ: เฉพาะผู้ดูแลระบบ (Admin) เท่านั้นที่สามารถดาวน์โหลดฐานข้อมูลวิจัยได้');
+            return;
+        }
+
+        const index = JSON.parse(localStorage.getItem('online_crf_case_index') || '[]');
+        if (index.length === 0) {
+            alert('ไม่มีข้อมูลเคสในระบบสำหรับ Export');
+            return;
+        }
+
+        // Check if 2FA is configured
+        if (!is2FaEnabled()) {
+            const proceed = confirm(
+                `🛡️ การคุ้มครองความปลอดภัยฐานข้อมูลผู้ป่วย:\n\n` +
+                `ระบบตรวจพบว่ายังไม่ได้ตั้งค่า Google Authenticator (2FA)\n` +
+                `เพื่อความปลอดภัยตามมาตรฐานงานวิจัย แนะนำให้เปิดใช้งาน 2FA ก่อนส่งออกข้อมูล\n\n` +
+                `ต้องการตั้งค่า Google Authenticator ทันทีหรือไม่?`
+            );
+            if (proceed) {
+                open2faSetupModal();
+            }
+            return;
+        }
+
+        // Open 2FA Verification Modal
+        currentExportFormat = format;
+        open2faExportModal(format, index.length);
+    }
+
+    function open2faExportModal(format, caseCount) {
+        const modal = document.getElementById('modal-2fa-export-verify');
+        if (!modal) return;
+
+        const typeLabel = document.getElementById('export-target-type-label');
+        if (typeLabel) {
+            typeLabel.textContent = (format === 'json') ? 'JSON Database Backup (.json)' : 'Excel Master Database (.xlsx)';
+        }
+
+        const casesBadge = document.getElementById('export-target-cases-badge');
+        if (casesBadge) {
+            casesBadge.textContent = `${caseCount || 0} เคส`;
+        }
+
+        const userLabel = document.getElementById('export-user-name');
+        if (userLabel) {
+            const u = getCurrentUser();
+            userLabel.textContent = (u && u.fullname) ? `${u.fullname} (${u.username})` : 'Administrator';
+        }
+
+        const input = document.getElementById('export-2fa-code-input');
+        if (input) input.value = '';
+
+        const errEl = document.getElementById('export-2fa-error-msg');
+        if (errEl) errEl.style.display = 'none';
+
+        start2FaCountdownTimer();
+
+        modal.style.display = 'flex';
+        setTimeout(() => input?.focus(), 150);
+    }
+
+    function close2faExportModal() {
+        stop2FaCountdownTimer();
+        const modal = document.getElementById('modal-2fa-export-verify');
+        if (modal) modal.style.display = 'none';
+    }
+
+    function onExportOtpInput(el) {
+        // Auto submit when 6 digits are reached
+        const val = el.value.replace(/\D/g, '');
+        el.value = val;
+        if (val.length === 6) {
+            confirm2faExport();
+        }
+    }
+
+    // Live 30-second Countdown Timer Animation
+    function start2FaCountdownTimer() {
+        stop2FaCountdownTimer();
+        const updateTimer = () => {
+            const nowSec = Math.floor(Date.now() / 1000);
+            const remaining = 30 - (nowSec % 30);
+            const pct = (remaining / 30) * 100;
+
+            const textEl = document.getElementById('export-2fa-timer-text');
+            const fillEl = document.getElementById('export-2fa-timer-fill');
+
+            if (textEl) textEl.textContent = `${remaining} วินาที`;
+            if (fillEl) {
+                fillEl.style.width = `${pct}%`;
+                if (remaining <= 5) {
+                    fillEl.style.background = '#ef4444';
+                } else if (remaining <= 10) {
+                    fillEl.style.background = '#f59e0b';
+                } else {
+                    fillEl.style.background = 'linear-gradient(90deg, #10b981 0%, #3b82f6 100%)';
+                }
+            }
+        };
+        updateTimer();
+        exportTimerInterval = setInterval(updateTimer, 500);
+    }
+
+    function stop2FaCountdownTimer() {
+        if (exportTimerInterval) {
+            clearInterval(exportTimerInterval);
+            exportTimerInterval = null;
+        }
+    }
+
+    // Confirm 2FA OTP and execute download
+    function confirm2faExport() {
+        const input = document.getElementById('export-2fa-code-input');
+        const errEl = document.getElementById('export-2fa-error-msg');
+        const code = input?.value.trim();
+
+        if (!code || code.length !== 6) {
+            if (errEl) {
+                errEl.textContent = '⚠️ กรุณากรอกรหัส 6 หลักจากแอป Google Authenticator';
+                errEl.style.display = 'block';
+            }
+            input?.focus();
+            return;
+        }
+
+        const cfg = get2FaConfig();
+        if (!cfg.enabled || !cfg.secret) {
+            alert('ยังไม่ได้เปิดใช้งาน 2FA');
+            close2faExportModal();
+            return;
+        }
+
+        const isValid = verifyTOTP(cfg.secret, code);
+        if (!isValid) {
+            if (errEl) {
+                errEl.textContent = '❌ รหัส 2FA ไม่ถูกต้องหรือหมดอายุแล้ว กรุณารอรหัสชุดใหม่จากมือถือแล้วลองอีกครั้ง';
+                errEl.style.display = 'block';
+            }
+            input?.focus();
+            input?.select();
+            return;
+        }
+
+        // Verified! Execute export
+        close2faExportModal();
+
+        const index = JSON.parse(localStorage.getItem('online_crf_case_index') || '[]');
+        logSecurityExport(currentExportFormat, index.length);
+
+        const statusEl = document.getElementById('save-status');
+        if (statusEl) {
+            statusEl.innerHTML = `✓ ยืนยันรหัส 2FA สำเร็จ: กำลังดาวน์โหลดฐานข้อมูล (${currentExportFormat.toUpperCase()})...`;
+            statusEl.style.display = 'inline-flex';
+            setTimeout(() => { if (statusEl) statusEl.style.display = 'none'; }, 4000);
+        }
+
+        if (currentExportFormat === 'json') {
+            executeExportJson();
+        } else {
+            executeExportExcel();
+        }
+    }
+
+    // Security Audit Log for Database Exports
+    function logSecurityExport(format, caseCount) {
+        try {
+            const history = JSON.parse(localStorage.getItem('crf_export_audit_log') || '[]');
+            const u = getCurrentUser();
+            history.unshift({
+                timestamp: new Date().toISOString(),
+                user: (u && u.fullname) ? `${u.fullname} (${u.username})` : 'Admin',
+                format: format.toUpperCase(),
+                caseCount: caseCount || 0,
+                status: 'Verified (2FA)'
+            });
+            // Keep last 30 logs
+            if (history.length > 30) history.length = 30;
+            localStorage.setItem('crf_export_audit_log', JSON.stringify(history));
+            render2FaAuditTable();
+        } catch(e) {}
+    }
+
+    function render2FaAuditTable() {
+        const tbody = document.getElementById('admin-2fa-audit-tbody');
+        if (!tbody) return;
+
+        try {
+            const history = JSON.parse(localStorage.getItem('crf_export_audit_log') || '[]');
+            if (history.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="5" style="text-align: center; color: #94a3b8; padding: 12px;">ยังไม่มีประวัติการส่งออกข้อมูล</td></tr>`;
+                return;
+            }
+            tbody.innerHTML = history.slice(0, 10).map(item => `
+                <tr style="border-bottom: 1px solid #f1f5f9;">
+                    <td style="padding: 6px 10px; color: #334155;">${new Date(item.timestamp).toLocaleString('th-TH')}</td>
+                    <td style="padding: 6px 10px; font-weight: 600; color: #1e1b4b;">${escapeHtml(item.user)}</td>
+                    <td style="padding: 6px 10px; text-align: center;">
+                        <span style="background: ${item.format === 'JSON' ? '#f0fdf4' : '#eff6ff'}; color: ${item.format === 'JSON' ? '#166534' : '#1e40af'}; font-weight: 700; padding: 2px 8px; border-radius: 4px; font-size: 11px;">
+                            ${item.format}
+                        </span>
+                    </td>
+                    <td style="padding: 6px 10px; text-align: center; font-weight: 700; color: #0f172a;">${item.caseCount} เคส</td>
+                    <td style="padding: 6px 10px; text-align: center;">
+                        <span style="color: #15803d; font-weight: 700; font-size: 11px;">✓ ผ่าน 2FA</span>
+                    </td>
+                </tr>
+            `).join('');
+        } catch(e) {}
+    }
+
     // --- EXCEL EXPORT (SHEETJS) ---
     function exportToExcel() {
+        triggerExportWith2Fa('excel');
+    }
+
+    function executeExportExcel() {
         if (!isUserLoggedIn()) {
             alert('⚠️ กรุณาเข้าสู่ระบบก่อน Export ข้อมูล');
             openLoginModal();
@@ -4432,6 +5090,68 @@ def get_js():
         const nowStr = new Date().toISOString().slice(0, 10);
         XLSX.writeFile(wb, 'Emergency_Transfer_CRF_Master_Database_' + nowStr + '.xlsx');
     }
+
+    // --- JSON EXPORT (DATABASE BACKUP) ---
+    function executeExportJson() {
+        if (!isUserLoggedIn()) {
+            alert('⚠️ กรุณาเข้าสู่ระบบก่อน Export ข้อมูล');
+            openLoginModal();
+            return;
+        }
+
+        const index = JSON.parse(localStorage.getItem('online_crf_case_index') || '[]');
+        if (index.length === 0) {
+            alert('ไม่มีข้อมูลเคสสำหรับ Export');
+            return;
+        }
+
+        saveCurrentCase(false);
+
+        const allCases = [];
+        index.forEach(id => {
+            const raw = localStorage.getItem('online_crf_case_' + id);
+            if (raw) {
+                try { allCases.push(JSON.parse(raw)); } catch(e) {}
+            }
+        });
+
+        const exportBundle = {
+            exportVersion: '1.0',
+            exportedAt: new Date().toISOString(),
+            exportedBy: (getCurrentUser() && getCurrentUser().fullname) || 'Admin',
+            totalCases: allCases.length,
+            cases: allCases
+        };
+
+        const jsonStr = JSON.stringify(exportBundle, null, 2);
+        const blob = new Blob([jsonStr], { type: 'application/json' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        const nowStr = new Date().toISOString().slice(0, 10);
+        a.download = `Emergency_Transfer_CRF_Master_Backup_${nowStr}_${allCases.length}cases.json`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+    }
+
+    // Expose 2FA and Export APIs to Window
+    window.open2faSetupModal = open2faSetupModal;
+    window.close2faSetupModal = close2faSetupModal;
+    window.confirm2faSetup = confirm2faSetup;
+    window.disable2Fa = disable2Fa;
+    window.copy2FaSecret = copy2FaSecret;
+    window.test2FaCodePrompt = test2FaCodePrompt;
+    window.triggerExportWith2Fa = triggerExportWith2Fa;
+    window.open2faExportModal = open2faExportModal;
+    window.close2faExportModal = close2faExportModal;
+    window.confirm2faExport = confirm2faExport;
+    window.onExportOtpInput = onExportOtpInput;
+    window.exportToExcel = exportToExcel;
+    window.executeExportExcel = executeExportExcel;
+    window.executeExportJson = executeExportJson;
+    window.update2FaUI = update2FaUI;
 
     // --- JSON IMPORT ENGINE ---
     function handleAdminImportJson(event) {
@@ -5046,6 +5766,7 @@ def get_js():
         });
 
         tbody.innerHTML = html;
+        update2FaUI();
     }
 
     // --- USER PERSONAL CASES DASHBOARD ENGINE (MY CASES) ---
